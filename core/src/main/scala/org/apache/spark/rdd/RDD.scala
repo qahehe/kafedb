@@ -1489,8 +1489,8 @@ abstract class RDD[T: ClassTag](
         (NullWritable.get(), text)
       }
     }
-    RDD.rddToPairRDDFunctions(r)(nullWritableClassTag, textClassTag, null)
-      .saveAsHadoopFile[TextOutputFormat[NullWritable, Text]](path)
+    val foo = RDD.rddToPairRDDFunctions(r)(nullWritableClassTag, textClassTag, null)
+      foo.saveAsHadoopFile[TextOutputFormat[NullWritable, Text]](path)
   }
 
   /**
