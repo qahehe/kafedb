@@ -69,7 +69,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
     SparkSession.setActiveSession(sparkSession)
     // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
     //       but we will implement to choose the best plan.
-    planner.plan(ReturnAnswer(optimizedPlan)).next()
+    planner.plan(ReturnAnswer(encryptedPlan)).next()
   }
 
   // executedPlan should not be used to initialize any SparkPlan. It should be
@@ -78,6 +78,8 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
 
   /** Internal version of the RDD. Avoids copies and has no schema */
   lazy val toRdd: RDD[InternalRow] = executedPlan.execute()
+
+  lazy val encryptedPlan: LogicalPlan = sparkSession.sessionState.encrypter.execute(optimizedPlan)
 
   /**
    * Prepares a planned [[SparkPlan]] for execution by inserting shuffle operations and internal

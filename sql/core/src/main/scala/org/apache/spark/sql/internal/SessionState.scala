@@ -27,6 +27,7 @@ import org.apache.spark.annotation.{Experimental, InterfaceStability}
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.analysis.{Analyzer, FunctionRegistry}
 import org.apache.spark.sql.catalyst.catalog._
+import org.apache.spark.sql.catalyst.encrypter.Encrypter
 import org.apache.spark.sql.catalyst.optimizer.Optimizer
 import org.apache.spark.sql.catalyst.parser.ParserInterface
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -66,6 +67,7 @@ private[sql] class SessionState(
     val sqlParser: ParserInterface,
     analyzerBuilder: () => Analyzer,
     optimizerBuilder: () => Optimizer,
+    encrypterBuilder: () => Encrypter,
     val planner: SparkPlanner,
     val streamingQueryManager: StreamingQueryManager,
     val listenerManager: ExecutionListenerManager,
@@ -79,6 +81,8 @@ private[sql] class SessionState(
   lazy val analyzer: Analyzer = analyzerBuilder()
 
   lazy val optimizer: Optimizer = optimizerBuilder()
+
+  lazy val encrypter: Encrypter = encrypterBuilder()
 
   lazy val resourceLoader: SessionResourceLoader = resourceLoaderBuilder()
 
