@@ -66,7 +66,8 @@ case class EncryptTableCommand(tableName: String, child: LogicalPlan) extends Ru
           colRid.as[(Int, BigInt)].groupByKey(_._1).flatMapGroups {
             case (value, rids) =>
               rids.zipWithIndex.map {
-                case ((_, rid), counter) => (s"$value~$counter", rid)
+                // todo: use counter
+                case ((_, rid), counter) => (s"$value~counter", rid)
               }
           }
       }

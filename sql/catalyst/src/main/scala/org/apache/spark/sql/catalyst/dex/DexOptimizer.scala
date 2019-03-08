@@ -14,22 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.dex
+package org.apache.spark.sql.catalyst.dex
 
-import org.apache.spark.sql.QueryTest
-import org.apache.spark.sql.test.SharedSQLContext
+import org.apache.spark.sql.catalyst.analysis.EliminateSubqueryAliases
+import org.apache.spark.sql.catalyst.catalog.SessionCatalog
+import org.apache.spark.sql.catalyst.optimizer.Optimizer
 
-class EncryptQuerySuite extends EncryptQueryTest {
+// An optimizer that is used before encryption
+// It needs to preserve subquery aliases (table names) to as to help encryption
+class DexOptimizer(catalog: SessionCatalog) extends Optimizer(catalog) {
 
-  setupTestData()
+  val dexExcludedRules: Seq[String] = Seq(EliminateSubqueryAliases.ruleName)
 
-  test("one constant filter") {
-    val query = spark.table("testData2").select("b").where("a == 2")
-    query.explain(extended = true)
-    val result = query.collect()
-    // scalastyle:off
-    println(result.toString)
-    // scalastyle:on
-  }
+  override def excludedRulesConf: Seq[String] = super.excludedRulesConf ++ dexExcludedRules
 
+  override def nonExcludableRules: Seq[String] =
+    super.nonExcludableRules.filterNot(dexExcludedRules.contains(_))
 }

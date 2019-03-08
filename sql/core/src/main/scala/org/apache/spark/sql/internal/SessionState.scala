@@ -67,6 +67,7 @@ private[sql] class SessionState(
     val sqlParser: ParserInterface,
     analyzerBuilder: () => Analyzer,
     optimizerBuilder: () => Optimizer,
+    preEncryptionOptimizerBuilder: () => Optimizer,
     encrypterBuilder: () => Encrypter,
     val planner: SparkPlanner,
     val streamingQueryManager: StreamingQueryManager,
@@ -81,6 +82,8 @@ private[sql] class SessionState(
   lazy val analyzer: Analyzer = analyzerBuilder()
 
   lazy val optimizer: Optimizer = optimizerBuilder()
+
+  lazy val preEncryptionOptimizer: Optimizer = preEncryptionOptimizerBuilder()
 
   lazy val encrypter: Encrypter = encrypterBuilder()
 

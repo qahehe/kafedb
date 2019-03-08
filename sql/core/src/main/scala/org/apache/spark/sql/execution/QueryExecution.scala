@@ -23,7 +23,7 @@ import java.sql.{Date, Timestamp}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.analysis.UnsupportedOperationChecker
+import org.apache.spark.sql.catalyst.analysis.{EliminateSubqueryAliases, UnsupportedOperationChecker}
 import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan, ReturnAnswer}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
@@ -63,13 +63,16 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
     sparkSession.sharedState.cacheManager.useCachedData(analyzed)
   }
 
-  lazy val optimizedPlan: LogicalPlan = sparkSession.sessionState.optimizer.execute(withCachedData)
+  lazy val optimizedPlan: LogicalPlan = EliminateSubqueryAliases(encryptedPlan) // sparkSession.sessionState.optimizer.execute(encryptedPlan)
+
+  lazy val preEncryptionOptimizedPlan: LogicalPlan =
+    sparkSession.sessionState.preEncryptionOptimizer.execute(withCachedData)
 
   lazy val sparkPlan: SparkPlan = {
     SparkSession.setActiveSession(sparkSession)
     // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
     //       but we will implement to choose the best plan.
-    planner.plan(ReturnAnswer(encryptedPlan)).next()
+    planner.plan(ReturnAnswer(optimizedPlan)).next()
   }
 
   // executedPlan should not be used to initialize any SparkPlan. It should be
@@ -81,14 +84,15 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
 
   lazy val encryptedPlan: LogicalPlan = {
     // do not encrypt commands like create view
-    if (optimizedPlan.isInstanceOf[Command]) {
-      optimizedPlan
+    if (preEncryptionOptimizedPlan.isInstanceOf[Command]) {
+      preEncryptionOptimizedPlan
     } else {
-      val encPlan = sparkSession.sessionState.encrypter.execute(optimizedPlan)
+      val encPlan = sparkSession.sessionState.encrypter.execute(preEncryptionOptimizedPlan)
       val analyzedEncPlan = sparkSession.sessionState.analyzer.executeAndCheck(encPlan)
       val withCachedEncPlan = sparkSession.sharedState.cacheManager.useCachedData(analyzedEncPlan)
-      val optEncPlan = sparkSession.sessionState.optimizer.execute(withCachedEncPlan)
-      optEncPlan
+      // val optEncPlan = sparkSession.sessionState.optimizer.execute(withCachedEncPlan)
+      // optEncPlan
+      withCachedEncPlan
     }
   }
 

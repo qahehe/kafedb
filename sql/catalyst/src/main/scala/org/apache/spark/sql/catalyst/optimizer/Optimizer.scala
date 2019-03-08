@@ -190,7 +190,7 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
    */
   def nonExcludableRules: Seq[String] =
     EliminateDistinct.ruleName ::
-      // EliminateSubqueryAliases.ruleName ::
+      EliminateSubqueryAliases.ruleName ::
       EliminateView.ruleName ::
       ReplaceExpressions.ruleName ::
       ComputeCurrentTime.ruleName ::
@@ -234,6 +234,9 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
    */
   def extendedOperatorOptimizationRules: Seq[Rule[LogicalPlan]] = Nil
 
+  def excludedRulesConf: Seq[String] =
+    SQLConf.get.optimizerExcludedRules.toSeq.flatMap(Utils.stringToSeq)
+
   /**
    * Returns (defaultBatches - (excludedRules - nonExcludableRules)), the rule batches that
    * eventually run in the Optimizer.
@@ -242,8 +245,6 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
    * if necessary, instead of this method.
    */
   final override def batches: Seq[Batch] = {
-    val excludedRulesConf =
-      SQLConf.get.optimizerExcludedRules.toSeq.flatMap(Utils.stringToSeq)
     val excludedRules = excludedRulesConf.filter { ruleName =>
       val nonExcludable = nonExcludableRules.contains(ruleName)
       if (nonExcludable) {

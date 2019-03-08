@@ -30,9 +30,6 @@ trait EncryptQueryTest extends QueryTest with SharedSQLContext {
   protected override def sparkConf = super.sparkConf
     .set(SQLConf.CODEGEN_FACTORY_MODE, CodegenObjectFactoryMode.NO_CODEGEN.toString)
     .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
-    .set(SQLConf.OPTIMIZER_EXCLUDED_RULES,
-      super.sparkConf.get(SQLConf.OPTIMIZER_EXCLUDED_RULES) + "," +
-        EliminateSubqueryAliases.ruleName)
 
   // Whether to materialize all encrypted test data before the first test is run
   private var encryptTestDataBeforeTests = false

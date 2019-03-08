@@ -38,9 +38,7 @@ class EncryptPlanSuite extends EncryptPlanTest {
   object Encrypt extends RuleExecutor[LogicalPlan] {
     val batches =
       Batch("Encrypt Constant Filter", Once, EncryptConstantFilter) ::
-        Batch("Encrypt Projection", Once, EncryptProjection) ::
-        Batch("Post Encryption Analysis", Once,
-          EliminateSubqueryAliases) :: Nil
+        Batch("Encrypt Projection", Once, EncryptProjection) :: Nil
   }
 
 
@@ -53,6 +51,7 @@ class EncryptPlanSuite extends EncryptPlanTest {
     // scalastyle:off
     println(originalQuery)
     println(analyzed)
+    println(optimized)
     println(encrypted)
     println(encryptedAnalyzed)
     // scalastyle:on
