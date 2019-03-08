@@ -24,7 +24,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.UnsupportedOperationChecker
-import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, ReturnAnswer}
+import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan, ReturnAnswer}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.execution.command.{DescribeTableCommand, ExecutedCommandExec, ShowTablesCommand}
@@ -79,7 +79,18 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   /** Internal version of the RDD. Avoids copies and has no schema */
   lazy val toRdd: RDD[InternalRow] = executedPlan.execute()
 
-  lazy val encryptedPlan: LogicalPlan = sparkSession.sessionState.encrypter.execute(optimizedPlan)
+  lazy val encryptedPlan: LogicalPlan = {
+    // do not encrypt commands like create view
+    if (optimizedPlan.isInstanceOf[Command]) {
+      optimizedPlan
+    } else {
+      val encPlan = sparkSession.sessionState.encrypter.execute(optimizedPlan)
+      val analyzedEncPlan = sparkSession.sessionState.analyzer.executeAndCheck(encPlan)
+      val withCachedEncPlan = sparkSession.sharedState.cacheManager.useCachedData(analyzedEncPlan)
+      val optEncPlan = sparkSession.sessionState.optimizer.execute(withCachedEncPlan)
+      optEncPlan
+    }
+  }
 
   /**
    * Prepares a planned [[SparkPlan]] for execution by inserting shuffle operations and internal
@@ -205,6 +216,8 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
        |$analyzedPlan
        |== Optimized Logical Plan ==
        |${stringOrError(optimizedPlan.treeString(verbose = true))}
+       |== Encrypted Plan ==
+       |${stringOrError(encryptedPlan.treeString(verbose = true))}
        |== Physical Plan ==
        |${stringOrError(executedPlan.treeString(verbose = true))}
     """.stripMargin.trim

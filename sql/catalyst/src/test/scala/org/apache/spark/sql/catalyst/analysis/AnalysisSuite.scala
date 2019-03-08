@@ -173,6 +173,7 @@ class AnalysisSuite extends AnalysisTest with Matchers {
   }
 
   test("resolve relations") {
+    testRelation.printSchema()
     assertAnalysisError(UnresolvedRelation(TableIdentifier("tAbLe")), Seq())
     checkAnalysis(UnresolvedRelation(TableIdentifier("TaBlE")), testRelation)
     checkAnalysis(

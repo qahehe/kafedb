@@ -3155,6 +3155,28 @@ class Dataset[T] private[sql](
       viewType = viewType)
   }
 
+  def createEncryptedGlobalView(plaintextViewName: String): Unit = withPlan {
+    EncryptTableCommand(
+      plaintextViewName,
+      child = createTempViewCommand(plaintextViewName, replace = false, global = true))
+  }
+
+  def encrypt(plaintextViewName: String): Unit = {
+    val plaintextTableId = try {
+      sparkSession.sessionState.sqlParser.parseTableIdentifier(plaintextViewName)
+    } catch {
+      case _: ParseException =>
+        throw new AnalysisException(s"Invalid view name: $plaintextViewName")
+    }
+    val catalog = sparkSession.sessionState.catalog
+    if (catalog.tableExists(plaintextTableId) || catalog.isTemporaryTable(plaintextTableId)) {
+      withPlan {
+        EncryptTableCommand(plaintextViewName, child = logicalPlan)
+      }
+    }
+    else createEncryptedGlobalView(plaintextViewName)
+  }
+
   /**
    * Interface for saving the content of the non-streaming Dataset out into external storage.
    *

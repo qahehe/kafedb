@@ -14,22 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.spark.sql.catalyst.dex
 
-package org.apache.spark.sql.catalyst.encrypter
+import org.apache.spark.SparkException
 
-import org.apache.spark.sql.catalyst.catalog.SessionCatalog
-import org.apache.spark.sql.catalyst.plans.logical.{Filter, LogicalPlan}
-import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
-
-class Encrypter(catalog: SessionCatalog) extends RuleExecutor[LogicalPlan] {
-
-  lazy val batches: Seq[Batch] = Seq(
-    Batch("Encrypt Constant Filter", Once, EncryptConstantFilter)
-  )
-
-  object EncryptConstantFilter extends Rule[LogicalPlan] {
-    override def apply(plan: LogicalPlan): LogicalPlan = plan.transform {
-      case f @ Filter(filterCondition, x) => f
-    }
-  }
-}
+case class EncryptionException(message: String) extends SparkException(message)

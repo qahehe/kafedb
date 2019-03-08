@@ -21,7 +21,7 @@ import org.apache.spark.annotation.{Experimental, InterfaceStability}
 import org.apache.spark.sql.{ExperimentalMethods, SparkSession, UDFRegistration, _}
 import org.apache.spark.sql.catalyst.analysis.{Analyzer, FunctionRegistry}
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
-import org.apache.spark.sql.catalyst.encrypter.Encrypter
+import org.apache.spark.sql.catalyst.dex.Encrypter
 import org.apache.spark.sql.catalyst.optimizer.Optimizer
 import org.apache.spark.sql.catalyst.parser.ParserInterface
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -226,7 +226,7 @@ abstract class BaseSessionStateBuilder(
     extensions.buildOptimizerRules(session)
   }
 
-  protected def encrypter: Encrypter = new Encrypter(catalog)
+  protected def encrypter: Encrypter = new Encrypter(catalog, analyzer)
 
   /**
    * Planner that converts optimized logical plans to physical plans.

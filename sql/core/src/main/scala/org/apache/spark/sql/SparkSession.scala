@@ -38,11 +38,12 @@ import org.apache.spark.sql.catalyst.expressions.AttributeReference
 import org.apache.spark.sql.catalyst.plans.logical.{LocalRelation, Range}
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.functions.monotonically_increasing_id
 import org.apache.spark.sql.internal._
 import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.streaming._
-import org.apache.spark.sql.types.{DataType, StructType}
+import org.apache.spark.sql.types.{DataType, IntegerType, StructType}
 import org.apache.spark.sql.util.ExecutionListenerManager
 import org.apache.spark.util.{CallSite, Utils}
 
@@ -626,6 +627,10 @@ class SparkSession private(
 
   private[sql] def table(tableIdent: TableIdentifier): DataFrame = {
     Dataset.ofRows(self, UnresolvedRelation(tableIdent))
+  }
+
+  def encrypt(tableName: String): Unit = {
+    table(tableName).encrypt(tableName)
   }
 
   /* ----------------- *

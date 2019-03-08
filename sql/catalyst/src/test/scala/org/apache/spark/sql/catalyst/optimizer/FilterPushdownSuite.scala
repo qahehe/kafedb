@@ -69,7 +69,8 @@ class FilterPushdownSuite extends PlanTest {
         .select('a)
         .where('a === 1)
 
-    val optimized = Optimize.execute(originalQuery.analyze)
+    val analyzed = originalQuery.analyze
+    val optimized = Optimize.execute(analyzed)
     val correctAnswer =
       testRelation
         .where('a === 1)
