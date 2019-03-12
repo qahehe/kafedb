@@ -63,7 +63,8 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
     sparkSession.sharedState.cacheManager.useCachedData(analyzed)
   }
 
-  lazy val optimizedPlan: LogicalPlan = EliminateSubqueryAliases(encryptedPlan) // sparkSession.sessionState.optimizer.execute(encryptedPlan)
+  lazy val optimizedPlan: LogicalPlan = EliminateSubqueryAliases(encryptedPlan)
+  // sparkSession.sessionState.optimizer.execute(encryptedPlan)
 
   lazy val preEncryptionOptimizedPlan: LogicalPlan =
     sparkSession.sessionState.preEncryptionOptimizer.execute(withCachedData)

@@ -14,22 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.dex
+package org.apache.spark.sql.execution.dex
 
-import org.apache.spark.sql.QueryTest
-import org.apache.spark.sql.test.SharedSQLContext
-
-class EncryptQuerySuite extends EncryptQueryTest {
-
-  setupTestData()
-
-  test("one constant filter") {
-    val query = spark.table("testData2").select("b").where("a == 2")
-    query.explain(extended = true)
-    val result = query.collect()
-    // scalastyle:off
-    println(result.mkString)
-    // scalastyle:on
-  }
+class EncryptedQueryExecution {
 
 }

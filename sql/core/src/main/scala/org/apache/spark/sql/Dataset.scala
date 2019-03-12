@@ -196,7 +196,7 @@ class Dataset[T] private[sql](
       case u @ Union(children) if children.forall(_.isInstanceOf[Command]) =>
         LocalRelation(u.output, withAction("command", queryExecution)(_.executeCollect()))
       case _ =>
-        queryExecution.analyzed
+        queryExecution.optimizedPlan
     }
   }
 
@@ -3176,6 +3176,10 @@ class Dataset[T] private[sql](
     }
     else createEncryptedGlobalView(plaintextViewName)
   }
+
+  /* def toEncrytedDF(): DataFrame = {
+    new Dataset[Row](sparkSession, queryExecution, RowEncoder(schema))
+  } */
 
   /**
    * Interface for saving the content of the non-streaming Dataset out into external storage.
