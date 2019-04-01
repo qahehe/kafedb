@@ -20,16 +20,14 @@ package org.apache.spark.sql
 import java.util.{Locale, Properties}
 
 import scala.collection.JavaConverters._
-
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.univocity.parsers.csv.CsvParser
-
 import org.apache.spark.Partition
 import org.apache.spark.annotation.InterfaceStability
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.json.{CreateJacksonParser, JacksonParser, JSONOptions}
+import org.apache.spark.sql.catalyst.json.{CreateJacksonParser, JSONOptions, JacksonParser}
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.execution.datasources.{DataSource, FailureSafeParser}
 import org.apache.spark.sql.execution.datasources.csv._
@@ -37,6 +35,7 @@ import org.apache.spark.sql.execution.datasources.jdbc._
 import org.apache.spark.sql.execution.datasources.json.TextInputJsonDataSource
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils
+import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.sources.v2.{DataSourceOptions, DataSourceV2, ReadSupport}
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.unsafe.types.UTF8String
@@ -214,14 +213,17 @@ class DataFrameReader private[sql](sparkSession: SparkSession) extends Logging {
 
   private def loadV1Source(paths: String*) = {
     // Code path for data source v1.
-    sparkSession.baseRelationToDataFrame(
-      DataSource.apply(
-        sparkSession,
-        paths = paths,
-        userSpecifiedSchema = userSpecifiedSchema,
-        className = source,
-        options = extraOptions.toMap).resolveRelation())
+    sparkSession.baseRelationToDataFrame(resolveV1Relation(paths: _*))
   }
+
+  def resolveV1Relation(paths: String*): BaseRelation =
+    DataSource.apply(
+      sparkSession,
+      paths = paths,
+      userSpecifiedSchema = userSpecifiedSchema,
+      className = source,
+      options = extraOptions.toMap).resolveRelation()
+
 
   /**
    * Construct a `DataFrame` representing the database table accessible via JDBC URL

@@ -25,6 +25,7 @@ import org.apache.spark.sql.catalyst.optimizer.Optimizer
 import org.apache.spark.sql.catalyst.parser.ParserInterface
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.dex.Dex
 import org.apache.spark.sql.execution.{QueryExecution, SparkOptimizer, SparkPlanner, SparkSqlParser}
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.streaming.StreamingQueryManager
@@ -215,6 +216,10 @@ abstract class BaseSessionStateBuilder(
     }
   }
 
+  protected def dex: Dex = {
+    new Dex(catalog, session)
+  }
+
   /**
    * Custom operator optimization rules to add to the Optimizer. Prefer overriding this instead
    * of creating your own Optimizer.
@@ -292,6 +297,7 @@ abstract class BaseSessionStateBuilder(
       sqlParser,
       () => analyzer,
       () => optimizer,
+      () => dex,
       planner,
       streamingQueryManager,
       listenerManager,

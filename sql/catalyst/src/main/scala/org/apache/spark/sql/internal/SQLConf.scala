@@ -1548,6 +1548,12 @@ object SQLConf {
         "WHERE, which does not follow SQL standard.")
       .booleanConf
       .createWithDefault(false)
+
+  val DEX_ENCRYPTED_DATASOURCE_JDBC_URL =
+    buildConf("spark.sql.dex.encryptedDataSourceJdbcUrl")
+    .doc("Encrypted DataSource JDBC url of the form `jdbc:<vendor>://<host>:<port>/<db>")
+    .stringConf
+    .createWithDefault("jdbc:postgresql://localhost:7433/test_edb")
 }
 
 /**
@@ -1954,6 +1960,8 @@ class SQLConf extends Serializable with Logging {
     getConf(SQLConf.LEGACY_REPLACE_DATABRICKS_SPARK_AVRO_ENABLED)
 
   def setOpsPrecedenceEnforced: Boolean = getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
+
+  def dexEncryptedDataSourceUrl: String = getConf(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL)
 
   /** ********************** SQLConf functionality methods ************ */
 

@@ -47,6 +47,16 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = child.output
 }
 
+/**
+ * This node is inserted at the top of a query plan when it is analyzed.
+ * This makes sure we can recognize an encrypted query.
+ * Opertaions above this node will be treated as plaintext operations.
+ * Operations below this node will be transformed into encrypted oeprations.
+ */
+case class DexPlan(child: LogicalPlan) extends OrderPreservingUnaryNode {
+  override def output: Seq[Attribute] = child.output
+}
+
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
     extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = projectList.map(_.toAttribute)

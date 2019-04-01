@@ -1499,6 +1499,12 @@ class Dataset[T] private[sql](
     filter(Column(sparkSession.sessionState.sqlParser.parseExpression(conditionExpr)))
   }
 
+
+  def dex: Dataset[T] = withTypedPlan {
+    DexPlan(logicalPlan)
+  }
+
+
   /**
    * Filters rows using the given condition. This is an alias for `filter`.
    * {{{

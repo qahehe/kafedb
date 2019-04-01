@@ -372,6 +372,8 @@ package object dsl {
 
       def union(otherPlan: LogicalPlan): LogicalPlan = Union(logicalPlan, otherPlan)
 
+      def unionDistinct(otherPlan: LogicalPlan): LogicalPlan = Distinct(union(otherPlan))
+
       def generate(
         generator: Generator,
         unrequiredChildIndex: Seq[Int] = Nil,
