@@ -66,7 +66,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     conn.commit()
     connEnc.commit()
 
-    conn.prepareStatement("create table testdata2 (a varchar, b varchar)")
+    conn.prepareStatement("create table testdata2 (a int, b int)")
       .executeUpdate()
     conn.prepareStatement(
       """

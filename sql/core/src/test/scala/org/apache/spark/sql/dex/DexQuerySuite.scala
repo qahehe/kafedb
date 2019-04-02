@@ -20,13 +20,12 @@ package org.apache.spark.sql.dex
 class DexQuerySuite extends DexQueryTest {
 
   test("one filter") {
-    //val query = spark.table("testData2").select("b").where("a == 2")
-    //val query = spark.table("testData2").select("b").where("a == 2").dex
     val query = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2")
-    //val query = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == '2'").dex
-    query.explain(extended = true)
-    val result = query.collect()
-    println(result.mkString)
+    val queryDex = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2").dex
+    //query.explain(extended = true)
+    //val result = query.collect()
+    //println(result.mkString)
+    checkAnswer(queryDex, query)
   }
 
 }

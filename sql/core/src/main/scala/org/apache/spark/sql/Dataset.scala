@@ -195,6 +195,8 @@ class Dataset[T] private[sql](
         LocalRelation(c.output, withAction("command", queryExecution)(_.executeCollect()))
       case u @ Union(children) if children.forall(_.isInstanceOf[Command]) =>
         LocalRelation(u.output, withAction("command", queryExecution)(_.executeCollect()))
+      case d: DexPlan =>
+        queryExecution.dexPlan
       case _ =>
         queryExecution.analyzed
     }
