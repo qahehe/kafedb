@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 package org.apache.spark.sql.dex
+
+import org.apache.spark.sql.Row
 // scalastyle:off
 
 class DexQuerySuite extends DexQueryTest {
@@ -26,6 +28,12 @@ class DexQuerySuite extends DexQueryTest {
     //val result = query.collect()
     //println(result.mkString)
     checkAnswer(queryDex, query)
+  }
+
+  test("mix dex and non-dex query") {
+    val queryDex = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2").dex
+    val queryMix = queryDex.selectExpr("b * 2")
+    checkAnswer(queryMix, Row(2) :: Row(4):: Nil)
   }
 
 }
