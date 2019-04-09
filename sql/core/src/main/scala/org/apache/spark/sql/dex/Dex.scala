@@ -17,20 +17,24 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import org.apache.spark.sql.catalyst.analysis.UnresolvedAttribute
-import org.apache.spark.sql.{Column, SparkSession, functions}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
-import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
-import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, BinaryExpression, EqualTo, ExpectsInputTypes, ExprId, Expression, IsNotNull, Literal, NamedExpression, NullIntolerant, Or, Predicate, UnaryExpression}
+import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
+import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, IsNotNull, JoinedRow, Literal, NamedExpression, Or, Predicate}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Distribution, IdentityBroadcastMode, UnspecifiedDistribution}
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
-import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
+import org.apache.spark.sql.catalyst.util.TypeUtils
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRelation}
+import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
+import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan}
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.types.{AbstractDataType, DataType, IntegerType, StringType}
+import org.apache.spark.sql.types.{DataType, IntegerType, StringType}
+import org.apache.spark.sql.{Column, Dataset, SparkSession}
 import org.apache.spark.unsafe.types.UTF8String
 
 class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
@@ -42,6 +46,8 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
       options = Map(
         JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
         JDBCOptions.JDBC_TABLE_NAME -> "tselect")).resolveRelation())
+
+  private val tSelectDf = Dataset.ofRows(sparkSession, tSelect)
 
   private val decKey = Literal.create("dummy_dec_key", StringType)
   private val attrPrfKey = Literal.create("dummy_attr_prf_key", StringType)
@@ -165,9 +171,20 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
               case StringType => value
               case x => throw DexException("unsupported: " + x.toString)
             }
-            tSelect
+
+            val predicateRelation = LocalRelation(
+              LocalRelation('predicate.string).output,
+              InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)
+
+            CashJoin(predicateRelation, tSelect, EmmTSelect, $"predicate", $"rid")
               .select(Decrypt(decKey, $"value").as(ridOrder))
-              .where(EqualTo($"rid", s"$tableName~$colName~$valueStr~counter"))
+
+            //predicateRelation.generate(CashCounterForTSelect("predicate", tSelectDf), outputNames = Seq("value"))
+            //  .select(Decrypt(decKey, $"value").as(ridOrder))
+
+            /*tSelect
+              .select(Decrypt(decKey, $"value").as(ridOrder))
+              .where(EqualTo($"rid", s"$tableName~$colName~$valueStr~counter"))*/
           case Some(w) =>
             throw DexException("todo: " + w.toString)
         }
@@ -205,7 +222,7 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
   }
 }
 
-case class Decrypt(key: Expression, value: Expression) extends BinaryExpression with ExpectsInputTypes {
+case class Decrypt(key: Expression, value: Expression) extends BinaryExpression with ExpectsInputTypes with CodegenFallback {
 
   override def left: Expression = key
   override def right: Expression = value
@@ -215,17 +232,97 @@ case class Decrypt(key: Expression, value: Expression) extends BinaryExpression 
   protected override def nullSafeEval(input1: Any, input2: Any): Any = {
     //val fromCharset = input2.asInstanceOf[UTF8String].toString
     //UTF8String.fromString(new String(input1.asInstanceOf[Array[Byte]], fromCharset))
-     """(.+)_enc$""".r.findFirstIn(input2.asInstanceOf[UTF8String].toString).get
+     UTF8String.fromString("""(.+)_enc$""".r.findFirstMatchIn(input2.asInstanceOf[UTF8String].toString).get.group(1))
   }
 
-  override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+  /*override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     nullSafeCodeGen(ctx, ev, (key, value) =>
       s"""
           ${ev.value} = $value.split(UTF8String.fromString("_enc"), 0)[0];
       """)
+  }*/
+}
+
+case class CashJoinExec(input: SparkPlan, emm: SparkPlan, emmType: EmmType, inputKey: Attribute, emmKey: Attribute) extends BinaryExecNode {
+  override def left: SparkPlan = input
+
+  override def right: SparkPlan = emm
+
+  private val ordering = TypeUtils.getInterpretedOrdering(inputKey.dataType)
+
+  private def cashConditionFor(inputRow: InternalRow): (InternalRow, Int) => Boolean = {
+    val emmKeyCol = BindReferences.bindReference(emmKey, emm.output).asInstanceOf[BoundReference]
+    val inputKeyCol = BindReferences.bindReference(inputKey, input.output).asInstanceOf[BoundReference]
+    val predicate = inputKeyCol.eval(inputRow).asInstanceOf[UTF8String].toString
+    (emmRow, cashCounter) => {
+      ordering.equiv(s"$predicate~$cashCounter", emmKeyCol.eval(emmRow).asInstanceOf[UTF8String].toString)
+    }
+  }
+
+  /**
+    * Produces the result of the query as an `RDD[InternalRow]`
+    *
+    * Overridden by concrete implementations of SparkPlan.
+    */
+  override protected def doExecute(): RDD[InternalRow] = {
+    val emmBc = emm.executeBroadcast[Array[InternalRow]]()
+    val inputRdd = input.execute()
+    inputRdd.mapPartitionsInternal { inputIter =>
+      val emmRows = emmBc.value
+
+      inputIter.flatMap { inputRow =>
+        Iterator.from(0).map { i =>
+          val cashCondition = cashConditionFor(inputRow)
+          emmRows.find(emmRow => cashCondition(emmRow, i))
+        }.takeWhile(_.isDefined).flatten
+      }
+    }
+  }
+
+  // todo: for t_m of joinning a new table, need to add new rid to output
+  override def output: Seq[Attribute] = emmType match {
+    case EmmTSelect => emm.output
+  }
+
+  override def requiredChildDistribution: Seq[Distribution] = emmType match {
+    case EmmTSelect =>
+       UnspecifiedDistribution :: BroadcastDistribution(IdentityBroadcastMode) :: Nil
+    case _ => ???
   }
 }
 
+
+/*case class CashCounterForTSelect(child: Expression, tSelect: DataFrame) extends UnaryExpression with CollectionGenerator with CodegenFallback with Serializable {
+  /** The position of an element within the collection should also be returned. */
+  override val position: Boolean = false
+
+  /** Rows will be inlined during generation. */
+  override val inline: Boolean = false
+
+  /**
+    * The output element schema.
+    */
+  override def elementSchema: StructType = child.dataType match {
+    case _: StringType => new StructType().add("value", StringType, nullable = false)
+  }
+
+  override def eval(input: InternalRow): TraversableOnce[InternalRow] = {
+    val predicate = child.eval(input).asInstanceOf[UTF8String].toString
+
+    new Iterator[InternalRow] {
+      private var counter = 0
+      private def nextQuery() = tSelect.select("value").where(s"rid = $predicate~$counter").limit(1)
+
+      override def hasNext: Boolean = !nextQuery().isEmpty
+
+      override def next(): InternalRow = {
+        val res = nextQuery().head()
+        counter += 1
+        InternalRow(res.toSeq)
+      }
+    }
+  }
+}*/
 
 
 case class DexException(msg: String) extends RuntimeException(msg)

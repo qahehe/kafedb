@@ -101,12 +101,12 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     connEnc.prepareStatement(
       """
         |insert into tselect values
-        |('testdata2~a~1~counter', 'r1_enc'),
-        |('testdata2~a~1~counter', 'r2_enc'),
-        |('testdata2~a~2~counter', 'r3_enc'),
-        |('testdata2~a~2~counter', 'r4_enc'),
-        |('testdata2~a~3~counter', 'r5_enc'),
-        |('testdata2~a~3~counter', 'r6_enc')
+        |('testdata2~a~1~0', 'r1_enc'),
+        |('testdata2~a~1~1', 'r2_enc'),
+        |('testdata2~a~2~0', 'r3_enc'),
+        |('testdata2~a~2~1', 'r4_enc'),
+        |('testdata2~a~3~0', 'r5_enc'),
+        |('testdata2~a~3~1', 'r6_enc')
       """.stripMargin)
       .executeUpdate()
     connEnc.commit()

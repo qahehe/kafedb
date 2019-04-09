@@ -363,6 +363,7 @@ case class Explode(child: Expression) extends ExplodeBase {
   override val position: Boolean = false
 }
 
+
 /**
  * Given an input array produces a sequence of rows for each position and value in the array.
  *

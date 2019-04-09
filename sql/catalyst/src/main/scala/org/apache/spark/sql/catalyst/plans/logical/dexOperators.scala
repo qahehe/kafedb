@@ -14,26 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.dex
 
-import org.apache.spark.sql.Row
+package org.apache.spark.sql.catalyst.plans.logical
 // scalastyle:off
 
-class DexQuerySuite extends DexQueryTest {
+import org.apache.spark.sql.catalyst.expressions.Attribute
 
-  test("one filter") {
-    val query = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2")
-    val queryDex = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2").dex
-    //queryDex.explain(extended = true)
-    //val result = queryDex.collect()
-    //println(result.mkString)
-    checkAnswer(queryDex, query)
+sealed trait EmmType
+case object EmmTSelect extends EmmType
+
+case class CashJoin(input: LogicalPlan, emm: LogicalPlan, emmType: EmmType, inputKey: Attribute, emmKey: Attribute) extends BinaryNode {
+
+  // todo: for t_m of joinning a new table, need to add new rid to output
+  override def output: Seq[Attribute] = emmType match {
+    case EmmTSelect => emm.output
   }
 
-  test("mix dex and non-dex query") {
-    val queryDex = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2").dex
-    val queryMix = queryDex.selectExpr("b * 2")
-    checkAnswer(queryMix, Row(2) :: Row(4):: Nil)
-  }
+  override def left: LogicalPlan = input
 
+  override def right: LogicalPlan = emm
 }
+

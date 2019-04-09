@@ -186,6 +186,7 @@ class Analyzer(
       ResolveLambdaVariables(conf) ::
       ResolveTimeZone(conf) ::
       ResolveRandomSeed ::
+      ResolveDexOperators ::
       TypeCoercion.typeCoercionRules(conf) ++
       extendedResolutionRules : _*),
     Batch("Post-Hoc Resolution", Once, postHocResolutionRules: _*),
@@ -2226,6 +2227,23 @@ class Analyzer(
         // find common column names from both sides
         val joinNames = left.output.map(_.name).intersect(right.output.map(_.name))
         commonNaturalJoinProcessing(left, right, joinType, joinNames, condition)
+    }
+  }
+
+  object ResolveDexOperators extends Rule[LogicalPlan] {
+    override def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+      case j @ CashJoin(input, emm, emmType, inputKey, emmKey) if input.resolved && emm.resolved =>
+        def resolveAttrOrError(keyName: String, relation: LogicalPlan) =
+          relation.output.find(attr => resolver(attr.name, keyName)).getOrElse {
+            throw new AnalysisException(
+              s"""
+                 |column `$keyName` cannot be resolved on the side of the join. The side columns:
+                 |[${relation.output.map(_.name).mkString(", ")}]
+               """.stripMargin)
+          }
+        val inputKeyResolved = resolveAttrOrError(inputKey.name, input)
+        val emmKeyResolved = resolveAttrOrError(emmKey.name, emm)
+        CashJoin(input, emm, emmType, inputKeyResolved, emmKeyResolved)
     }
   }
 
