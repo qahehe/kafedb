@@ -2232,7 +2232,7 @@ class Analyzer(
 
   object ResolveDexOperators extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case j @ CashJoin(input, emm, emmType, inputKey, emmKey) if input.resolved && emm.resolved =>
+      case j @ CashJoin(predicate, emm, emmType, emmKey) if emm.resolved =>
         def resolveAttrOrError(keyName: String, relation: LogicalPlan) =
           relation.output.find(attr => resolver(attr.name, keyName)).getOrElse {
             throw new AnalysisException(
@@ -2241,9 +2241,8 @@ class Analyzer(
                  |[${relation.output.map(_.name).mkString(", ")}]
                """.stripMargin)
           }
-        val inputKeyResolved = resolveAttrOrError(inputKey.name, input)
         val emmKeyResolved = resolveAttrOrError(emmKey.name, emm)
-        CashJoin(input, emm, emmType, inputKeyResolved, emmKeyResolved)
+        CashJoin(predicate, emm, emmType, emmKeyResolved)
     }
   }
 

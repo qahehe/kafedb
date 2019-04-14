@@ -32,7 +32,7 @@ import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRelation}
 import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
-import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan}
+import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DataType, IntegerType, StringType}
 import org.apache.spark.sql.{Column, Dataset, Encoders, SparkSession}
@@ -173,11 +173,12 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
               case x => throw DexException("unsupported: " + x.toString)
             }
 
-            val predicateRelation = LocalRelation(
+            /*val predicateRelation = LocalRelation(
               LocalRelation('predicate.string).output,
-              InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)
+              InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
+            val predicate = s"$tableName~$colName~$valueStr"
 
-            CashJoin(predicateRelation, tSelect, EmmTSelect, $"predicate", $"rid")
+            CashJoin(predicate, tSelect, EmmTSelect, $"rid")
               .select(Decrypt(decKey, $"value").as(ridOrder))
 
             //predicateRelation.generate(CashCounterForTSelect("predicate", tSelectDf), outputNames = Seq("value"))
@@ -244,17 +245,12 @@ case class Decrypt(key: Expression, value: Expression) extends BinaryExpression 
   }*/
 }
 
-case class CashJoinExec(input: SparkPlan, emm: SparkPlan, emmType: EmmType, inputKey: Attribute, emmKey: Attribute) extends BinaryExecNode {
-  override def left: SparkPlan = input
-
-  override def right: SparkPlan = emm
+case class CashJoinExec(predicate: String, emm: SparkPlan, emmType: EmmType, emmKey: Attribute) extends UnaryExecNode {
 
   private val encoder = Encoders.product[TSelect].asInstanceOf[ExpressionEncoder[TSelect]].resolveAndBind()
 
-  private def cashConditionFor(inputRow: InternalRow): (InternalRow, Int) => Boolean = {
-    val inputKeyCol = BindReferences.bindReference(inputKey, input.output).asInstanceOf[BoundReference]
-    val predicate = inputKeyCol.eval(inputRow).asInstanceOf[UTF8String].toString
-    (emmRow, cashCounter) =>
+  private val cashCondition: Int => InternalRow => Boolean = {
+    cashCounter => emmRow =>
       s"$predicate~$cashCounter" == encoder.fromRow(emmRow).rid
   }
 
@@ -264,18 +260,12 @@ case class CashJoinExec(input: SparkPlan, emm: SparkPlan, emmType: EmmType, inpu
     * Overridden by concrete implementations of SparkPlan.
     */
   override protected def doExecute(): RDD[InternalRow] = {
-    val emmBc = emm.executeBroadcast[Array[InternalRow]]()
-    val inputRdd = input.execute()
-    inputRdd.mapPartitionsInternal { inputIter =>
-      val emmRows = emmBc.value
-
-      inputIter.flatMap { inputRow =>
-        Iterator.from(0).map { i =>
-          val cashCondition = cashConditionFor(inputRow)
-          emmRows.find(emmRow => cashCondition(emmRow, i))
-        }.takeWhile(_.isDefined).flatten
+    val emmRdd = emm.execute()
+    Iterator.from(0).map { i =>
+      emmRdd.mapPartitionsInternal { emmIter =>
+        emmIter.find(cashCondition(i)).iterator
       }
-    }
+    }.takeWhile(!_.isEmpty()).reduce(_ ++ _)
   }
 
   // todo: for t_m of joinning a new table, need to add new rid to output
@@ -283,11 +273,13 @@ case class CashJoinExec(input: SparkPlan, emm: SparkPlan, emmType: EmmType, inpu
     case EmmTSelect => emm.output
   }
 
-  override def requiredChildDistribution: Seq[Distribution] = emmType match {
+  /*override def requiredChildDistribution: Seq[Distribution] = emmType match {
     case EmmTSelect =>
        UnspecifiedDistribution :: BroadcastDistribution(IdentityBroadcastMode) :: Nil
     case _ => ???
-  }
+  }*/
+
+  override def child: SparkPlan = emm
 }
 
 

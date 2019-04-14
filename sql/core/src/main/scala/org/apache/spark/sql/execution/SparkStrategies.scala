@@ -535,8 +535,8 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
 
   object DexOperators extends Strategy {
     override def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
-      case CashJoin(input, emm, emmType, inputKey, emmKey) =>
-        CashJoinExec(planLater(input), planLater(emm), emmType, inputKey, emmKey) :: Nil
+      case CashJoin(predicate, emm, emmType, emmKey) =>
+        CashJoinExec(predicate, planLater(emm), emmType, emmKey) :: Nil
       case _ =>
         Nil
     }
