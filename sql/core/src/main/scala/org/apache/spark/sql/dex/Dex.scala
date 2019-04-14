@@ -22,6 +22,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
 import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, IsNotNull, JoinedRow, Literal, NamedExpression, Or, Predicate}
 import org.apache.spark.sql.catalyst.plans._
@@ -34,7 +35,7 @@ import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DataType, IntegerType, StringType}
-import org.apache.spark.sql.{Column, Dataset, SparkSession}
+import org.apache.spark.sql.{Column, Dataset, Encoders, SparkSession}
 import org.apache.spark.unsafe.types.UTF8String
 
 class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
@@ -248,15 +249,13 @@ case class CashJoinExec(input: SparkPlan, emm: SparkPlan, emmType: EmmType, inpu
 
   override def right: SparkPlan = emm
 
-  private val ordering = TypeUtils.getInterpretedOrdering(inputKey.dataType)
+  private val encoder = Encoders.product[TSelect].asInstanceOf[ExpressionEncoder[TSelect]].resolveAndBind()
 
   private def cashConditionFor(inputRow: InternalRow): (InternalRow, Int) => Boolean = {
-    val emmKeyCol = BindReferences.bindReference(emmKey, emm.output).asInstanceOf[BoundReference]
     val inputKeyCol = BindReferences.bindReference(inputKey, input.output).asInstanceOf[BoundReference]
     val predicate = inputKeyCol.eval(inputRow).asInstanceOf[UTF8String].toString
-    (emmRow, cashCounter) => {
-      ordering.equiv(s"$predicate~$cashCounter", emmKeyCol.eval(emmRow).asInstanceOf[UTF8String].toString)
-    }
+    (emmRow, cashCounter) =>
+      s"$predicate~$cashCounter" == encoder.fromRow(emmRow).rid
   }
 
   /**
@@ -291,6 +290,8 @@ case class CashJoinExec(input: SparkPlan, emm: SparkPlan, emmType: EmmType, inpu
   }
 }
 
+
+case class TSelect(rid: String, value: String)
 
 /*case class CashCounterForTSelect(child: Expression, tSelect: DataFrame) extends UnaryExpression with CollectionGenerator with CodegenFallback with Serializable {
   /** The position of an element within the collection should also be returned. */
