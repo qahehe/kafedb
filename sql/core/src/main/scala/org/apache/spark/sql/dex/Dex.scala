@@ -249,9 +249,11 @@ case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecN
 
   private val cashCondition: Int => InternalRow => Boolean = {
     cashCounter => emmRow => {
+      val lhs = UTF8String.fromString(s"$predicate~$cashCounter")
       val emmRidCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
-      val rhs = emmRidCol.eval(emmRow).asInstanceOf[UTF8String].toString
-      s"$predicate~$cashCounter" == rhs
+      val ordering = TypeUtils.getInterpretedOrdering(emmRidCol.dataType)
+      val rhs = emmRidCol.eval(emmRow)
+      ordering.equiv(lhs, rhs)
     }
   }
 
