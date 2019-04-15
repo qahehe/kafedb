@@ -22,7 +22,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
-import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
+import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
 import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, IsNotNull, JoinedRow, Literal, NamedExpression, Or, Predicate}
 import org.apache.spark.sql.catalyst.plans._
@@ -178,7 +178,7 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
               InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
             val predicate = s"$tableName~$colName~$valueStr"
 
-            CashJoin(predicate, tSelect, EmmTSelect, $"rid")
+            CashTSelect(predicate, tSelect)
               .select(Decrypt(decKey, $"value").as(ridOrder))
 
             //predicateRelation.generate(CashCounterForTSelect("predicate", tSelectDf), outputNames = Seq("value"))
@@ -245,13 +245,14 @@ case class Decrypt(key: Expression, value: Expression) extends BinaryExpression 
   }*/
 }
 
-case class CashJoinExec(predicate: String, emm: SparkPlan, emmType: EmmType, emmKey: Attribute) extends UnaryExecNode {
-
-  private val encoder = Encoders.product[TSelect].asInstanceOf[ExpressionEncoder[TSelect]].resolveAndBind()
+case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecNode {
 
   private val cashCondition: Int => InternalRow => Boolean = {
-    cashCounter => emmRow =>
-      s"$predicate~$cashCounter" == encoder.fromRow(emmRow).rid
+    cashCounter => emmRow => {
+      val emmRidCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
+      val rhs = emmRidCol.eval(emmRow).asInstanceOf[UTF8String].toString
+      s"$predicate~$cashCounter" == rhs
+    }
   }
 
   /**
@@ -265,13 +266,11 @@ case class CashJoinExec(predicate: String, emm: SparkPlan, emmType: EmmType, emm
       emmRdd.mapPartitionsInternal { emmIter =>
         emmIter.find(cashCondition(i)).iterator
       }
-    }.takeWhile(!_.isEmpty()).reduce(_ ++ _)
+    }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
 
   // todo: for t_m of joinning a new table, need to add new rid to output
-  override def output: Seq[Attribute] = emmType match {
-    case EmmTSelect => emm.output
-  }
+  override def output: Seq[Attribute] = emm.output
 
   /*override def requiredChildDistribution: Seq[Distribution] = emmType match {
     case EmmTSelect =>
@@ -283,7 +282,7 @@ case class CashJoinExec(predicate: String, emm: SparkPlan, emmType: EmmType, emm
 }
 
 
-case class TSelect(rid: String, value: String)
+// case class TSelect(rid: String, value: String)
 
 /*case class CashCounterForTSelect(child: Expression, tSelect: DataFrame) extends UnaryExpression with CollectionGenerator with CodegenFallback with Serializable {
   /** The position of an element within the collection should also be returned. */

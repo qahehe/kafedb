@@ -24,9 +24,9 @@ class DexQuerySuite extends DexQueryTest {
   test("one filter") {
     val query = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2")
     val queryDex = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2").dex
-    //queryDex.explain(extended = true)
-    //val result = queryDex.collect()
-    //println(result.mkString)
+    queryDex.explain(extended = true)
+    val result = queryDex.collect()
+    println(result.mkString)
     checkAnswer(queryDex, query)
   }
 

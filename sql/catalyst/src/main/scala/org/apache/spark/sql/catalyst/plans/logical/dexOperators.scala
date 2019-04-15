@@ -18,18 +18,12 @@
 package org.apache.spark.sql.catalyst.plans.logical
 // scalastyle:off
 
-import org.apache.spark.InternalAccumulator.input
 import org.apache.spark.sql.catalyst.expressions.Attribute
 
-sealed trait EmmType
-case object EmmTSelect extends EmmType
-
-case class CashJoin(predicate: String, emm: LogicalPlan, emmType: EmmType, emmKey: Attribute) extends UnaryNode {
+case class CashTSelect(predicate: String, emm: LogicalPlan) extends UnaryNode {
 
   // todo: for t_m of joinning a new table, need to add new rid to output
-  override def output: Seq[Attribute] = emmType match {
-    case EmmTSelect => emm.output
-  }
+  override def output: Seq[Attribute] = emm.output
 
   override def child: LogicalPlan = emm
 }

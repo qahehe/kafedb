@@ -28,7 +28,7 @@ import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.catalyst.streaming.InternalOutputModes
-import org.apache.spark.sql.dex.CashJoinExec
+import org.apache.spark.sql.dex.CashTSelectExec
 import org.apache.spark.sql.execution.columnar.{InMemoryRelation, InMemoryTableScanExec}
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.exchange.ShuffleExchangeExec
@@ -535,8 +535,8 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
 
   object DexOperators extends Strategy {
     override def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
-      case CashJoin(predicate, emm, emmType, emmKey) =>
-        CashJoinExec(predicate, planLater(emm), emmType, emmKey) :: Nil
+      case CashTSelect(predicate, emm) =>
+        CashTSelectExec(predicate, planLater(emm)) :: Nil
       case _ =>
         Nil
     }

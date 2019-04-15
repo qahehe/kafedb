@@ -186,7 +186,7 @@ class Analyzer(
       ResolveLambdaVariables(conf) ::
       ResolveTimeZone(conf) ::
       ResolveRandomSeed ::
-      ResolveDexOperators ::
+      // ResolveDexOperators ::
       TypeCoercion.typeCoercionRules(conf) ++
       extendedResolutionRules : _*),
     Batch("Post-Hoc Resolution", Once, postHocResolutionRules: _*),
@@ -2230,9 +2230,9 @@ class Analyzer(
     }
   }
 
-  object ResolveDexOperators extends Rule[LogicalPlan] {
+  /*object ResolveDexOperators extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case j @ CashJoin(predicate, emm, emmType, emmKey) if emm.resolved =>
+      case j @ CashTSelect(predicate, emm, emmKey) if emm.resolved =>
         def resolveAttrOrError(keyName: String, relation: LogicalPlan) =
           relation.output.find(attr => resolver(attr.name, keyName)).getOrElse {
             throw new AnalysisException(
@@ -2242,9 +2242,9 @@ class Analyzer(
                """.stripMargin)
           }
         val emmKeyResolved = resolveAttrOrError(emmKey.name, emm)
-        CashJoin(predicate, emm, emmType, emmKeyResolved)
+        CashTSelect(predicate, emm, emmKeyResolved)
     }
-  }
+  }*/
 
   /**
    * Resolves columns of an output table from the data in a logical plan. This rule will:
