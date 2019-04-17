@@ -36,4 +36,19 @@ class DexQuerySuite extends DexQueryTest {
     checkAnswer(queryMix, Row(2) :: Row(4):: Nil)
   }
 
+  test("one filter one join") {
+    val testData2 = spark.read.jdbc(url, "testdata2", properties)
+    val testData3 = spark.read.jdbc(url, "testdata3", properties)
+    val query = testData2.join(testData3).where("a == 2 and b == c")
+    query.explain(extended = true)
+    val result = query.collect()
+    println("query: " ++ result.mkString)
+
+    val queryDex = query.dex
+    queryDex.explain(extended = true)
+    val resultDex = queryDex.collect()
+    println("dex: " ++ resultDex.mkString)
+
+    checkAnswer(queryDex, query)
+  }
 }

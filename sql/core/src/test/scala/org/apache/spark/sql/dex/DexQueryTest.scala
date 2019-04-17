@@ -41,6 +41,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
 
   protected override def sparkConf = super.sparkConf
     .set(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL, urlEnc)
+    .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
 
   protected override def afterAll(): Unit = {
     conn.close()
@@ -61,8 +62,11 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     connEnc.setAutoCommit(false)
 
     conn.prepareStatement("drop table if exists testdata2").executeUpdate()
+    conn.prepareStatement("drop table if exists testdata3").executeUpdate()
     connEnc.prepareStatement("drop table if exists testdata2_prf").executeUpdate()
+    connEnc.prepareStatement("drop table if exists testdata3_prf").executeUpdate()
     connEnc.prepareStatement("drop table if exists tselect").executeUpdate()
+    connEnc.prepareStatement("drop table if exists tm").executeUpdate()
     conn.commit()
     connEnc.commit()
 
@@ -81,6 +85,19 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         .executeUpdate()
     conn.commit()
 
+
+    conn.prepareStatement("create table testdata3 (c int, d int)")
+      .executeUpdate()
+    conn.prepareStatement(
+      """
+        |insert into testdata3 values
+        |(1, 10),
+        |(1, 20),
+        |(2, 30)
+      """.stripMargin)
+      .executeUpdate()
+    conn.commit()
+
     connEnc.prepareStatement("create table testdata2_prf (rid varchar, a_prf varchar, b_prf varchar)")
         .executeUpdate()
     connEnc.prepareStatement(
@@ -96,6 +113,18 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       .executeUpdate()
     connEnc.commit()
 
+    connEnc.prepareStatement("create table testdata3_prf (rid varchar, c_prf varchar, d_prf varchar)")
+      .executeUpdate()
+    connEnc.prepareStatement(
+      """
+        |insert into testdata3_prf values
+        |('r1', '1_enc', '10_enc'),
+        |('r2', '1_enc', '20_enc'),
+        |('r3', '2_enc', '30_enc')
+      """.stripMargin)
+      .executeUpdate()
+    connEnc.commit()
+
     connEnc.prepareStatement("create table tselect (rid varchar, value varchar)")
       .executeUpdate()
     connEnc.prepareStatement(
@@ -107,6 +136,21 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         |('testdata2~a~2~1', 'r4_enc'),
         |('testdata2~a~3~0', 'r5_enc'),
         |('testdata2~a~3~1', 'r6_enc')
+      """.stripMargin)
+      .executeUpdate()
+    connEnc.commit()
+
+    connEnc.prepareStatement("create table tm (rid varchar, value varchar)")
+      .executeUpdate()
+    connEnc.prepareStatement(
+      """
+        |insert into tm values
+        |('testdata2~b~testdata3~c~r1~0', 'r1_enc'),
+        |('testdata2~b~testdata3~c~r1~1', 'r2_enc'),
+        |('testdata2~b~testdata3~c~r2~0', 'r3_enc'),
+        |('testdata2~b~testdata3~c~r3~1', 'r1_enc'),
+        |('testdata2~b~testdata3~c~r3~0', 'r2_enc'),
+        |('testdata2~b~testdata3~c~r4~1', 'r3_enc')
       """.stripMargin)
       .executeUpdate()
     connEnc.commit()

@@ -19,6 +19,7 @@ package org.apache.spark.sql.dex
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.analysis.UnresolvedAttribute
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
@@ -48,11 +49,18 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
         JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
         JDBCOptions.JDBC_TABLE_NAME -> "tselect")).resolveRelation())
 
-  private val tSelectDf = Dataset.ofRows(sparkSession, tSelect)
+  private val tM = LogicalRelation(
+    DataSource.apply(
+      sparkSession,
+      className = "jdbc",
+      options = Map(
+        JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
+        JDBCOptions.JDBC_TABLE_NAME -> "tm")).resolveRelation())
 
   private val decKey = Literal.create("dummy_dec_key", StringType)
   private val attrPrfKey = Literal.create("dummy_attr_prf_key", StringType)
 
+  private val resolver = sparkSession.sqlContext.conf.resolver
 
   //val decryptValueToRid = functions.udf((value: String) => """(.+)_enc$""".r.findFirstIn(value).get)
   //sparkSession.udf.register("decryptValueToRid", decryptValueToRid)
@@ -89,7 +97,7 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
 
     private lazy val output = dexPlan.output.map(translateAttribute)
 
-    def translate: LogicalPlan = {
+    def translate: LogicalPlan = analyze {
       translatePlan(dexPlan.child, None).select(output: _*)
     }
 
@@ -99,7 +107,10 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
 
     private def attrEncOf(attr: Attribute): Attribute = $"${attr.name}_prf"
 
-    private def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = {
+    private def analyze(plan: LogicalPlan) =
+      sparkSession.sessionState.analyzer.executeAndCheck(plan)
+
+    private def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = analyze {
       plan match {
         case l: LogicalRelation =>
           l.relation match {
@@ -153,14 +164,14 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
           rt.flatMap(r => lt.map(l => l unionDistinct r)).orElse(lt)
 
         case IsNotNull(attr: Attribute) =>
-          None
+          childView
 
         case x => throw DexException("unsupported: " + x.toString)
       }
-    }
+    }.map(analyze)
 
     private def translateFilterPredicate(p: Predicate, childView: Option[LogicalPlan]): LogicalPlan = p match {
-      case EqualTo(left: AttributeReference, right @ Literal(value, dataType)) =>
+      case EqualTo(left: Attribute, right @ Literal(value, dataType)) =>
         childView match {
           case None =>
             val colName = left.name
@@ -194,7 +205,33 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
       case x => throw DexException("unsupported: " + x.toString)
     }
 
-    private def translateJoinPredicate(p: Predicate, childView: Option[LogicalPlan]): LogicalPlan = ???
+    private def translateJoinPredicate(p: Predicate, childView: Option[LogicalPlan]): LogicalPlan = p match {
+      case EqualTo(left: Attribute, right: Attribute) =>
+        childView match {
+          case None =>
+            ???
+          case Some(cw) =>
+            val (leftColName, rightColName) = (left.name, right.name)
+            val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
+            val (leftRidOrder, rightRidOrder) = (s"rid_${joinOrder(leftTableName)}", s"rid_${joinOrder(rightTableName)}")
+            val (leftRidOrderAttr, rightRidOrderAttr) = (
+              cw.output.find(_.name == leftRidOrder),
+              cw.output.find(_.name == rightRidOrder))
+
+            val predicate = s"$leftTableName~$leftColName~$rightTableName~$rightColName"
+
+            (leftRidOrderAttr, rightRidOrderAttr) match {
+              case (Some(l), None) =>
+                val cashTm = CashTM(predicate, cw, tM, l)
+                val cashTmProject = cashTm.output.collect {
+                  case x: Attribute if x.name == "value" => x.as(rightRidOrder)
+                  case x => x
+                }
+                cashTm.select(cashTmProject: _*)
+              case _ => ???
+            }
+        }
+    }
 
     private def tableEncOf(tableName: String): LogicalPlan = {
       val tableEncName = s"${tableName}_prf"
@@ -281,6 +318,46 @@ case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecN
   }*/
 
   override def child: SparkPlan = emm
+}
+
+case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, childViewRid: Attribute) extends BinaryExecNode {
+  override def left: SparkPlan = childView
+
+  override def right: SparkPlan = emm
+
+  /**
+    * Produces the result of the query as an `RDD[InternalRow]`
+    *
+    * Overridden by concrete implementations of SparkPlan.
+    */
+  override protected def doExecute(): RDD[InternalRow] = {
+    val childViewRidCol = BindReferences.bindReference(childViewRid, childView.output).asInstanceOf[BoundReference]
+    val emmRidCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
+    val emmValueCol = BindReferences.bindReference(emm.output.apply(1), emm.output).asInstanceOf[BoundReference]
+
+    val childViewRdd = childView.execute()
+    //val emmRdd = emm.execute().keyBy(_.getString(0))
+    val emmRdd = emm.execute().keyBy(emmRidCol.eval(_).asInstanceOf[UTF8String])
+    Iterator.from(0).map { i =>
+      // todo: iteratively "shrink'" the childViewRdd by the result of each join
+      childViewRdd.map { row =>
+        //val rid = row.getString(0)
+        val rid = childViewRidCol.eval(row).asInstanceOf[UTF8String].toString
+        val ridPredicate = s"$predicate~$rid"
+        //(s"$ridPredicate~$i", (ridPredicate), row)
+        (UTF8String.fromString(s"$ridPredicate~$i"), (UTF8String.fromString(ridPredicate), row))
+      }.join(emmRdd).values.map { case ((ridPredicate, childViewRow), emmRow) =>
+        //InternalRow(childViewRow.toSeq(childView.schema) :+ decrypt(ridPredicate, emmRow.getString(1)))
+        val joinedValues = childViewRow.toSeq(childView.schema) :+ decrypt(ridPredicate, emmValueCol.eval(emmRow).asInstanceOf[UTF8String])
+        InternalRow.fromSeq(joinedValues)
+      }
+    }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
+  }
+
+  private def decrypt(key: UTF8String, message: UTF8String): UTF8String =
+    UTF8String.fromString("""(.+)_enc$""".r.findFirstMatchIn(message.toString).get.group(1))
+
+  override def output: Seq[Attribute] = left.output :+ right.output.apply(1)
 }
 
 

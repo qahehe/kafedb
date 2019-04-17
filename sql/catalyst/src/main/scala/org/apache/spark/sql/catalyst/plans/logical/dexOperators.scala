@@ -28,3 +28,11 @@ case class CashTSelect(predicate: String, emm: LogicalPlan) extends UnaryNode {
   override def child: LogicalPlan = emm
 }
 
+case class CashTM(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
+  override def left: LogicalPlan = childView
+
+  override def right: LogicalPlan = emm
+
+  override def output: Seq[Attribute] = left.output :+ right.output.apply(1)
+}
+
