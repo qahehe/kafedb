@@ -224,8 +224,8 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
               case (Some(l), None) =>
                 val cashTm = CashTM(predicate, cw, tM, l)
                 val cashTmProject = cashTm.output.collect {
-                  case x: Attribute if x.name == "value" => x.as(rightRidOrder)
-                  case x => x
+                  case x: Attribute if x.name == "value" => Decrypt($"rid", x).as(rightRidOrder)
+                  case x: Attribute if x.name != "rid" => x
                 }
                 cashTm.select(cashTmProject: _*)
               case _ => ???
@@ -348,7 +348,8 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
         (UTF8String.fromString(s"$ridPredicate~$i"), (UTF8String.fromString(ridPredicate), row))
       }.join(emmRdd).values.map { case ((ridPredicate, childViewRow), emmRow) =>
         //InternalRow(childViewRow.toSeq(childView.schema) :+ decrypt(ridPredicate, emmRow.getString(1)))
-        val joinedValues = childViewRow.toSeq(childView.schema) :+ decrypt(ridPredicate, emmValueCol.eval(emmRow).asInstanceOf[UTF8String])
+        //val joinedValues = childViewRow.toSeq(childView.schema) :+ decrypt(ridPredicate, emmValueCol.eval(emmRow).asInstanceOf[UTF8String])
+        val joinedValues = childViewRow.toSeq(childView.schema) ++ Seq(ridPredicate, emmValueCol.eval(emmRow))
         InternalRow.fromSeq(joinedValues)
       }
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
@@ -357,7 +358,7 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
   private def decrypt(key: UTF8String, message: UTF8String): UTF8String =
     UTF8String.fromString("""(.+)_enc$""".r.findFirstMatchIn(message.toString).get.group(1))
 
-  override def output: Seq[Attribute] = left.output :+ right.output.apply(1)
+  override def output: Seq[Attribute] = left.output ++ right.output
 }
 
 

@@ -33,6 +33,6 @@ case class CashTM(predicate: String, childView: LogicalPlan, emm: LogicalPlan, c
 
   override def right: LogicalPlan = emm
 
-  override def output: Seq[Attribute] = left.output :+ right.output.apply(1)
+  override def output: Seq[Attribute] = left.output ++ right.output
 }
 
