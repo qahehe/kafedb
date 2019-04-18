@@ -25,7 +25,7 @@ import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, IsNotNull, JoinedRow, Literal, NamedExpression, Or, Predicate}
+import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, IsNotNull, JoinedRow, Literal, NamedExpression, Or, Predicate}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Distribution, IdentityBroadcastMode, UnspecifiedDistribution}
@@ -137,14 +137,31 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
           translatePlan(j.left, childView).join(translatePlan(j.right, childView), Cross)
 
         case j: Join if j.condition.isDefined =>
-          val leftView = translatePlan(j.left, childView)
-          val joinView = translateFormula(j.condition.get, Some(leftView))
-          translatePlan(j.right, joinView)
+          val joinAttrs = nonIsNotNullPredsIn(Seq(j.condition.get))
+          val leftAttrs = nonIsNotNullPredsIn(j.left.expressions)
+          val rightAttrs = nonIsNotNullPredsIn(j.right.expressions)
+
+          if (joinAttrs.intersect(leftAttrs ++ rightAttrs).isEmpty) {
+            val leftView = translatePlan(j.left, childView)
+            val joinView = translateFormula(j.condition.get, Some(leftView))
+            translatePlan(j.right, joinView)
+          } else {
+            // note: this cross join only works for equality filter and joins
+            val leftView = translatePlan(j.left, childView)
+            val rightView = translatePlan(j.right, childView)
+            leftView.join(rightView, Cross)
+          }
 
         case _: DexPlan => throw DexException("shouldn't get DexPlan in subtree of a DexPlan")
 
         case x => throw DexException("unsupported: " + x.toString)
       }
+    }
+
+    private def nonIsNotNullPredsIn(conds: Seq[Expression]): AttributeSet = {
+      conds.flatMap(_.collect {
+        case x: BinaryComparison => x.references
+      }).reduceOption(_ ++ _).getOrElse(AttributeSet.empty)
     }
 
     private def translateFormula(condition: Expression, childView: Option[LogicalPlan]): Option[LogicalPlan] = {
@@ -308,7 +325,6 @@ case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecN
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
 
-  // todo: for t_m of joinning a new table, need to add new rid to output
   override def output: Seq[Attribute] = emm.output
 
   /*override def requiredChildDistribution: Seq[Distribution] = emmType match {

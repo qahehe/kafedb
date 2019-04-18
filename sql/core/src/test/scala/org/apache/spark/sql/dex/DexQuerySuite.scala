@@ -16,30 +16,15 @@
  */
 package org.apache.spark.sql.dex
 
-import org.apache.spark.sql.Row
+import org.apache.spark.sql.{DataFrame, Row}
 // scalastyle:off
 
 class DexQuerySuite extends DexQueryTest {
 
-  test("one filter") {
-    val query = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2")
-    val queryDex = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2").dex
-    queryDex.explain(extended = true)
-    val result = queryDex.collect()
-    println(result.mkString)
-    checkAnswer(queryDex, query)
-  }
+  private lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
+  private lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
 
-  test("mix dex and non-dex query") {
-    val queryDex = spark.read.jdbc(url, "testdata2", properties).select("b").where("a == 2").dex
-    val queryMix = queryDex.selectExpr("b * 2")
-    checkAnswer(queryMix, Row(2) :: Row(4):: Nil)
-  }
-
-  test("one filter one join") {
-    val testData2 = spark.read.jdbc(url, "testdata2", properties)
-    val testData3 = spark.read.jdbc(url, "testdata3", properties)
-    val query = testData2.join(testData3).where("a == 2 and b == c")
+  private def checkDexFor(query: DataFrame): Unit = {
     query.explain(extended = true)
     val result = query.collect()
     println("query: " ++ result.mkString)
@@ -50,5 +35,31 @@ class DexQuerySuite extends DexQueryTest {
     println("dex: " ++ resultDex.mkString)
 
     checkAnswer(queryDex, query)
+  }
+
+  test("one filter") {
+    val query = data2.select("b").where("a == 2")
+    checkDexFor(query)
+  }
+
+  test("mix dex and non-dex query") {
+    val queryDex = data2.select("b").where("a == 2").dex
+    queryDex.explain(extended = true)
+
+    val queryMix = queryDex.selectExpr("b * 2")
+    queryMix.explain(extended = true)
+    val result = queryMix.collect()
+    println("dex: " ++ result.mkString)
+    checkAnswer(queryMix, Row(2) :: Row(4):: Nil)
+  }
+
+  test("one filter one join") {
+    val query = data2.join(data3).where("a == 2 and b == c")
+    checkDexFor(query)
+  }
+
+  test("one filter one join: transitive attributes") {
+    val query = data2.join(data3).where("a == 1 and a == c")
+    checkDexFor(query)
   }
 }

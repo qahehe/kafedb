@@ -52,8 +52,16 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
     }
   }
 
+  lazy val dexOrNonDexOptimizedPlan: LogicalPlan = {
+    optimizedPlan.find(_.isInstanceOf[DexPlan]) match {
+      case Some(_) =>
+        dexPlan
+      case None =>
+        optimizedPlan
+    }
+  }
+
   lazy val dexPlan: LogicalPlan = {
-    // invoke Encrypter to unoptimized encrypt logical plan
     val dp = sparkSession.sessionState.dex.execute(optimizedPlan)
     sparkSession.sessionState.analyzer.executeAndCheck(dp)
   }
@@ -72,14 +80,10 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   lazy val optimizedPlan: LogicalPlan = sparkSession.sessionState.optimizer.execute(withCachedData)
 
   lazy val sparkPlan: SparkPlan = {
-    val optPlan = logical match {
-      case p: DexPlan => dexPlan
-      case _ => optimizedPlan
-    }
     SparkSession.setActiveSession(sparkSession)
     // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
     //       but we will implement to choose the best plan.
-    planner.plan(ReturnAnswer(optPlan)).next()
+    planner.plan(ReturnAnswer(dexOrNonDexOptimizedPlan)).next()
   }
 
   // executedPlan should not be used to initialize any SparkPlan. It should be
