@@ -98,7 +98,8 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
     private lazy val output = dexPlan.output.map(translateAttribute)
 
     def translate: LogicalPlan = analyze {
-      translatePlan(dexPlan.child, None).select(output: _*)
+      val newPlan = translatePlan(dexPlan.child, None)
+      newPlan.select(output: _*)
     }
 
     private def translateAttribute(attr: Attribute): NamedExpression = {
@@ -348,27 +349,22 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
     val emmValueCol = BindReferences.bindReference(emm.output.apply(1), emm.output).asInstanceOf[BoundReference]
 
     val childViewRdd = childView.execute()
-    //val emmRdd = emm.execute().keyBy(_.getString(0))
-    val emmRdd = emm.execute().keyBy(emmRidCol.eval(_).asInstanceOf[UTF8String])
+    val emmRdd = // need to materialize internal rows via copy() for jdbc rdd
+      emm.execute().map(row => (emmRidCol.eval(row).asInstanceOf[UTF8String], row.copy()))
+
     Iterator.from(0).map { i =>
       // todo: iteratively "shrink'" the childViewRdd by the result of each join
       childViewRdd.map { row =>
-        //val rid = row.getString(0)
         val rid = childViewRidCol.eval(row).asInstanceOf[UTF8String].toString
         val ridPredicate = s"$predicate~$rid"
-        //(s"$ridPredicate~$i", (ridPredicate), row)
         (UTF8String.fromString(s"$ridPredicate~$i"), (UTF8String.fromString(ridPredicate), row))
       }.join(emmRdd).values.map { case ((ridPredicate, childViewRow), emmRow) =>
-        //InternalRow(childViewRow.toSeq(childView.schema) :+ decrypt(ridPredicate, emmRow.getString(1)))
-        //val joinedValues = childViewRow.toSeq(childView.schema) :+ decrypt(ridPredicate, emmValueCol.eval(emmRow).asInstanceOf[UTF8String])
-        val joinedValues = childViewRow.toSeq(childView.schema) ++ Seq(ridPredicate, emmValueCol.eval(emmRow))
+        val emmValue = emmValueCol.eval(emmRow)
+        val joinedValues = childViewRow.toSeq(childView.schema) ++ Seq(ridPredicate, emmValue)
         InternalRow.fromSeq(joinedValues)
       }
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
-
-  private def decrypt(key: UTF8String, message: UTF8String): UTF8String =
-    UTF8String.fromString("""(.+)_enc$""".r.findFirstMatchIn(message.toString).get.group(1))
 
   override def output: Seq[Attribute] = left.output ++ right.output
 }

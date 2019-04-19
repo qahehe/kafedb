@@ -2230,22 +2230,6 @@ class Analyzer(
     }
   }
 
-  /*object ResolveDexOperators extends Rule[LogicalPlan] {
-    override def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case j @ CashTSelect(predicate, emm, emmKey) if emm.resolved =>
-        def resolveAttrOrError(keyName: String, relation: LogicalPlan) =
-          relation.output.find(attr => resolver(attr.name, keyName)).getOrElse {
-            throw new AnalysisException(
-              s"""
-                 |column `$keyName` cannot be resolved on the side of the join. The side columns:
-                 |[${relation.output.map(_.name).mkString(", ")}]
-               """.stripMargin)
-          }
-        val emmKeyResolved = resolveAttrOrError(emmKey.name, emm)
-        CashTSelect(predicate, emm, emmKeyResolved)
-    }
-  }*/
-
   /**
    * Resolves columns of an output table from the data in a logical plan. This rule will:
    *
