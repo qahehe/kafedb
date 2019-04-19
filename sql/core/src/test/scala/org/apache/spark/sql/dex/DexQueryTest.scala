@@ -137,6 +137,13 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         |('testdata2~a~3~0', 'r5_enc'),
         |('testdata2~a~3~1', 'r6_enc'),
         |
+        |('testdata2~b~1~0', 'r1_enc'),
+        |('testdata2~b~1~1', 'r3_enc'),
+        |('testdata2~b~1~2', 'r5_enc'),
+        |('testdata2~b~2~0', 'r2_enc'),
+        |('testdata2~b~2~1', 'r4_enc'),
+        |('testdata2~b~2~2', 'r6_enc'),
+        |
         |('testdata3~c~1~0', 'r1_enc'),
         |('testdata3~c~1~1', 'r2_enc'),
         |('testdata3~c~2~0', 'r3_enc')

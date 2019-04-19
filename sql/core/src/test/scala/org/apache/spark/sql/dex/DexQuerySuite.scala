@@ -62,4 +62,9 @@ class DexQuerySuite extends DexQueryTest {
     val query = data2.join(data3).where("a == 1 and a == c")
     checkDexFor(query)
   }
+
+  test("conjunctive filters") {
+    val query = data2.where("a == 2 and b == 1")
+    checkDexFor(query)
+  }
 }

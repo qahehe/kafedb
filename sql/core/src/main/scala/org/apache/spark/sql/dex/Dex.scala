@@ -188,35 +188,31 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
     }.map(analyze)
 
     private def translateFilterPredicate(p: Predicate, childView: Option[LogicalPlan]): LogicalPlan = p match {
-      case EqualTo(left: Attribute, right @ Literal(value, dataType)) =>
+      case EqualTo(left: Attribute, right@Literal(value, dataType)) =>
+        val colName = left.name
+        val tableName = exprIdToTable(left.exprId)
+        val ridOrder = s"rid_${joinOrder(tableName)}"
+        // todo: use Cash et al counter
+        val valueStr = dataType match {
+          case IntegerType => value.asInstanceOf[Int]
+          case StringType => value
+          case x => throw DexException("unsupported: " + x.toString)
+        }
+
+        /*val predicateRelation = LocalRelation(
+          LocalRelation('predicate.string).output,
+          InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
+        val predicate = s"$tableName~$colName~$valueStr"
+
+        val cashTSelect = CashTSelect(predicate, tSelect)
+          .select(Decrypt(decKey, $"value").as(ridOrder))
+
         childView match {
           case None =>
-            val colName = left.name
-            val tableName = exprIdToTable(left.exprId)
-            val ridOrder = s"rid_${joinOrder(tableName)}"
-            // todo: use Cash et al counter
-            val valueStr = dataType match {
-              case IntegerType => value.asInstanceOf[Int]
-              case StringType => value
-              case x => throw DexException("unsupported: " + x.toString)
-            }
-
-            /*val predicateRelation = LocalRelation(
-              LocalRelation('predicate.string).output,
-              InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
-            val predicate = s"$tableName~$colName~$valueStr"
-
-            CashTSelect(predicate, tSelect)
-              .select(Decrypt(decKey, $"value").as(ridOrder))
-
-            //predicateRelation.generate(CashCounterForTSelect("predicate", tSelectDf), outputNames = Seq("value"))
-            //  .select(Decrypt(decKey, $"value").as(ridOrder))
-
-            /*tSelect
-              .select(Decrypt(decKey, $"value").as(ridOrder))
-              .where(EqualTo($"rid", s"$tableName~$colName~$valueStr~counter"))*/
-          case Some(w) =>
-            throw DexException("todo: " + w.toString)
+            cashTSelect
+          case Some(cw) =>
+            require(cw.output.exists(_.name == ridOrder))
+            cw.join(cashTSelect, UsingJoin(LeftSemi, Seq(ridOrder)))
         }
 
       case x => throw DexException("unsupported: " + x.toString)
