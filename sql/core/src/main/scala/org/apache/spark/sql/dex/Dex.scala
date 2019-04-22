@@ -31,7 +31,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Distribution, IdentityBroadcastMode, UnspecifiedDistribution}
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
-import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRelation}
+import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD, JDBCRelation}
 import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.internal.SQLConf
@@ -132,7 +132,7 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
           translatePlan(p.child, childView)
 
         case f: Filter =>
-          translatePlan(f.child, translateFormula(f.condition, childView))
+          translatePlan(f.child, translateFormula(FilterFormula, f.condition, childView))
 
         case j: Join if j.joinType == Cross =>
           translatePlan(j.left, childView).join(translatePlan(j.right, childView), Cross)
@@ -142,15 +142,18 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
           val leftAttrs = nonIsNotNullPredsIn(j.left.expressions)
           val rightAttrs = nonIsNotNullPredsIn(j.right.expressions)
 
-          if (joinAttrs.intersect(leftAttrs ++ rightAttrs).isEmpty) {
-            val leftView = translatePlan(j.left, childView)
-            val joinView = translateFormula(j.condition.get, Some(leftView))
-            translatePlan(j.right, joinView)
-          } else {
+          if (joinAttrs.equals(leftAttrs ++ rightAttrs)) {
+            // join completely coincides with filters
+            // e.g. T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1 and b = d = 2
             // note: this cross join only works for equality filter and joins
             val leftView = translatePlan(j.left, childView)
             val rightView = translatePlan(j.right, childView)
             leftView.join(rightView, Cross)
+          } else {
+            // e.g.  T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1
+            val leftView = translatePlan(j.left, childView)
+            val joinView = translateFormula(JoinFormula, j.condition.get, Some(leftView))
+            translatePlan(j.right, joinView)
           }
 
         case _: DexPlan => throw DexException("shouldn't get DexPlan in subtree of a DexPlan")
@@ -165,20 +168,21 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
       }).reduceOption(_ ++ _).getOrElse(AttributeSet.empty)
     }
 
-    private def translateFormula(condition: Expression, childView: Option[LogicalPlan]): Option[LogicalPlan] = {
+    private def translateFormula(formulaType: FormulaType, condition: Expression, childView: Option[LogicalPlan]): Option[LogicalPlan] = {
       condition match {
-        case p @ EqualTo(_: Attribute, _: Literal) =>
-          Some(translateFilterPredicate(p, childView))
-
-        case p @ EqualTo(_: Attribute, _: Attribute) =>
-          Some(translateJoinPredicate(p, childView))
+        case p: EqualTo => formulaType match {
+          case FilterFormula =>
+            Some(translateFilterPredicate(p, childView))
+          case JoinFormula =>
+            Some(translateJoinPredicate(p, childView))
+        }
 
         case And(left, right) =>
-          translateFormula(right, translateFormula(left, childView))
+          translateFormula(formulaType, right, translateFormula(formulaType, left, childView))
 
         case Or(left, right) =>
-          val lt = translateFormula(left, childView)
-          val rt = translateFormula(right, childView)
+          val lt = translateFormula(formulaType, left, childView)
+          val rt = translateFormula(formulaType, right, childView)
           rt.flatMap(r => lt.map(l => l unionDistinct r)).orElse(lt)
 
         case IsNotNull(attr: Attribute) =>
@@ -193,7 +197,6 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
         val colName = left.name
         val tableName = exprIdToTable(left.exprId)
         val ridOrder = s"rid_${joinOrder(tableName)}"
-        // todo: use Cash et al counter
         val valueStr = dataType match {
           case IntegerType => value.asInstanceOf[Int]
           case StringType => value
@@ -204,26 +207,39 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
           LocalRelation('predicate.string).output,
           InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
         val predicate = s"$tableName~$colName~$valueStr"
+        cashTSelectOf(predicate, ridOrder, childView)
 
-        val cashTSelect = CashTSelect(predicate, tSelect)
-          .select(Decrypt(decKey, $"value").as(ridOrder))
+      case EqualTo(left: Attribute, right: Attribute) if left.name < right.name =>
+        val colNames = (left.name, right.name)
+        val tableNames = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
+        require(tableNames._1 == tableNames._2)
+        val tableName = tableNames._1
+        val ridOrder = s"rid_${joinOrder(tableName)}"
+        val predicate = s"$tableName~${colNames._1}~${colNames._2}"
+        cashTSelectOf(predicate, ridOrder, childView)
 
-        childView match {
-          case None =>
-            cashTSelect
-          case Some(cw) =>
-            require(cw.output.exists(_.name == ridOrder))
-            cw.join(cashTSelect, UsingJoin(LeftSemi, Seq(ridOrder)))
-        }
+      case EqualTo(left: Attribute, right: Attribute) if left.name > right.name =>
+        translateFilterPredicate(EqualTo(right, left), childView)
 
       case x => throw DexException("unsupported: " + x.toString)
+    }
+
+    private def cashTSelectOf(predicate: String, ridOrder: String, childView: Option[LogicalPlan]): LogicalPlan = {
+      val cashTSelect = CashTSelect(predicate, tSelect)
+        .select(Decrypt(decKey, $"value").as(ridOrder))
+
+      childView match {
+        case None =>
+          cashTSelect
+        case Some(cw) =>
+          require(cw.output.exists(_.name == ridOrder))
+          cw.join(cashTSelect, UsingJoin(LeftSemi, Seq(ridOrder)))
+      }
     }
 
     private def translateJoinPredicate(p: Predicate, childView: Option[LogicalPlan]): LogicalPlan = p match {
       case EqualTo(left: Attribute, right: Attribute) =>
         childView match {
-          case None =>
-            ???
           case Some(cw) =>
             val (leftColName, rightColName) = (left.name, right.name)
             val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
@@ -250,6 +266,9 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
 
               case _ => ???
             }
+          case None =>
+            // join has to have childView, at least from the data source scan
+            throw DexException("Shouldn't be here")
         }
     }
 
@@ -415,6 +434,10 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
     }
   }
 }*/
+
+sealed trait FormulaType
+case object JoinFormula extends FormulaType
+case object FilterFormula extends FormulaType
 
 
 case class DexException(msg: String) extends RuntimeException(msg)

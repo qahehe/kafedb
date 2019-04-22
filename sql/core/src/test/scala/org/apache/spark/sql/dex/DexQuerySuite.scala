@@ -19,8 +19,7 @@ package org.apache.spark.sql.dex
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row}
+import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.exceptions.TestFailedException
 
 class DexQuerySuite extends DexQueryTest {
@@ -62,7 +61,7 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
-  test("one filter one join: transitive attributes") {
+  test("one filter one join: transitive attributes, join fully concides with filters") {
     val query = data2.join(data3).where("a == 1 and a == c")
     checkDexFor(query)
   }
@@ -87,6 +86,17 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
+  test("two joins: same tables, transitive attributes") {
+    // inferred a == b same-table filter (not a join!)
+    val query = data2.join(data3).where("a == c and b == c")
+    checkDexFor(query)
+  }
+
+  test("join partially coincides with filters") {
+    val query = data2.join(data3).where("a == c and b == d and a = 1")
+    checkDexFor(query)
+  }
+
   test("jdbc rdd internal rows are unmaterialized cursors") {
     val data3Rdd = spark.sessionState.executePlan(data3.logicalPlan).toRdd
     // wrong
@@ -96,7 +106,7 @@ class DexQuerySuite extends DexQueryTest {
     val materialized = data3Rdd.map(row => row.copy())
     val mapMaterialized = materialized.keyBy(row => row.getInt(0)).values
 
-    val expected = Seq((1, 10), (1, 20), (2, 30))
+    val expected = Seq((1, 1), (1, 2), (2, 3))
 
     def check(actual: RDD[InternalRow]): Unit = {
       val actualDf = spark.createDataFrame(actual.collect().map(row => (row.getInt(0), row.getInt(1))))

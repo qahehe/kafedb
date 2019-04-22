@@ -20,17 +20,13 @@ package org.apache.spark.sql.dex
 import java.sql.DriverManager
 import java.util.Properties
 
-import org.apache.spark.sql.dex.DexTestData.{TestData2Enc, TestTSelect}
+import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.jdbc.JdbcDialect
 import org.apache.spark.sql.test.SharedSQLContext
-import org.apache.spark.sql.{DataFrame, QueryTest}
 import org.apache.spark.util.Utils
 import org.scalatest.{BeforeAndAfter, PrivateMethodTester}
 
 trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter with PrivateMethodTester {
-  import testImplicits._
-
   val urlEnc = "jdbc:postgresql://localhost:8433/test_edb"
   val url = "jdbc:postgresql://localhost:7433/test_db"
   // val urlWithUserAndPass = "jdbc:h2:mem:testdb0;user=testUser;password=testPass"
@@ -146,7 +142,10 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         |
         |('testdata3~c~1~0', 'r1_enc'),
         |('testdata3~c~1~1', 'r2_enc'),
-        |('testdata3~c~2~0', 'r3_enc')
+        |('testdata3~c~2~0', 'r3_enc'),
+        |
+        |('testdata2~a~b~0', 'r1_enc'),
+        |('testdata2~a~b~1', 'r4_enc')
       """.stripMargin)
       .executeUpdate()
     connEnc.commit()
@@ -182,43 +181,5 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       """.stripMargin)
       .executeUpdate()
     connEnc.commit()
-
-    /*if (provideEncryptedData) {
-      testData2Enc
-      testTSelect
-    }*/
   }
-
-  /*protected lazy val testData2Enc: DataFrame = {
-    val df = spark.sparkContext.parallelize(
-      TestData2Enc("r1", "1_enc", "1_enc") ::
-        TestData2Enc("r2", "1_enc", "2_enc") ::
-        TestData2Enc("r3", "2_enc", "1_enc") ::
-        TestData2Enc("r4", "2_enc", "2_enc") ::
-        TestData2Enc("r5", "3_enc", "1_enc") ::
-        TestData2Enc("r6", "3_enc", "2_enc") :: Nil, 2).toDF()
-    df.createOrReplaceTempView("testData2_enc")
-    df
-  }
-
-  protected lazy val testTSelect: DataFrame = {
-    val df = spark.sparkContext.parallelize(
-      TestTSelect("testData2~a~1~counter", "r1_enc") ::
-        TestTSelect("testData2~a~1~counter", "r2_enc") ::
-        TestTSelect("testData2~a~2~counter", "r3_enc") ::
-        TestTSelect("testData2~a~2~counter", "r4_enc") ::
-        TestTSelect("testData2~a~3~counter", "r5_enc") ::
-        TestTSelect("testData2~a~3~counter", "r6_enc") :: Nil, 2).toDF()
-    df.createOrReplaceTempView("t_select")
-    df
-  }
-
-  def setupEncryptedData(): Unit = {
-    provideEncryptedData = true
-  }*/
-}
-
-object DexTestData {
-  case class TestData2Enc(rid: String, a_prf: String, b_prf: String)
-  case class TestTSelect(rid: String, value: String)
 }
