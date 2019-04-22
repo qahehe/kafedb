@@ -355,17 +355,20 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
     val emmRdd =
       emm.execute().map(row => (emmRidCol.eval(row).asInstanceOf[UTF8String], row.copy()))
 
+    var childViewRddToCount = childViewRdd
     Iterator.from(0).map { i =>
       // todo: iteratively "shrink'" the childViewRdd by the result of each join
-      childViewRdd.map { row =>
+      val res = childViewRddToCount.map { row =>
         val rid = childViewRidCol.eval(row).asInstanceOf[UTF8String].toString
         val ridPredicate = s"$predicate~$rid"
         (UTF8String.fromString(s"$ridPredicate~$i"), (UTF8String.fromString(ridPredicate), row))
       }.join(emmRdd).values.map { case ((ridPredicate, childViewRow), emmRow) =>
         val emmValue = emmValueCol.eval(emmRow)
         val joinedValues = childViewRow.toSeq(childView.schema) ++ Seq(ridPredicate, emmValue)
-        InternalRow.fromSeq(joinedValues)
+        (childViewRow, InternalRow.fromSeq(joinedValues))
       }
+      childViewRddToCount = res.keys
+      res.values
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
 
