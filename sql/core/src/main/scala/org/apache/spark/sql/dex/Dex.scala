@@ -348,8 +348,11 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
     val emmRidCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
     val emmValueCol = BindReferences.bindReference(emm.output.apply(1), emm.output).asInstanceOf[BoundReference]
 
-    val childViewRdd = childView.execute()
-    val emmRdd = // need to materialize internal rows via copy() for jdbc rdd
+    // need to materialize internal rows via copy() for jdbc rdd
+    // todo: differentiate first join vs conjunctive joins, latter case need not copy
+    // todo: cache?
+    val childViewRdd = childView.execute().map(_.copy())
+    val emmRdd =
       emm.execute().map(row => (emmRidCol.eval(row).asInstanceOf[UTF8String], row.copy()))
 
     Iterator.from(0).map { i =>
