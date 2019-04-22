@@ -81,7 +81,11 @@ class DexQuerySuite extends DexQueryTest {
     val query = data2.crossJoin(data3)
     checkDexFor(query)
   }
-  
+
+  test("two joins: same tables") {
+    val query = data2.join(data3).where("a == c and b == d")
+    checkDexFor(query)
+  }
 
   test("jdbc rdd internal rows are unmaterialized cursors") {
     val data3Rdd = spark.sessionState.executePlan(data3.logicalPlan).toRdd

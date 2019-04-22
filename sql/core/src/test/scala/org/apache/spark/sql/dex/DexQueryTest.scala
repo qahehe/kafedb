@@ -91,9 +91,9 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     conn.prepareStatement(
       """
         |insert into testdata3 values
-        |(1, 10),
-        |(1, 20),
-        |(2, 30)
+        |(1, 1),
+        |(1, 2),
+        |(2, 3)
       """.stripMargin)
       .executeUpdate()
     conn.commit()
@@ -118,9 +118,9 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     connEnc.prepareStatement(
       """
         |insert into testdata3_prf values
-        |('r1', '1_enc', '10_enc'),
-        |('r2', '1_enc', '20_enc'),
-        |('r3', '2_enc', '30_enc')
+        |('r1', '1_enc', '1_enc'),
+        |('r2', '1_enc', '2_enc'),
+        |('r3', '2_enc', '3_enc')
       """.stripMargin)
       .executeUpdate()
     connEnc.commit()
@@ -171,7 +171,14 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         |('testdata2~b~testdata3~c~r4~0', 'r3_enc'),
         |('testdata2~b~testdata3~c~r5~0', 'r1_enc'),
         |('testdata2~b~testdata3~c~r5~1', 'r2_enc'),
-        |('testdata2~b~testdata3~c~r6~0', 'r3_enc')
+        |('testdata2~b~testdata3~c~r6~0', 'r3_enc'),
+        |
+        |('testdata2~b~testdata3~d~r1~0', 'r1_enc'),
+        |('testdata2~b~testdata3~d~r2~0', 'r2_enc'),
+        |('testdata2~b~testdata3~d~r3~0', 'r1_enc'),
+        |('testdata2~b~testdata3~d~r4~0', 'r2_enc'),
+        |('testdata2~b~testdata3~d~r5~0', 'r1_enc'),
+        |('testdata2~b~testdata3~d~r6~0', 'r2_enc')
       """.stripMargin)
       .executeUpdate()
     connEnc.commit()

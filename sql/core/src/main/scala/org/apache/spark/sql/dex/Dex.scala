@@ -242,6 +242,12 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
                   case x: Attribute if x.name != "rid" => x
                 }
                 cashTm.select(cashTmProject: _*)
+
+              case (Some(l), Some(r)) =>
+                val cashTm = CashTM(predicate, cw, tM, l).where(EqualTo(r, Decrypt($"rid", $"value")))
+                val cashTmProject = cw.output
+                cashTm.select(cashTmProject: _*)
+
               case _ => ???
             }
         }
@@ -357,7 +363,7 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
 
     var childViewRddToCount = childViewRdd
     Iterator.from(0).map { i =>
-      // todo: iteratively "shrink'" the childViewRdd by the result of each join
+      // iteratively "shrink'" the childViewRdd by the result of each join
       val res = childViewRddToCount.map { row =>
         val rid = childViewRidCol.eval(row).asInstanceOf[UTF8String].toString
         val ridPredicate = s"$predicate~$rid"
