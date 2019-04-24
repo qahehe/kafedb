@@ -68,8 +68,26 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
   /** Defines a sequence of rule batches, to be overridden by the implementation. */
   override protected def batches: Seq[Batch] = Seq(
     // todo first need to move/coallese the DexPlan operators
+    Batch("Unresolve Non-Dex Part of Query", Once, UnresolveDexPlanAncestors),
     Batch("Translate Dex Query", Once, TranslateDexQuery)
   )
+
+  object UnresolveDexPlanAncestors extends Rule[LogicalPlan] {
+    override def apply(plan: LogicalPlan): LogicalPlan = {
+      val dexOutputSet = plan.collectFirst { case p: DexPlan => p.outputSet } get
+      var foundDexPlan = false
+      plan transformDown {
+        case p: DexPlan =>
+          foundDexPlan = true
+          p
+        case p: LogicalPlan if !foundDexPlan =>
+          p.transformExpressions {
+            case a: Attribute if dexOutputSet.contains(a) => UnresolvedAttribute(a.name)
+            case expr => expr
+          }
+      }
+    }
+  }
 
   object TranslateDexQuery extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = {
