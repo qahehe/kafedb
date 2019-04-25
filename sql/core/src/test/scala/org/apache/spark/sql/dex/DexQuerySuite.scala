@@ -34,7 +34,7 @@ class DexQuerySuite extends DexQueryTest {
     //println("query: " ++ result.mkString)
 
     val queryDex = query.dex
-    //queryDex.explain(extended = true)
+    queryDex.explain(extended = true)
     //val resultDex = queryDex.collect()
     //println("dex: " ++ resultDex.mkString)
 
@@ -69,6 +69,11 @@ class DexQuerySuite extends DexQueryTest {
 
   test("conjunctive filters") {
     val query = data2.where("a == 2 and b == 1")
+    checkDexFor(query)
+  }
+
+  test("disjunctive filters") {
+    val query = data2.where("a == 2 or b == 1")
     checkDexFor(query)
   }
 

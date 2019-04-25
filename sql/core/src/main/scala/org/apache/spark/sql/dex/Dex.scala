@@ -74,17 +74,21 @@ class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends Ru
 
   object UnresolveDexPlanAncestors extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = {
-      val dexOutputSet = plan.collectFirst { case p: DexPlan => p.outputSet } get
-      var foundDexPlan = false
-      plan transformDown {
-        case p: DexPlan =>
-          foundDexPlan = true
-          p
-        case p: LogicalPlan if !foundDexPlan =>
-          p.transformExpressions {
-            case a: Attribute if dexOutputSet.contains(a) => UnresolvedAttribute(a.name)
-            case expr => expr
+      plan.collectFirst { case p: DexPlan => p.outputSet } match {
+        case Some(dexOutputSet) =>
+          var foundDexPlan = false
+          plan transformDown {
+            case p: DexPlan =>
+              foundDexPlan = true
+              p
+            case p: LogicalPlan if !foundDexPlan =>
+              p.transformExpressions {
+                case a: Attribute if dexOutputSet.contains(a) => UnresolvedAttribute(a.name)
+                case expr => expr
+              }
           }
+        case None =>
+          plan
       }
     }
   }

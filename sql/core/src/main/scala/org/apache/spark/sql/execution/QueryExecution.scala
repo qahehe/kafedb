@@ -52,19 +52,24 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
     }
   }
 
-  lazy val dexOrNonDexOptimizedPlan: LogicalPlan = {
-    optimizedPlan.find(_.isInstanceOf[DexPlan]) match {
-      case Some(_) =>
-        dexPlan
-      case None =>
-        optimizedPlan
-    }
+  lazy val dexOrNonDexOptimizedPlan: LogicalPlan = dexPlanOpt.map {
+    dexPlan =>
+      val ap = sparkSession.sessionState.analyzer.executeAndCheck(dexPlan)
+      val cp = sparkSession.sharedState.cacheManager.useCachedData(ap)
+      val op = sparkSession.sessionState.optimizer.execute(cp)
+      op
+  } getOrElse {
+    optimizedPlan
   }
 
-  lazy val dexPlan: LogicalPlan = {
-    val dp = sparkSession.sessionState.dex.execute(optimizedPlan)
-    sparkSession.sessionState.analyzer.executeAndCheck(dp)
-  }
+  lazy val hasDexPlan = logical.find(_.isInstanceOf[DexPlan]).isDefined
+
+  lazy val dexPlanOpt: Option[LogicalPlan] =
+    if (hasDexPlan) {
+      Some(sparkSession.sessionState.dex.execute(optimizedPlan))
+    } else {
+      None
+    }
 
   lazy val analyzed: LogicalPlan = {
     SparkSession.setActiveSession(sparkSession)
@@ -215,6 +220,11 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
        |${stringOrError(logical.treeString(verbose = true))}
        |== Analyzed Logical Plan ==
        |$analyzedPlan
+       |${dexPlanOpt.map(x =>
+         s"""
+            |== Dex Plan ==
+            |${stringOrError(x.treeString(verbose = true))}
+          """.stripMargin).getOrElse("")}
        |== Optimized Logical Plan ==
        |${stringOrError(dexOrNonDexOptimizedPlan.treeString(verbose = true))}
        |== Physical Plan ==
