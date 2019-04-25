@@ -216,7 +216,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
        |== Analyzed Logical Plan ==
        |$analyzedPlan
        |== Optimized Logical Plan ==
-       |${stringOrError(optimizedPlan.treeString(verbose = true))}
+       |${stringOrError(dexOrNonDexOptimizedPlan.treeString(verbose = true))}
        |== Physical Plan ==
        |${stringOrError(executedPlan.treeString(verbose = true))}
     """.stripMargin.trim

@@ -59,8 +59,10 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
 
     conn.prepareStatement("drop table if exists testdata2").executeUpdate()
     conn.prepareStatement("drop table if exists testdata3").executeUpdate()
+    conn.prepareStatement("drop table if exists testdata4").executeUpdate()
     connEnc.prepareStatement("drop table if exists testdata2_prf").executeUpdate()
     connEnc.prepareStatement("drop table if exists testdata3_prf").executeUpdate()
+    connEnc.prepareStatement("drop table if exists testdata4_prf").executeUpdate()
     connEnc.prepareStatement("drop table if exists tselect").executeUpdate()
     connEnc.prepareStatement("drop table if exists tm").executeUpdate()
     conn.commit()
@@ -81,7 +83,6 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         .executeUpdate()
     conn.commit()
 
-
     conn.prepareStatement("create table testdata3 (c int, d int)")
       .executeUpdate()
     conn.prepareStatement(
@@ -90,6 +91,20 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         |(1, 1),
         |(1, 2),
         |(2, 3)
+      """.stripMargin)
+      .executeUpdate()
+    conn.commit()
+
+    conn.prepareStatement("create table testdata4 (e int, f int)")
+      .executeUpdate()
+    conn.prepareStatement(
+      """
+        |insert into testdata4 values
+        |(2, 1),
+        |(2, 2),
+        |(2, 3),
+        |(3, 4),
+        |(3, 5)
       """.stripMargin)
       .executeUpdate()
     conn.commit()
@@ -117,6 +132,20 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         |('r1', '1_enc', '1_enc'),
         |('r2', '1_enc', '2_enc'),
         |('r3', '2_enc', '3_enc')
+      """.stripMargin)
+      .executeUpdate()
+    connEnc.commit()
+
+    connEnc.prepareStatement("create table testdata4_prf (rid varchar, e_prf varchar, f_prf varchar)")
+      .executeUpdate()
+    connEnc.prepareStatement(
+      """
+        |insert into testdata4_prf values
+        |('r1', '2_enc', '1_enc'),
+        |('r2', '2_enc', '2_enc'),
+        |('r3', '2_enc', '3_enc'),
+        |('r4', '3_enc', '4_enc'),
+        |('r5', '3_enc', '5_enc')
       """.stripMargin)
       .executeUpdate()
     connEnc.commit()
@@ -155,6 +184,17 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     connEnc.prepareStatement(
       """
         |insert into tm values
+        |('testdata2~a~testdata4~e~r3~0', 'r1_enc'),
+        |('testdata2~a~testdata4~e~r3~1', 'r2_enc'),
+        |('testdata2~a~testdata4~e~r3~2', 'r3_enc'),
+        |('testdata2~a~testdata4~e~r4~0', 'r1_enc'),
+        |('testdata2~a~testdata4~e~r4~1', 'r2_enc'),
+        |('testdata2~a~testdata4~e~r4~2', 'r3_enc'),
+        |('testdata2~a~testdata4~e~r5~0', 'r4_enc'),
+        |('testdata2~a~testdata4~e~r5~1', 'r5_enc'),
+        |('testdata2~a~testdata4~e~r6~0', 'r4_enc'),
+        |('testdata2~a~testdata4~e~r6~1', 'r5_enc'),
+        |
         |('testdata2~a~testdata3~c~r1~0', 'r1_enc'),
         |('testdata2~a~testdata3~c~r1~1', 'r2_enc'),
         |('testdata2~a~testdata3~c~r2~0', 'r1_enc'),

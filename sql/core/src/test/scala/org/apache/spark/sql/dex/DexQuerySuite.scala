@@ -26,6 +26,7 @@ class DexQuerySuite extends DexQueryTest {
 
   private lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
   private lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
+  private lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
 
   private def checkDexFor(query: DataFrame): Unit = {
     //query.explain(extended = true)
@@ -94,6 +95,16 @@ class DexQuerySuite extends DexQueryTest {
 
   test("join partially coincides with filters") {
     val query = data2.join(data3).where("a == c and b == d and a = 1")
+    checkDexFor(query)
+  }
+
+  test("two joins: three tables star schema") {
+    val query = data2.join(data4).join(data3).where("a == e and b == c")
+    checkDexFor(query)
+  }
+
+  test("two joins: three tables star schema transitive attributes") {
+    val query = data2.join(data4).join(data3).where("a == e and a == c")
     checkDexFor(query)
   }
 
