@@ -29,7 +29,7 @@ class DexQuerySuite extends DexQueryTest {
   private lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
 
   private def checkDexFor(query: DataFrame): Unit = {
-    //query.explain(extended = true)
+    query.explain(extended = true)
     //val result = query.collect()
     //println("query: " ++ result.mkString)
 
@@ -84,6 +84,16 @@ class DexQuerySuite extends DexQueryTest {
 
   test("cross join") {
     val query = data2.crossJoin(data3)
+    checkDexFor(query)
+  }
+
+  test("disjunctive joins: same tables") {
+    val query = data2.join(data3).where("a == c or b == d")
+    checkDexFor(query)
+  }
+
+  test("disjunctive joins: same tables, transitive attrs") {
+    val query = data2.join(data3).where("a == c or b == c")
     checkDexFor(query)
   }
 
