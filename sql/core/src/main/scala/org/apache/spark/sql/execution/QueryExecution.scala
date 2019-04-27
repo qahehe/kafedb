@@ -66,7 +66,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
 
   lazy val dexPlanOpt: Option[LogicalPlan] =
     if (hasDexPlan) {
-      Some(sparkSession.sessionState.dex.execute(optimizedPlan))
+      Some(sparkSession.sessionState.dexPlanner.execute(optimizedPlan))
     } else {
       None
     }

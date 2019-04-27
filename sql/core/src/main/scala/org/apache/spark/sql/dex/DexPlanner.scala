@@ -39,7 +39,7 @@ import org.apache.spark.sql.types.{DataType, IntegerType, StringType}
 import org.apache.spark.sql.{Column, Dataset, Encoders, SparkSession}
 import org.apache.spark.unsafe.types.UTF8String
 
-class Dex(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
+class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
 
   private val tSelect = LogicalRelation(
     DataSource.apply(

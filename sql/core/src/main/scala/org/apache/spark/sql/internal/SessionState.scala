@@ -30,7 +30,7 @@ import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.optimizer.Optimizer
 import org.apache.spark.sql.catalyst.parser.ParserInterface
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.dex.Dex
+import org.apache.spark.sql.dex.DexPlanner
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.streaming.StreamingQueryManager
 import org.apache.spark.sql.util.{ExecutionListenerManager, QueryExecutionListener}
@@ -67,7 +67,7 @@ private[sql] class SessionState(
     val sqlParser: ParserInterface,
     analyzerBuilder: () => Analyzer,
     optimizerBuilder: () => Optimizer,
-    dexBuilder: () => Dex,
+    dexPlannerBuilder: () => DexPlanner,
     val planner: SparkPlanner,
     val streamingQueryManager: StreamingQueryManager,
     val listenerManager: ExecutionListenerManager,
@@ -82,7 +82,7 @@ private[sql] class SessionState(
 
   lazy val optimizer: Optimizer = optimizerBuilder()
 
-  lazy val dex: Dex = dexBuilder()
+  lazy val dexPlanner: DexPlanner = dexPlannerBuilder()
 
   lazy val resourceLoader: SessionResourceLoader = resourceLoaderBuilder()
 
