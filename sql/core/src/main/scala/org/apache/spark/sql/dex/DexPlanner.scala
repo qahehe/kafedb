@@ -25,7 +25,7 @@ import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, IsNotNull, JoinedRow, Literal, NamedExpression, Or, Predicate}
+import org.apache.spark.sql.catalyst.expressions.{Alias, And, Attribute, AttributeReference, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, In, IsNotNull, JoinedRow, Literal, NamedExpression, Or, Predicate}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Distribution, IdentityBroadcastMode, UnspecifiedDistribution}
@@ -209,6 +209,10 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
 
         case IsNotNull(attr: Attribute) =>
           childView
+
+        case In(attr: Attribute, list: Seq[Expression]) =>
+          val Ors = list.map(expr => EqualTo(attr, expr)).reduce[Predicate]((p1, p2) => Or(p1, p2))
+          translateFormula(formulaType, Ors, childView)
 
         case x => throw DexException("unsupported: " + x.toString)
       }

@@ -77,6 +77,11 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
+  test("IN filter") {
+    val query = data2.where("a in (1, 2)")
+    checkDexFor(query)
+  }
+
   test("one join") {
     val query = data2.join(data3).where("b == c")
     checkDexFor(query)
