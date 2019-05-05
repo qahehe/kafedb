@@ -113,7 +113,7 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
 
     private lazy val exprIdToTable: ExprId => String =
       dexPlan.collect {
-        case l @ LogicalRelation(relation: JDBCRelation, _, _, _) =>
+        case l@LogicalRelation(relation: JDBCRelation, _, _, _) =>
           l.output.map(x => (x.exprId, relation.jdbcOptions.tableOrQuery))
       }.flatten.toMap
 
@@ -143,7 +143,7 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
               childView match {
                 case Some(w) =>
                   w.join(tableEnc, NaturalJoin(LeftOuter))
-                  //w
+                //w
                 case None =>
                   tableEnc
               }
@@ -155,7 +155,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
           translatePlan(p.child, childView)
 
         case f: Filter =>
-          translatePlan(f.child, translateFormula(FilterFormula, f.condition, childView, isNegated = false))
+          val source = translatePlan(f.child, childView)
+          translateFormula(FilterFormula, f.condition, source, isNegated = false)
 
         case j: Join if j.joinType == Cross =>
           translatePlan(j.left, childView).join(translatePlan(j.right, childView), Cross)
@@ -175,8 +176,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
           } else {
             // e.g.  T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1
             val leftView = translatePlan(j.left, childView)
-            val joinView = translateFormula(JoinFormula, j.condition.get, Some(leftView), isNegated = false)
-            translatePlan(j.right, joinView)
+            val joinView = translateFormula(JoinFormula, j.condition.get, leftView, isNegated = false)
+            translatePlan(j.right, Some(joinView))
           }
 
         case _: DexPlan => throw DexException("shouldn't get DexPlan in subtree of a DexPlan")
@@ -191,13 +192,13 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
       }).reduceOption(_ ++ _).getOrElse(AttributeSet.empty)
     }
 
-    private def translateFormula(formulaType: FormulaType, condition: Expression, childView: Option[LogicalPlan], isNegated: Boolean): Option[LogicalPlan] = {
+    private def translateFormula(formulaType: FormulaType, condition: Expression, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = analyze {
       condition match {
         case p: EqualTo => formulaType match {
           case FilterFormula =>
-            Some(translateFilterPredicate(p, childView, isNegated))
+            translateFilterPredicate(p, childView, isNegated)
           case JoinFormula =>
-            Some(translateJoinPredicate(p, childView))
+            translateJoinPredicate(p, childView)
         }
 
         case And(left, right) if !isNegated =>
@@ -206,7 +207,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
         case Or(left, right) if !isNegated =>
           val lt = translateFormula(formulaType, left, childView, isNegated)
           val rt = translateFormula(formulaType, right, childView, isNegated)
-          rt.flatMap(r => lt.map(l => l unionDistinct r)).orElse(lt)
+          //rt.flatMap(r => lt.map(l => l unionDistinct r)).orElse(lt)
+          lt unionDistinct rt
 
         case IsNotNull(attr: Attribute) =>
           childView
@@ -224,9 +226,9 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
 
         case x => throw DexException("unsupported: " + x.toString)
       }
-    }.map(analyze)
+    }
 
-    private def translateFilterPredicate(p: Predicate, childView: Option[LogicalPlan], isNegated: Boolean): LogicalPlan = p match {
+    private def translateFilterPredicate(p: Predicate, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = p match {
       case EqualTo(left: Attribute, right@Literal(value, dataType)) =>
         val colName = left.name
         val tableName = exprIdToTable(left.exprId)
@@ -258,63 +260,46 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
       case x => throw DexException("unsupported: " + x.toString)
     }
 
-    private def cashTSelectOf(predicateTableName: String, predicate: String, ridOrder: String, childView: Option[LogicalPlan], isNegated: Boolean): LogicalPlan = {
+    private def cashTSelectOf(predicateTableName: String, predicate: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val cashTSelect = CashTSelect(predicate, tSelect)
         .select(Decrypt(decKey, $"value").as(ridOrder))
 
       if (isNegated) {
-        val superSet = childView match {
-          case None =>
-            tableEncOf(predicateTableName)
-          case Some(cw) =>
-            cw
-        }
-        superSet.join(cashTSelect, UsingJoin(LeftAnti, Seq(ridOrder)))
+        childView.join(cashTSelect, UsingJoin(LeftAnti, Seq(ridOrder)))
       } else {
-        childView match {
-          case None =>
-            cashTSelect
-          case Some(cw) =>
-            require(cw.output.exists(_.name == ridOrder))
-            cw.join(cashTSelect, UsingJoin(LeftSemi, Seq(ridOrder)))
-        }
+        require(childView.output.exists(_.name == ridOrder))
+        childView.join(cashTSelect, UsingJoin(LeftSemi, Seq(ridOrder)))
       }
-
     }
 
-    private def translateJoinPredicate(p: Predicate, childView: Option[LogicalPlan]): LogicalPlan = p match {
+    private def translateJoinPredicate(p: Predicate, childView: LogicalPlan): LogicalPlan = p match {
       case EqualTo(left: Attribute, right: Attribute) =>
-        childView match {
-          case Some(cw) =>
-            val (leftColName, rightColName) = (left.name, right.name)
-            val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
-            val (leftRidOrder, rightRidOrder) = (s"rid_${joinOrder(leftTableName)}", s"rid_${joinOrder(rightTableName)}")
-            val (leftRidOrderAttr, rightRidOrderAttr) = (
-              cw.output.find(_.name == leftRidOrder),
-              cw.output.find(_.name == rightRidOrder))
+        val (leftColName, rightColName) = (left.name, right.name)
+        val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
+        val (leftRidOrder, rightRidOrder) = (s"rid_${joinOrder(leftTableName)}", s"rid_${joinOrder(rightTableName)}")
+        val (leftRidOrderAttr, rightRidOrderAttr) = (
+          childView.output.find(_.name == leftRidOrder),
+          childView.output.find(_.name == rightRidOrder))
 
-            val predicate = s"$leftTableName~$leftColName~$rightTableName~$rightColName"
+        val predicate = s"$leftTableName~$leftColName~$rightTableName~$rightColName"
 
-            (leftRidOrderAttr, rightRidOrderAttr) match {
-              case (Some(l), None) =>
-                val cashTm = CashTM(predicate, cw, tM, l)
-                val cashTmProject = cashTm.output.collect {
-                  case x: Attribute if x.name == "value" => Decrypt($"rid", x).as(rightRidOrder)
-                  case x: Attribute if x.name != "rid" => x
-                }
-                cashTm.select(cashTmProject: _*)
-
-              case (Some(l), Some(r)) =>
-                val cashTm = CashTM(predicate, cw, tM, l).where(EqualTo(r, Decrypt($"rid", $"value")))
-                val cashTmProject = cw.output
-                cashTm.select(cashTmProject: _*)
-
-              case _ => ???
+        (leftRidOrderAttr, rightRidOrderAttr) match {
+          case (Some(l), None) =>
+            val cashTm = CashTM(predicate, childView, tM, l)
+            val cashTmProject = cashTm.output.collect {
+              case x: Attribute if x.name == "value" => Decrypt($"rid", x).as(rightRidOrder)
+              case x: Attribute if x.name != "rid" => x
             }
-          case None =>
-            // join has to have childView, at least from the data source scan
-            throw DexException("Shouldn't be here")
+            cashTm.select(cashTmProject: _*)
+
+          case (Some(l), Some(r)) =>
+            val cashTm = CashTM(predicate, childView, tM, l).where(EqualTo(r, Decrypt($"rid", $"value")))
+            val cashTmProject = childView.output
+            cashTm.select(cashTmProject: _*)
+
+          case _ => ???
         }
+      case _ => ???
     }
 
     private def tableEncOf(tableName: String): LogicalPlan = {
@@ -341,7 +326,6 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
       }
       tableEnc.select(columns: _*)
     }
-
   }
 }
 
