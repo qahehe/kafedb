@@ -25,7 +25,8 @@ import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{Alias, And, Attribute, AttributeReference, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, In, IsNotNull, JoinedRow, Literal, NamedExpression, Not, Or, Predicate}
+import org.apache.spark.sql.catalyst.expressions.{Alias, And, Attribute, AttributeReference, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, In, IsNotNull, JoinedRow, Literal, NamedExpression, Not, Or, Predicate, PredicateHelper}
+import org.apache.spark.sql.catalyst.planning.PhysicalOperation
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Distribution, IdentityBroadcastMode, UnspecifiedDistribution}
@@ -57,7 +58,11 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
         JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
         JDBCOptions.JDBC_TABLE_NAME -> "tm")).resolveRelation())
 
-  private val decKey = Literal.create("dummy_dec_key", StringType)
+  private val emmTables = Set(tSelect, tM)
+
+  //private val decKey = Literal.create("dummy_dec_key", StringType)
+  private val metadataDecKey = "metadata_dec_key"
+  private val emmDecKeyPrefix = "emm_dec_key_prefix"
   private val attrPrfKey = Literal.create("dummy_attr_prf_key", StringType)
 
   private val resolver = sparkSession.sqlContext.conf.resolver
@@ -69,7 +74,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
   override protected def batches: Seq[Batch] = Seq(
     // todo first need to move/coallese the DexPlan operators
     Batch("Unresolve Non-Dex Part of Query", Once, UnresolveDexPlanAncestors),
-    Batch("Translate Dex Query", Once, TranslateDexQuery)
+    Batch("Translate Dex Query", Once, TranslateDexQuery),
+    Batch("Delay Data Table", Once, DelayDataTableLeftSemiJoinUntilEncryptedJoin)
   )
 
   object UnresolveDexPlanAncestors extends Rule[LogicalPlan] {
@@ -90,6 +96,84 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
         case None =>
           plan
       }
+    }
+  }
+
+  object DelayDataTableLeftSemiJoinUntilEncryptedJoin extends Rule[LogicalPlan] {
+    override def apply(plan: LogicalPlan): LogicalPlan = {
+      plan.transformDown {
+        case DataTableMultipleFilters(DataTableTwoFilters(_, _, (DataTableOneFilter(p1, j1, (d, f1)), _)), lastEncryptedFilterJoin) =>
+          val filters = removeDataTableJoinIn(lastEncryptedFilterJoin)
+          val j1Condition = j1.condition.get.transform {
+            case EqualTo(left: Attribute, right: Attribute) => EqualTo(d.resolve(Seq(left.name), resolver).get, filters.resolve(Seq(right.name), resolver).get)
+          }
+          Project(p1.projectList, Join(d, filters, LeftSemi, Some(j1Condition)))
+      }
+    }
+
+    private def removeDataTableJoinIn(plan: LogicalPlan): LogicalPlan = plan.transformUp {
+      case DataTableTwoFilters(p2, j2, (DataTableOneFilter(p1, j1, (_, f1)), f2 @ EncryptedFilterOperation(_, _))) =>
+        val j2Condition = j2.condition.get.transform {
+          case EqualTo(left: Attribute, right: Attribute) => EqualTo(f1.resolve(Seq(left.name), resolver).get, f2.resolve(Seq(right.name), resolver).get)
+        }
+        Join(f1, f2, LeftSemi, Some(j2Condition))
+    }
+  }
+
+  /**
+   *                                                           LeftSemi Join 1
+   *                                                              /     \
+   *                  LeftSemi Join N                  Data Relation   LeftSemi Join N
+   *                      /     \                                            /    \
+   *                    ...    Encrypted Filter N                          ...   Encrypted Filter N
+   *                     /                                                  /
+   *                LeftSemi Join 2                 ---->              LeftSemi Join 2
+   *                  /        \                                            /       \
+   *         LeftSemi Join 1  Encrypted Filter 2             Encrypted Filter 1  Encrypted Filter 2
+   *          /        \
+   *   Data Relation  Encrypted Filter 1
+   */
+  object DataTableMultipleFilters extends PredicateHelper {
+    type DataTableTwoFilters = LogicalPlan
+    type LastFilterJoin = LogicalPlan
+    def unapply(plan: LogicalPlan): Option[(DataTableTwoFilters, LastFilterJoin)] = plan match {
+      case p @ DataTableTwoFilters(_, _, (_, _)) =>
+        Some((p, p))
+      case p @ Project(_, j @ Join(left @ Join(_, _, LeftSemi, _), f @ EncryptedFilterOperation(_, _), LeftSemi, _)) =>
+        unapply(left).map { case (d, _) => (d, p) }
+      case _ => None
+    }
+  }
+
+  object DataTableTwoFilters extends PredicateHelper {
+    def unapply(plan: LogicalPlan): Option[(Project, Join, (LogicalPlan, LogicalPlan))] = plan match {
+      case p @ Project(_, j @ Join(d @ DataTableOneFilter(_, _, (_, _)), f @ EncryptedFilterOperation(_, _), LeftSemi, _)) =>
+        Some((p, j, (d, f)))
+      case _ => None
+    }
+  }
+
+  object DataTableOneFilter extends PredicateHelper {
+    def unapply(plan: LogicalPlan): Option[(Project, Join, (LogicalPlan, LogicalPlan))] = plan match {
+      case p @ Project(_, j @ Join(d @ DataTableOperation(dataProject, data), f @ EncryptedFilterOperation(filterProject, filter), LeftSemi, condition)) =>
+        Some((p, j, (d, f)))
+      case _ => None
+    }
+  }
+
+  object DataTableOperation extends PredicateHelper {
+    def unapply(plan: LogicalPlan): Option[(Seq[NamedExpression], LogicalRelation)] = plan match {
+      case Project(projectList, child: LogicalRelation) if !emmTables.contains(child) =>
+        Some((projectList, child))
+      case _ => None
+    }
+  }
+
+  object EncryptedFilterOperation extends PredicateHelper {
+    def unapply(plan: LogicalPlan): Option[(Seq[NamedExpression], CashTSelect)] = plan match {
+      case Project(projectList, child: CashTSelect) =>
+        Some((projectList, child))
+      case _ => None
     }
   }
 
@@ -125,7 +209,7 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     }
 
     private def translateAttribute(attr: Attribute): NamedExpression = {
-      Decrypt(decKey, attrEncOf(attr)).cast(attr.dataType).as(attr.name)
+      Decrypt(metadataDecKey, attrEncOf(attr)).cast(attr.dataType).as(attr.name)
     }
 
     private def attrEncOf(attr: Attribute): Attribute = $"${attr.name}_prf"
@@ -262,7 +346,7 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
 
     private def cashTSelectOf(predicateTableName: String, predicate: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val cashTSelect = CashTSelect(predicate, tSelect)
-        .select(Decrypt(decKey, $"value").as(ridOrder))
+        .select(Decrypt(s"$emmDecKeyPrefix~$predicate", $"value").as(ridOrder))
 
       if (isNegated) {
         childView.join(cashTSelect, UsingJoin(LeftAnti, Seq(ridOrder)))
@@ -315,7 +399,6 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     }
 
     private def renameRidWithJoinOrder(tableEnc: LogicalRelation, tableName: String): LogicalPlan = {
-      val resolver = sparkSession.sessionState.analyzer.resolver
       val output = tableEnc.output
       val columns = output.map { col =>
         if (resolver(col.name, "rid")) {

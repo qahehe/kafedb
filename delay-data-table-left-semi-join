@@ -1,0 +1,58 @@
+Project [cast(decrypt(dummy_dec_key, a_prf#172) as int) AS a#177, cast(decrypt(dummy_dec_key, b_prf#173) as int) AS b#178]
++- Project [rid_0#174, a_prf#172, b_prf#173]
+   +- Join LeftSemi, (rid_0#174 = rid_0#176)
+      :- Project [rid_0#174, a_prf#172, b_prf#173]
+      :  +- Join LeftSemi, (rid_0#174 = rid_0#175)
+      :     :- Project [rid#171 AS rid_0#174, a_prf#172, b_prf#173]
+      :     :  +- Relation[rid#171,a_prf#172,b_prf#173] JDBCRelation(testdata2_prf) [numPartitions=1]
+      :     +- Project [decrypt(dummy_dec_key, value#8) AS rid_0#175]
+      :        +- CashTSelect testdata2~a~2
+      :           +- Relation[rid#7,value#8] JDBCRelation(tselect) [numPartitions=1]
+      +- Project [decrypt(dummy_dec_key, value#8) AS rid_0#176]
+         +- CashTSelect testdata2~b~1
+            +- Relation[rid#7,value#8] JDBCRelation(tselect) [numPartitions=1]
+
+
+
+Project [cast(decrypt(dummy_dec_key, a_prf#172) as int) AS a#177, cast(decrypt(dummy_dec_key, b_prf#173) as int) AS b#178]
++- Project [rid_0#174, a_prf#172, b_prf#173]
+
+   +- Join LeftSemi, (rid_0#174 = rid_0#175)
+      +- Project [rid#171 AS rid_0#174, a_prf#172, b_prf#173]
+      :  +- Relation[rid#171,a_prf#172,b_prf#173] JDBCRelation(testdata2_prf) [numPartitions=1]
+
+      +- Join LeftSemi, (rid_0#175 = rid_0#176)
+         +- Project [decrypt(dummy_dec_key, value#8) AS rid_0#175]
+         :  +- CashTSelect testdata2~a~2
+         :     +- Relation[rid#7,value#8] JDBCRelation(tselect) [numPartitions=1]
+         +- Project [decrypt(dummy_dec_key, value#8) AS rid_0#176]
+            +- CashTSelect testdata2~b~1
+               +- Relation[rid#7,value#8] JDBCRelation(tselect) [numPartitions=1]
+
+
+(1) move out
+      :- Project [rid_0#174, a_prf#172, b_prf#173]
+      :  +- Join LeftSemi, (rid_0#174 = rid_0#175)
+      :     :- Project [rid#171 AS rid_0#174, a_prf#172, b_prf#173]
+      :     :  +- Relation[rid#171,a_prf#172,b_prf#173] JDBCRelation(testdata2_prf) [numPartitions=1]
+
+(2) delete projection
+      :  +- Join LeftSemi, (rid_0#174 = rid_0#175)
+      :     :- Project [rid#171 AS rid_0#174, a_prf#172, b_prf#173]
+      :     :  +- Relation[rid#171,a_prf#172,b_prf#173] JDBCRelation(testdata2_prf) [numPartitions=1]
+
+(2) paste back in on top
+      :  +- Join LeftSemi, (rid_0#174 = rid_0#175)
+      :     :- Project [rid#171 AS rid_0#174, a_prf#172, b_prf#173]
+      :     :  +- Relation[rid#171,a_prf#172,b_prf#173] JDBCRelation(testdata2_prf) [numPartitions=1]
+
+(2) re-resolve join condition of enrypted filters
+      +- Join LeftSemi, (rid_0#174 = rid_0#176) -> Join LeftSemi, (rid_0#174 = rid_0#176)
+         +- Project [decrypt(dummy_dec_key, value#8) AS rid_0#175]
+         :  +- CashTSelect testdata2~a~2
+         :     +- Relation[rid#7,value#8] JDBCRelation(tselect) [numPartitions=1]
+         +- Project [decrypt(dummy_dec_key, value#8) AS rid_0#176]
+            +- CashTSelect testdata2~b~1
+               +- Relation[rid#7,value#8] JDBCRelation(tselect) [numPartitions=1]
+
+(5) save 

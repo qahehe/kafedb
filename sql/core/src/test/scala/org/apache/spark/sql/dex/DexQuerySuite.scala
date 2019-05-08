@@ -142,6 +142,9 @@ class DexQuerySuite extends DexQueryTest {
     val materialized = data3Rdd.map(row => row.copy())
     val mapMaterialized = materialized.keyBy(row => row.getInt(0)).values
 
+    // wrong? two maps
+    val map2Materialized = mapMaterialized
+
     val expected = Seq((1, 1), (1, 2), (2, 3))
 
     def check(actual: RDD[InternalRow]): Unit = {
