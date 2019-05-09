@@ -75,7 +75,7 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     // todo first need to move/coallese the DexPlan operators
     Batch("Unresolve Non-Dex Part of Query", Once, UnresolveDexPlanAncestors),
     Batch("Translate Dex Query", Once, TranslateDexQuery),
-    Batch("Delay Data Table", Once, DelayDataTableLeftSemiJoinUntilEncryptedJoin)
+    Batch("Delay Data Table", Once, DelayDataTableLeftSemiJoinAfterFilters)
   )
 
   object UnresolveDexPlanAncestors extends Rule[LogicalPlan] {
@@ -99,27 +99,6 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     }
   }
 
-  object DelayDataTableLeftSemiJoinUntilEncryptedJoin extends Rule[LogicalPlan] {
-    override def apply(plan: LogicalPlan): LogicalPlan = {
-      plan.transformDown {
-        case DataTableMultipleFilters(DataTableTwoFilters(_, _, (DataTableOneFilter(p1, j1, (d, f1)), _)), lastEncryptedFilterJoin) =>
-          val filters = removeDataTableJoinIn(lastEncryptedFilterJoin)
-          val j1Condition = j1.condition.get.transform {
-            case EqualTo(left: Attribute, right: Attribute) => EqualTo(d.resolve(Seq(left.name), resolver).get, filters.resolve(Seq(right.name), resolver).get)
-          }
-          Project(p1.projectList, Join(d, filters, LeftSemi, Some(j1Condition)))
-      }
-    }
-
-    private def removeDataTableJoinIn(plan: LogicalPlan): LogicalPlan = plan.transformUp {
-      case DataTableTwoFilters(p2, j2, (DataTableOneFilter(p1, j1, (_, f1)), f2 @ EncryptedFilterOperation(_, _))) =>
-        val j2Condition = j2.condition.get.transform {
-          case EqualTo(left: Attribute, right: Attribute) => EqualTo(f1.resolve(Seq(left.name), resolver).get, f2.resolve(Seq(right.name), resolver).get)
-        }
-        Join(f1, f2, LeftSemi, Some(j2Condition))
-    }
-  }
-
   /**
    *                                                           LeftSemi Join 1
    *                                                              /     \
@@ -132,48 +111,69 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
    *         LeftSemi Join 1  Encrypted Filter 2             Encrypted Filter 1  Encrypted Filter 2
    *          /        \
    *   Data Relation  Encrypted Filter 1
+   *
+   * Caveate: Each join comes with its own projection
    */
-  object DataTableMultipleFilters extends PredicateHelper {
-    type DataTableTwoFilters = LogicalPlan
-    type LastFilterJoin = LogicalPlan
-    def unapply(plan: LogicalPlan): Option[(DataTableTwoFilters, LastFilterJoin)] = plan match {
-      case p @ DataTableTwoFilters(_, _, (_, _)) =>
-        Some((p, p))
-      case p @ Project(_, j @ Join(left @ Join(_, _, LeftSemi, _), f @ EncryptedFilterOperation(_, _), LeftSemi, _)) =>
-        unapply(left).map { case (d, _) => (d, p) }
-      case _ => None
+  object DelayDataTableLeftSemiJoinAfterFilters extends Rule[LogicalPlan] {
+    override def apply(plan: LogicalPlan): LogicalPlan = {
+      plan.transformDown {
+        case DataTableMultipleFilters(DataTableTwoFilters(_, _, (DataTableOneFilter(p1, j1, (d, _)), _)), lastFilterJoin) =>
+          val filters = removeDataTableJoinIn(lastFilterJoin)
+          val j1Condition = j1.condition.get.transform {
+            case EqualTo(left: Attribute, right: Attribute) => EqualTo(d.resolve(Seq(left.name), resolver).get, filters.resolve(Seq(right.name), resolver).get)
+          }
+          Project(p1.projectList, Join(d, filters, LeftSemi, Some(j1Condition)))
+      }
     }
-  }
 
-  object DataTableTwoFilters extends PredicateHelper {
-    def unapply(plan: LogicalPlan): Option[(Project, Join, (LogicalPlan, LogicalPlan))] = plan match {
-      case p @ Project(_, j @ Join(d @ DataTableOneFilter(_, _, (_, _)), f @ EncryptedFilterOperation(_, _), LeftSemi, _)) =>
-        Some((p, j, (d, f)))
-      case _ => None
+    private def removeDataTableJoinIn(plan: LogicalPlan): LogicalPlan = plan.transformUp {
+      case DataTableTwoFilters(_, j2, (DataTableOneFilter(_, _, (_, f1)), f2)) =>
+        val j2Condition = j2.condition.get.transform {
+          case EqualTo(left: Attribute, right: Attribute) => EqualTo(f1.resolve(Seq(left.name), resolver).get, f2.resolve(Seq(right.name), resolver).get)
+        }
+        Join(f1, f2, LeftSemi, Some(j2Condition))
     }
-  }
 
-  object DataTableOneFilter extends PredicateHelper {
-    def unapply(plan: LogicalPlan): Option[(Project, Join, (LogicalPlan, LogicalPlan))] = plan match {
-      case p @ Project(_, j @ Join(d @ DataTableOperation(dataProject, data), f @ EncryptedFilterOperation(filterProject, filter), LeftSemi, condition)) =>
-        Some((p, j, (d, f)))
-      case _ => None
+    object DataTableMultipleFilters extends PredicateHelper {
+      type DataTableTwoFilters = LogicalPlan
+      type LastFilterJoin = LogicalPlan
+      def unapply(plan: LogicalPlan): Option[(DataTableTwoFilters, LastFilterJoin)] = plan match {
+        case p @ DataTableTwoFilters(_, _, (_, _)) =>
+          Some((p, p))
+        case p @ Project(_, Join(left @ Join(_, _, LeftSemi, _), EncryptedFilterOperation(), LeftSemi, _)) =>
+          unapply(left).map { case (d, _) => (d, p) }
+        case _ => None
+      }
     }
-  }
 
-  object DataTableOperation extends PredicateHelper {
-    def unapply(plan: LogicalPlan): Option[(Seq[NamedExpression], LogicalRelation)] = plan match {
-      case Project(projectList, child: LogicalRelation) if !emmTables.contains(child) =>
-        Some((projectList, child))
-      case _ => None
+    object DataTableTwoFilters extends PredicateHelper {
+      def unapply(plan: LogicalPlan): Option[(Project, Join, (LogicalPlan, LogicalPlan))] = plan match {
+        case p @ Project(_, j @ Join(d @ DataTableOneFilter(_, _, (_, _)), f @ EncryptedFilterOperation(), LeftSemi, _)) =>
+          Some((p, j, (d, f)))
+        case _ => None
+      }
     }
-  }
 
-  object EncryptedFilterOperation extends PredicateHelper {
-    def unapply(plan: LogicalPlan): Option[(Seq[NamedExpression], CashTSelect)] = plan match {
-      case Project(projectList, child: CashTSelect) =>
-        Some((projectList, child))
-      case _ => None
+    object DataTableOneFilter extends PredicateHelper {
+      def unapply(plan: LogicalPlan): Option[(Project, Join, (LogicalPlan, LogicalPlan))] = plan match {
+        case p @ Project(_, j @ Join(d @ DataTableOperation(), f @ EncryptedFilterOperation(), LeftSemi, _)) =>
+          Some((p, j, (d, f)))
+        case _ => None
+      }
+    }
+
+    object DataTableOperation extends PredicateHelper {
+      def unapply(plan: LogicalPlan): Boolean = plan match {
+        case Project(_, child: LogicalRelation) if !emmTables.contains(child) => true
+        case _ => false
+      }
+    }
+
+    object EncryptedFilterOperation extends PredicateHelper {
+      def unapply(plan: LogicalPlan): Boolean = plan match {
+        case Project(_, _: CashTSelect) => true
+        case _ => false
+      }
     }
   }
 
