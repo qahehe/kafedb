@@ -37,7 +37,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
 
   protected override def sparkConf = super.sparkConf
     .set(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL, urlEnc)
-    // .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
+    .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
 
   protected override def afterAll(): Unit = {
     conn.close()

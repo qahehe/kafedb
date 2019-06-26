@@ -134,26 +134,46 @@ class DexQuerySuite extends DexQueryTest {
   }
 
   test("jdbc rdd internal rows are unmaterialized cursors") {
-    val data3Rdd = spark.sessionState.executePlan(data3.logicalPlan).toRdd
-    // wrong
-    val mapUnmaterialized = data3Rdd.keyBy(row => row.getInt(0)).values
-
-    // correct: need explicit copy to materialize
-    val materialized = data3Rdd.map(row => row.copy())
-    val mapMaterialized = materialized.keyBy(row => row.getInt(0)).values
-
-    // wrong? two maps
-    val map2Materialized = mapMaterialized
-
     val expected = Seq((1, 1), (1, 2), (2, 3))
+    val unsafeRowHeaderRepr = 0
 
-    def check(actual: RDD[InternalRow]): Unit = {
-      val actualDf = spark.createDataFrame(actual.collect().map(row => (row.getInt(0), row.getInt(1))))
-      val expectedDf = spark.createDataFrame(expected)
-      checkAnswer(actualDf, expectedDf)
-    }
+    val data3Rdd = spark.sessionState.executePlan(data3.logicalPlan).toRdd
+    //println(data3Rdd.collect().mkString)
+    //println(data3Rdd.toDebugString)
 
-    check(mapMaterialized)
-    assertThrows[TestFailedException](check(mapUnmaterialized))
+    // why is it wrong? Conjecture: rdd.collect() returns array of UnsafeRows, which are references to the same
+    // cursor. The cursor iterates and updates all the referred UnsafeRows eventually to the last row.
+    val keyByThenValues = data3Rdd.map(row => (row.getInt(0), row)).map(_._2).collect()
+    //assert(expectedWithInternalRowHeader !== keyByThenValues)
+    val expectedWrong = expected.map(_ => InternalRow(unsafeRowHeaderRepr, expected.last._1, expected.last._2)).toArray
+    assert(expectedWrong.mkString === keyByThenValues.mkString)
+
+    // Getters copies out the row values under the cursor, so they no longer get updated by the cursor
+    val keyByThenGet = data3Rdd.map(row => (row.getInt(0), row)).map(row => (row._2.getInt(0), row._2.getInt(1))).collect()
+    assert(expected.mkString === keyByThenGet.mkString)
+
+    // Getters can happen down the one-one (aka "narrow") dependency
+    val keyByThenValuesThenGet = data3Rdd.map(row => (row.getInt(0), row)).map(_._2).map(row => (row.getInt(0), row.getInt(1))).collect()
+    assert(expected.mkString === keyByThenValuesThenGet.mkString)
+
+    // Wide dependency: (wrong) just shuffling JDBC cursors
+    val shuffleJdbcRow = data3Rdd.map(row => (row.getInt(0), row)).groupByKey().map(_._2).collect()
+    println(shuffleJdbcRow.mkString)
+
+    // Wide dependency: (wrong) not only shuffling, but also multiplying (copying) JDBC cursors
+    val multiplyJdbcRow: RDD[(Int, (Int, InternalRow))] = sparkContext.parallelize(expected).join(data3Rdd.map(row => (row.getInt(0), row)))
+    println(multiplyJdbcRow.collect().mkString)
+
+    // Wide dependency: (wrong) copy after shuffling
+    val shuffleJdbcRowThenCopy = data3Rdd.map(row => (row.getInt(0), row)).groupByKey().map(rows => rows.copy()).collect()
+    println(shuffleJdbcRowThenCopy.mkString)
+
+    // Wide dependency: copy BEFORE shuffling
+    val shuffleCopiedJdbcRow = data3Rdd.map(row => (row.getInt(0), row.copy())).groupByKey().map(_._2).collect()
+    println(shuffleCopiedJdbcRow.mkString)
+
+    val multiplyCopiedJdbcRow: RDD[(Int, (Int, InternalRow))] = sparkContext.parallelize(expected).join(data3Rdd.map(row => (row.getInt(0), row.copy)))
+    println(multiplyCopiedJdbcRow.collect().mkString)
+
   }
 }

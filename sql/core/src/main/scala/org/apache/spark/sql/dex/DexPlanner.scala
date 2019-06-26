@@ -17,7 +17,7 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.{MapPartitionsRDD, RDD}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.UnresolvedAttribute
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
@@ -485,10 +485,12 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
     val emmRidCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
     val emmValueCol = BindReferences.bindReference(emm.output.apply(1), emm.output).asInstanceOf[BoundReference]
 
-    // need to materialize internal rows via copy() for jdbc rdd
-    // todo: differentiate first join vs conjunctive joins, latter case need not copy
-    // todo: cache?
+    // TODO: use iterator to eliminate row copying. See ShuffledHashjoinExec.
+    // If childView depends on a JDBCRDD (throuhg narrow dependency) then need to copy rows through JDBC cursors
+    // before wide-dependency operations like join
     val childViewRdd = childView.execute().map(_.copy())
+
+    // Copy emm rows through JDBC cursors before wide dependency operation like join below
     val emmRdd =
       emm.execute().map(row => (emmRidCol.eval(row).asInstanceOf[UTF8String], row.copy()))
 
