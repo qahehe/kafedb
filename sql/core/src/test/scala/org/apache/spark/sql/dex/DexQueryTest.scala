@@ -63,8 +63,8 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     connEnc.prepareStatement("drop table if exists testdata2_prf").executeUpdate()
     connEnc.prepareStatement("drop table if exists testdata3_prf").executeUpdate()
     connEnc.prepareStatement("drop table if exists testdata4_prf").executeUpdate()
-    connEnc.prepareStatement("drop table if exists tselect").executeUpdate()
-    connEnc.prepareStatement("drop table if exists tm").executeUpdate()
+    connEnc.prepareStatement("drop table if exists t_filter").executeUpdate()
+    connEnc.prepareStatement("drop table if exists t_correlated_join").executeUpdate()
     conn.commit()
     connEnc.commit()
 
@@ -150,11 +150,11 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       .executeUpdate()
     connEnc.commit()
 
-    connEnc.prepareStatement("create table tselect (label varchar, value varchar)")
+    connEnc.prepareStatement("create table t_filter (label varchar, value varchar)")
       .executeUpdate()
     connEnc.prepareStatement(
       """
-        |insert into tselect values
+        |insert into t_filter values
         |('testdata2~a~1~0', 'r1_enc'),
         |('testdata2~a~1~1', 'r2_enc'),
         |('testdata2~a~2~0', 'r3_enc'),
@@ -179,11 +179,11 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       .executeUpdate()
     connEnc.commit()
 
-    connEnc.prepareStatement("create table tm (label varchar, value varchar)")
+    connEnc.prepareStatement("create table t_correlated_join (label varchar, value varchar)")
       .executeUpdate()
     connEnc.prepareStatement(
       """
-        |insert into tm values
+        |insert into t_correlated_join values
         |('testdata2~a~testdata4~e~r3~0', 'r1_enc'),
         |('testdata2~a~testdata4~e~r3~1', 'r2_enc'),
         |('testdata2~a~testdata4~e~r3~2', 'r3_enc'),

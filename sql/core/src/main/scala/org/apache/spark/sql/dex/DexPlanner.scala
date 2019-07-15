@@ -43,23 +43,23 @@ import org.apache.spark.unsafe.types.UTF8String
 
 class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
 
-  private val tSelect = LogicalRelation(
+  private val tFilter = LogicalRelation(
     DataSource.apply(
       sparkSession,
       className = "jdbc",
       options = Map(
         JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
-        JDBCOptions.JDBC_TABLE_NAME -> "tselect")).resolveRelation())
+        JDBCOptions.JDBC_TABLE_NAME -> "t_filter")).resolveRelation())
 
-  private val tM = LogicalRelation(
+  private val tCorrelatedJoin = LogicalRelation(
     DataSource.apply(
       sparkSession,
       className = "jdbc",
       options = Map(
         JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
-        JDBCOptions.JDBC_TABLE_NAME -> "tm")).resolveRelation())
+        JDBCOptions.JDBC_TABLE_NAME -> "t_correlated_join")).resolveRelation())
 
-  private val emmTables = Set(tSelect, tM)
+  private val emmTables = Set(tFilter, tCorrelatedJoin)
 
   //private val decKey = Literal.create("dummy_dec_key", StringType)
   private val metadataDecKey = "metadata_dec_key"
@@ -138,17 +138,17 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // Maybe a debugging hell to use natural join
         // alias for subqueries?
         s"($leftSubquery) NATURAL JOIN ($rightSubquery)"
-      case c: CashTSelect =>
+      case c: DexRidFilter =>
         val firstLabel = dialect.compileValue(s"${c.predicate}~1")
         val firstCounter = dialect.compileValue(1)
         s"""
-           |WITH cash_select(value, counter) RECURSIVE AS (
+           |WITH dex_rid_filter(value, counter) RECURSIVE AS (
            |  SELECT value, $firstCounter  FROM t_select WEHRE rid = $firstLabel
            |  UNION ALL
-           |  SELECT t_select.value, cash_select.counter + 1 FROM cash_select, t_select
-           |  WHERE cash_token(${c.predicate}, cash_select.counter + 1) = t_select.rid
+           |  SELECT t_select.value, dex_rid_filter.counter + 1 FROM dex_rid_filter, t_select
+           |  WHERE dex_token(${c.predicate}, dex_rid_filter.counter + 1) = t_select.rid
            |)
-           |SELECT value FROM cash_select
+           |SELECT value FROM dex_rid_filter
          """.stripMargin
 
     }
@@ -256,7 +256,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     object EncryptedFilterOperation extends PredicateHelper {
       def unapply(plan: LogicalPlan): Boolean = plan match {
-        case Project(_, _: CashTSelect) => true
+        case Project(_, _: DexRidFilter) => true
         case _ => false
       }
     }
@@ -413,7 +413,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           LocalRelation('predicate.string).output,
           InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
         val predicate = s"$tableName~$colName~$valueStr"
-        cashTSelectOf(tableName, predicate, ridOrder, childView, isNegated)
+        dexFilterOf(tableName, predicate, ridOrder, childView, isNegated)
 
       case EqualTo(left: Attribute, right: Attribute) if left.name < right.name =>
         val colNames = (left.name, right.name)
@@ -422,7 +422,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val tableName = tableNames._1
         val ridOrder = s"rid_${joinOrder(tableName)}"
         val predicate = s"$tableName~${colNames._1}~${colNames._2}"
-        cashTSelectOf(tableName, predicate, ridOrder, childView, isNegated)
+        dexFilterOf(tableName, predicate, ridOrder, childView, isNegated)
 
       case EqualTo(left: Attribute, right: Attribute) if left.name > right.name =>
         translateFilterPredicate(EqualTo(right, left), childView, isNegated)
@@ -430,15 +430,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case x => throw DexException("unsupported: " + x.toString)
     }
 
-    private def cashTSelectOf(predicateTableName: String, predicate: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
-      val cashTSelect = CashTSelect(predicate, tSelect)
+    private def dexFilterOf(predicateTableName: String, predicate: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
+      val ridFilter = DexRidFilter(predicate, tFilter)
         .select(Decrypt(s"$emmDecKeyPrefix~$predicate", $"value").as(ridOrder))
 
       if (isNegated) {
-        childView.join(cashTSelect, UsingJoin(LeftAnti, Seq(ridOrder)))
+        childView.join(ridFilter, UsingJoin(LeftAnti, Seq(ridOrder)))
       } else {
         require(childView.output.exists(_.name == ridOrder))
-        childView.join(cashTSelect, UsingJoin(LeftSemi, Seq(ridOrder)))
+        childView.join(ridFilter, UsingJoin(LeftSemi, Seq(ridOrder)))
       }
     }
 
@@ -456,19 +456,19 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         (leftRidOrderAttr, rightRidOrderAttr) match {
           case (Some(l), None) =>
             // "right" relation is a new relation to join
-            val cashTm = CashTM(predicate, childView, tM, l)
-            val cashTmProject = cashTm.output.collect {
+            val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l)
+            val ridJoinProject = ridJoin.output.collect {
               case x: Attribute if x.name == "value" => Decrypt($"label", x).as(rightRidOrder)
               case x: Attribute if x.name != "label" => x // remove label column
             }
-            cashTm.select(cashTmProject: _*)
+            ridJoin.select(ridJoinProject: _*)
 
           case (Some(l), Some(r)) =>
             // "right" relation is a previously joined relation
             // don't have extra "label" column
-            val cashTm = CashTM(predicate, childView, tM, l).where(EqualTo(r, Decrypt($"label", $"value")))
-            val cashTmProject = childView.output
-            cashTm.select(cashTmProject: _*)
+            val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, Decrypt($"label", $"value")))
+            val ridJoinProject = childView.output
+            ridJoin.select(ridJoinProject: _*)
 
           case _ => ???
         }
@@ -522,11 +522,11 @@ case class Decrypt(key: Expression, value: Expression) extends BinaryExpression 
   }*/
 }
 
-case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecNode {
+case class DexRidFilterExec(predicate: String, emm: SparkPlan) extends UnaryExecNode {
 
-  private val cashCondition: Int => InternalRow => Boolean = {
-    cashCounter => emmRow => {
-      val lhs = UTF8String.fromString(s"$predicate~$cashCounter")
+  private val labelForCounter: Int => InternalRow => Boolean = {
+    counter => emmRow => {
+      val lhs = UTF8String.fromString(s"$predicate~$counter")
       val emmLabelCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
       val ordering = TypeUtils.getInterpretedOrdering(emmLabelCol.dataType)
       val rhs = emmLabelCol.eval(emmRow)
@@ -543,7 +543,7 @@ case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecN
     val emmRdd = emm.execute()
     Iterator.from(0).map { i =>
       emmRdd.mapPartitionsInternal { emmIter =>
-        emmIter.find(cashCondition(i)).iterator
+        emmIter.find(labelForCounter(i)).iterator
       }
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
@@ -559,7 +559,7 @@ case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecN
   override def child: SparkPlan = emm
 }
 
-case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, childViewRid: Attribute) extends BinaryExecNode {
+case class DexRidCorrelatedJoinExec(predicate: String, childView: SparkPlan, emm: SparkPlan, childViewRid: Attribute) extends BinaryExecNode {
   override def left: SparkPlan = childView
 
   override def right: SparkPlan = emm

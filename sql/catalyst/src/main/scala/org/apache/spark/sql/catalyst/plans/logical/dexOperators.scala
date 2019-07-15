@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet}
 
-case class CashTSelect(predicate: String, emm: LogicalPlan) extends UnaryNode {
+case class DexRidFilter(predicate: String, emm: LogicalPlan) extends UnaryNode {
 
   // todo: for t_m of joinning a new table, need to add new rid to output
   override def output: Seq[Attribute] = emm.output
@@ -37,7 +37,7 @@ case class CashTSelect(predicate: String, emm: LogicalPlan) extends UnaryNode {
   override def references: AttributeSet = super.references ++ AttributeSet(emm.output)
 }
 
-case class CashTM(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
+case class DexRidCorrelateJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = childView
 
   override def right: LogicalPlan = emm
