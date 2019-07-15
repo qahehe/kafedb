@@ -237,6 +237,10 @@ abstract class BaseRelation {
   def unhandledFilters(filters: Array[Filter]): Array[Filter] = filters
 }
 
+trait View {
+  def buildView(query: String): RDD[Row]
+}
+
 /**
  * A BaseRelation that can produce all of its tuples as an RDD of Row objects.
  *

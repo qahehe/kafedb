@@ -36,6 +36,7 @@ import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD, JD
 import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.jdbc.JdbcDialects
 import org.apache.spark.sql.types.{DataType, IntegerType, StringType}
 import org.apache.spark.sql.{Column, Dataset, Encoders, SparkSession}
 import org.apache.spark.unsafe.types.UTF8String
@@ -75,8 +76,84 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     // todo first need to move/coallese the DexPlan operators
     Batch("Unresolve Non-Dex Part of Query", Once, UnresolveDexPlanAncestors),
     Batch("Translate Dex Query", Once, TranslateDexQuery),
-    Batch("Delay Data Table", Once, DelayDataTableLeftSemiJoinAfterFilters)
+    Batch("Delay Data Table", Once, DelayDataTableLeftSemiJoinAfterFilters),
+    Batch("Remove DexPlan node", Once, RemoveDexPlanNode)
   )
+
+  /*
+  == Dex Plan ==
+Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
++- Project [rid_0#14, a_prf#12, b_prf#13]
+   +- Join LeftSemi, (rid_0#14 = rid_0#15)
+      :- Project [rid#11 AS rid_0#14, a_prf#12, b_prf#13]
+      :  +- Relation[rid#11,a_prf#12,b_prf#13] JDBCRelation(testdata2_prf) [numPartitions=1]
+      +- Project [decrypt(emm_dec_key_prefix~testdata2~a~2, value#8) AS rid_0#15]
+         +- CashTSelect testdata2~a~2
+            +- Relation[rid#7,value#8] JDBCRelation(tselect) [numPartitions=1]
+
+   SELECT decrypt(metadata_dec_key, b_prf) as int) as b
+   FROM (
+   // DEX plan starts from here
+     SELECT rid_0, a_prf, b_prf
+     FROM (
+       SELECT rid as rid_0, a_prf, b_prf
+       FROM testdata2_prf
+     ) AS ???
+     JOIN (
+       SELECT udf_derypt(emm_dec_key_prefix~testdata2~a~s, value) AS rid_0
+       FROM udf_select(testdata2~a~2)
+     ) AS ???
+   )
+   */
+  object ConvertDexPlanToSQL extends Rule[LogicalPlan] {
+
+    private val dialect = JdbcDialects.get(JDBCOptions.JDBC_URL)
+
+    override def apply(plan: LogicalPlan): LogicalPlan = {
+      plan.transformDown {
+        case p: DexPlan =>
+          val sql = convertToSQL(p)
+          val jdbcOption = new JDBCOptions(Map(
+            JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
+            JDBCOptions.JDBC_QUERY_STRING -> sql))
+          val baseRelation = JDBCRelation(p.schema, Array.empty, jdbcOption)(sparkSession)
+          LogicalRelation(baseRelation)
+      }
+    }
+
+    private def convertToSQL(plan: LogicalPlan): String = plan match {
+      case p: DexPlan => convertToSQL(p.child)
+      case p: Project =>
+        val projectList = p.projectList.map(_.sql)
+        s"SELECT ${projectList} FROM " ++ convertToSQL(p.child)
+      case p: LogicalRelation =>
+        p.relation match {
+          case j: JDBCRelation => j.jdbcOptions.tableOrQuery
+          case _ => throw DexException("unsupported")
+        }
+      case j: Join =>
+        // todo: turn left semi join to a subquery
+        val leftSubquery = convertToSQL(j.left)
+        val rightSubquery = convertToSQL(j.right)
+        // Maybe a debugging hell to use natural join
+        // alias for subqueries?
+        s"($leftSubquery) NATURAL JOIN ($rightSubquery)"
+      case c: CashTSelect =>
+        val firstLabel = dialect.compileValue(s"${c.predicate}~1")
+        val firstCounter = dialect.compileValue(1)
+        s"""
+           |WITH cash_select(value, counter) RECURSIVE AS (
+           |  SELECT value, $firstCounter  FROM t_select WEHRE rid = $firstLabel
+           |  UNION ALL
+           |  SELECT t_select.value, cash_select.counter + 1 FROM cash_select, t_select
+           |  WHERE cash_token(${c.predicate}, cash_select.counter + 1) = t_select.rid
+           |)
+           |SELECT value FROM cash_select
+         """.stripMargin
+
+    }
+
+  }
 
   object UnresolveDexPlanAncestors extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = {
@@ -95,6 +172,14 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
           }
         case None =>
           plan
+      }
+    }
+  }
+
+  object RemoveDexPlanNode extends Rule[LogicalPlan] {
+    override def apply(plan: LogicalPlan): LogicalPlan = {
+      plan.transformDown {
+        case d: DexPlan => d.child
       }
     }
   }
@@ -219,6 +304,9 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
 
     private def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = analyze {
       plan match {
+        case d: DexPlan =>
+          // keep this annotation around
+          translatePlan(d.child, childView)
         case l: LogicalRelation =>
           l.relation match {
             case j: JDBCRelation =>
@@ -263,8 +351,6 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
             val joinView = translateFormula(JoinFormula, j.condition.get, leftView, isNegated = false)
             translatePlan(j.right, Some(joinView))
           }
-
-        case _: DexPlan => throw DexException("shouldn't get DexPlan in subtree of a DexPlan")
 
         case x => throw DexException("unsupported: " + x.toString)
       }
