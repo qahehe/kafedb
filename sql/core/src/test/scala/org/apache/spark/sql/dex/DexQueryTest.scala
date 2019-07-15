@@ -150,7 +150,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       .executeUpdate()
     connEnc.commit()
 
-    connEnc.prepareStatement("create table tselect (rid varchar, value varchar)")
+    connEnc.prepareStatement("create table tselect (label varchar, value varchar)")
       .executeUpdate()
     connEnc.prepareStatement(
       """
@@ -179,7 +179,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       .executeUpdate()
     connEnc.commit()
 
-    connEnc.prepareStatement("create table tm (rid varchar, value varchar)")
+    connEnc.prepareStatement("create table tm (label varchar, value varchar)")
       .executeUpdate()
     connEnc.prepareStatement(
       """

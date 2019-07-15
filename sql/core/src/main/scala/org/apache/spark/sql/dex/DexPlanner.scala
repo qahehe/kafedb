@@ -455,15 +455,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         (leftRidOrderAttr, rightRidOrderAttr) match {
           case (Some(l), None) =>
+            // "right" relation is a new relation to join
             val cashTm = CashTM(predicate, childView, tM, l)
             val cashTmProject = cashTm.output.collect {
-              case x: Attribute if x.name == "value" => Decrypt($"rid", x).as(rightRidOrder)
-              case x: Attribute if x.name != "rid" => x
+              case x: Attribute if x.name == "value" => Decrypt($"label", x).as(rightRidOrder)
+              case x: Attribute if x.name != "label" => x // remove label column
             }
             cashTm.select(cashTmProject: _*)
 
           case (Some(l), Some(r)) =>
-            val cashTm = CashTM(predicate, childView, tM, l).where(EqualTo(r, Decrypt($"rid", $"value")))
+            // "right" relation is a previously joined relation
+            // don't have extra "label" column
+            val cashTm = CashTM(predicate, childView, tM, l).where(EqualTo(r, Decrypt($"label", $"value")))
             val cashTmProject = childView.output
             cashTm.select(cashTmProject: _*)
 
@@ -524,9 +527,9 @@ case class CashTSelectExec(predicate: String, emm: SparkPlan) extends UnaryExecN
   private val cashCondition: Int => InternalRow => Boolean = {
     cashCounter => emmRow => {
       val lhs = UTF8String.fromString(s"$predicate~$cashCounter")
-      val emmRidCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
-      val ordering = TypeUtils.getInterpretedOrdering(emmRidCol.dataType)
-      val rhs = emmRidCol.eval(emmRow)
+      val emmLabelCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
+      val ordering = TypeUtils.getInterpretedOrdering(emmLabelCol.dataType)
+      val rhs = emmLabelCol.eval(emmRow)
       ordering.equiv(lhs, rhs)
     }
   }
@@ -568,7 +571,7 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
     */
   override protected def doExecute(): RDD[InternalRow] = {
     val childViewRidCol = BindReferences.bindReference(childViewRid, childView.output).asInstanceOf[BoundReference]
-    val emmRidCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
+    val emmLabelCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
     val emmValueCol = BindReferences.bindReference(emm.output.apply(1), emm.output).asInstanceOf[BoundReference]
 
     // TODO: use iterator to eliminate row copying. See ShuffledHashjoinExec.
@@ -578,7 +581,7 @@ case class CashTMExec(predicate: String, childView: SparkPlan, emm: SparkPlan, c
 
     // Copy emm rows through JDBC cursors before wide dependency operation like join below
     val emmRdd =
-      emm.execute().map(row => (emmRidCol.eval(row).asInstanceOf[UTF8String], row.copy()))
+      emm.execute().map(row => (emmLabelCol.eval(row).asInstanceOf[UTF8String], row.copy()))
 
     var childViewRddToCount = childViewRdd
     Iterator.from(0).map { i =>
