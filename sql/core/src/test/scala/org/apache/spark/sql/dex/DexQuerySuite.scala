@@ -29,7 +29,7 @@ class DexQuerySuite extends DexQueryTest {
   private lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
 
   private def checkDexFor(query: DataFrame): Unit = {
-    query.explain(extended = true)
+    //query.explain(extended = true)
     //val result = query.collect()
     //println("query: " ++ result.mkString)
 

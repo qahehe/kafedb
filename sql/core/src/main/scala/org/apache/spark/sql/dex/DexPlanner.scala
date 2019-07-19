@@ -77,7 +77,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     Batch("Unresolve Non-Dex Part of Query", Once, UnresolveDexPlanAncestors),
     Batch("Translate Dex Query", Once, TranslateDexQuery),
     Batch("Delay Data Table", Once, DelayDataTableLeftSemiJoinAfterFilters),
-    Batch("Remove DexPlan node", Once, RemoveDexPlanNode)
+    //Batch("Remove DexPlan node", Once, RemoveDexPlanNode)
+    Batch("Convert to SQL String", Once, ConvertDexPlanToSQL)
   )
 
   /*
@@ -113,6 +114,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       plan.transformDown {
         case p: DexPlan =>
           val sql = convertToSQL(p)
+          println(sql)
           val jdbcOption = new JDBCOptions(Map(
             JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
             JDBCOptions.JDBC_QUERY_STRING -> sql))
@@ -143,7 +145,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val firstCounter = dialect.compileValue(1)
         s"""
            |WITH dex_rid_filter(value, counter) RECURSIVE AS (
-           |  SELECT value, $firstCounter  FROM t_select WEHRE rid = $firstLabel
+           |  SELECT value, $firstCounter  FROM t_select WHERE rid = $firstLabel
            |  UNION ALL
            |  SELECT t_select.value, dex_rid_filter.counter + 1 FROM dex_rid_filter, t_select
            |  WHERE dex_token(${c.predicate}, dex_rid_filter.counter + 1) = t_select.rid
@@ -264,7 +266,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
   object TranslateDexQuery extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = {
-      plan transformDown {
+      plan transformUp {
         case p: DexPlan =>
           val translator = new DexPlanTranslator(p)
           translator.translate
@@ -288,8 +290,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     private lazy val output = dexPlan.output.map(translateAttribute)
 
-    def translate: LogicalPlan = analyze {
-      val newPlan = translatePlan(dexPlan.child, None)
+    def translate: LogicalPlan = {
+      // We want to preserve the DexPlan nodes during the translation process because we will use them to determine
+      // boundaries for non-Dex and Dex queries for SQL conversion later.
+      // But we need to be careful when preserving the DexPlan due to recursive transformation of the tree.
+      // There would be trouble if we did 'val newPlan = tranlsatePlan(dexPlan, None)' i.e. let the translatePlan()
+      // to add back the DexPlan, because translatePlan() is recursive and it would have a hard time to differentiate
+      // the root DexPlan to preserve and any subtree DexPlan (already translated, hence to ignore).
+      // So we have to add back the root DexPlan here to avoid the ambiguity.
+      val newPlan = DexPlan(translatePlan(dexPlan.child, None))
       newPlan.select(output: _*)
     }
 
@@ -299,14 +308,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     private def attrEncOf(attr: Attribute): Attribute = $"${attr.name}_prf"
 
-    private def analyze(plan: LogicalPlan) =
-      sparkSession.sessionState.analyzer.executeAndCheck(plan)
+    //private def analyze(plan: LogicalPlan) =
+    //  sparkSession.sessionState.analyzer.executeAndCheck(plan)
 
-    private def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = analyze {
+    private def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = {
       plan match {
         case d: DexPlan =>
-          // keep this annotation around
-          translatePlan(d.child, childView)
+          // Because we're transforming up the tree, we may encounter subtree DexPlan that has already been translated.
+          // So here we simply return it as is
+          d
         case l: LogicalRelation =>
           l.relation match {
             case j: JDBCRelation =>
@@ -362,7 +372,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       }).reduceOption(_ ++ _).getOrElse(AttributeSet.empty)
     }
 
-    private def translateFormula(formulaType: FormulaType, condition: Expression, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = analyze {
+    private def translateFormula(formulaType: FormulaType, condition: Expression, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       condition match {
         case p: EqualTo => formulaType match {
           case FilterFormula =>
@@ -459,7 +469,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l)
             val ridJoinProject = ridJoin.output.collect {
               case x: Attribute if x.name == "value" => Decrypt($"label", x).as(rightRidOrder)
-              case x: Attribute if x.name != "label" => x // remove label column
+              case x: Attribute if x.name != "label" => // remove label column
+                // Unresolve all but the emm attributes.  This is overshooting a bit, because we only care about
+                // the case for natural joining the base table for joining attributes (rid_1#33, rid_1#90),
+                // but the optimizer will insert a new project node on top of this join and only takes one of the
+                // join columns, say rid_1#33.  This step happens AFTER DexPlan translation, so to go around this
+                // we need to unresolve all the output attributes from the existing projection to allow
+                // later on resolution onto the new project.
+                UnresolvedAttribute(x.name)
             }
             ridJoin.select(ridJoinProject: _*)
 
