@@ -81,6 +81,10 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     Batch("Convert to SQL String", Once, ConvertDexPlanToSQL)
   )
 
+  private def analyze(plan: LogicalPlan) =
+    sparkSession.sessionState.analyzer.executeAndCheck(plan)
+
+
   /*
   == Dex Plan ==
 Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
@@ -114,11 +118,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       plan.transformDown {
         case p: DexPlan =>
           val sql = convertToSQL(p)
-          println(sql)
+          logInfo(sql)
           val jdbcOption = new JDBCOptions(Map(
             JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
             JDBCOptions.JDBC_QUERY_STRING -> sql))
-          val baseRelation = JDBCRelation(p.schema, Array.empty, jdbcOption)(sparkSession)
+          // analyze DexPlan to resolve its output attributes.  Their dataTypes are needed for creating LogicalRelation
+          val baseRelation = JDBCRelation(analyze(p).schema, Array.empty, jdbcOption)(sparkSession)
           LogicalRelation(baseRelation)
       }
     }
@@ -307,9 +312,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
 
     private def attrEncOf(attr: Attribute): Attribute = $"${attr.name}_prf"
-
-    //private def analyze(plan: LogicalPlan) =
-    //  sparkSession.sessionState.analyzer.executeAndCheck(plan)
 
     private def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = {
       plan match {
