@@ -207,6 +207,16 @@ case class Alias(child: Expression, name: String)(
     val qualifierPrefix = if (qualifier.nonEmpty) qualifier.mkString(".") + "." else ""
     s"${child.sql} AS $qualifierPrefix${quoteIdentifier(name)}"
   }
+
+  override def dialectSql(quoteIdent: String => String): String = {
+    val qualifierPrefix = if (qualifier.nonEmpty) {
+      qualifier.map(quoteIdent).mkString(".") + "."
+    }
+    else {
+      ""
+    }
+    s"$qualifierPrefix${quoteIdent(name)}"
+  }
 }
 
 /**
@@ -331,6 +341,16 @@ case class AttributeReference(
   override def sql: String = {
     val qualifierPrefix = if (qualifier.nonEmpty) qualifier.mkString(".") + "." else ""
     s"$qualifierPrefix${quoteIdentifier(name)}"
+  }
+
+  override def dialectSql(quoteIdent: String => String): String = {
+    val qualifierPrefix = if (qualifier.nonEmpty) {
+      qualifier.map(quoteIdent).mkString(".") + "."
+    }
+    else {
+      ""
+    }
+    s"$qualifierPrefix${quoteIdent(name)}"
   }
 }
 

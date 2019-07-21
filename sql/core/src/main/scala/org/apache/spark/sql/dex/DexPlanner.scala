@@ -18,6 +18,7 @@ package org.apache.spark.sql.dex
 // scalastyle:off
 
 import org.apache.spark.rdd.{MapPartitionsRDD, RDD}
+import org.apache.spark.sql.catalyst.util._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.UnresolvedAttribute
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
@@ -25,7 +26,7 @@ import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{Alias, And, Attribute, AttributeReference, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, In, IsNotNull, JoinedRow, Literal, NamedExpression, Not, Or, Predicate, PredicateHelper}
+import org.apache.spark.sql.catalyst.expressions.{Alias, And, Attribute, AttributeReference, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, EqualTo, ExpectsInputTypes, ExprId, Expression, In, IsNotNull, JoinedRow, Literal, NamedExpression, Not, Or, Predicate, PredicateHelper, UnsafeProjection}
 import org.apache.spark.sql.catalyst.planning.PhysicalOperation
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -74,11 +75,15 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
   /** Defines a sequence of rule batches, to be overridden by the implementation. */
   override protected def batches: Seq[Batch] = Seq(
     // todo first need to move/coallese the DexPlan operators
-    Batch("Unresolve Non-Dex Part of Query", Once, UnresolveDexPlanAncestors),
-    Batch("Translate Dex Query", Once, TranslateDexQuery),
-    Batch("Delay Data Table", Once, DelayDataTableLeftSemiJoinAfterFilters),
-    //Batch("Remove DexPlan node", Once, RemoveDexPlanNode)
-    Batch("Convert to SQL String", Once, ConvertDexPlanToSQL)
+    Batch("Preprocess Dex query", Once, UnresolveDexPlanAncestors),
+    Batch("Translate Dex query", Once,
+      TranslateDexQuery,
+      DelayDataTableLeftSemiJoinAfterFilters
+    ),
+    Batch("Postprocess Dex query", Once,
+      RemoveDexPlanNode
+      //ConvertDexPlanToSQL
+    )
   )
 
   private def analyze(plan: LogicalPlan) =
@@ -115,15 +120,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private val dialect = JdbcDialects.get(JDBCOptions.JDBC_URL)
 
     override def apply(plan: LogicalPlan): LogicalPlan = {
+      log.warn("== To be converted to sql ==\n" + plan.treeString(verbose = true))
       plan.transformDown {
-        case p: DexPlan =>
+        case unresolved: DexPlan =>
+          // Don't resolve the ancestors of DexPlan, because they need to be resolve once the new LogicalRelation
+          // for the DexPlan SQL has been resolved.
+          // analyze DexPlan to resolve its output attributes.  Their dataTypes are needed for creating LogicalRelation
+          val p = analyze(unresolved)
           val sql = convertToSQL(p)
-          logInfo(sql)
           val jdbcOption = new JDBCOptions(Map(
             JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
             JDBCOptions.JDBC_QUERY_STRING -> sql))
-          // analyze DexPlan to resolve its output attributes.  Their dataTypes are needed for creating LogicalRelation
-          val baseRelation = JDBCRelation(analyze(p).schema, Array.empty, jdbcOption)(sparkSession)
+          val baseRelation = JDBCRelation(p.schema, Array.empty, jdbcOption)(sparkSession)
           LogicalRelation(baseRelation)
       }
     }
@@ -131,7 +139,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private def convertToSQL(plan: LogicalPlan): String = plan match {
       case p: DexPlan => convertToSQL(p.child)
       case p: Project =>
-        val projectList = p.projectList.map(_.sql)
+        val projectList = p.projectList.map(_.dialectSql(dialect.quoteIdentifier))
         s"SELECT ${projectList} FROM " ++ convertToSQL(p.child)
       case p: LogicalRelation =>
         p.relation match {
@@ -146,19 +154,30 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // alias for subqueries?
         s"($leftSubquery) NATURAL JOIN ($rightSubquery)"
       case c: DexRidFilter =>
-        val firstLabel = dialect.compileValue(s"${c.predicate}~1")
-        val firstCounter = dialect.compileValue(1)
+        val (labelPrfKey, valueDecKey) = emmKeys(c.predicate)
+        val firstLabel = nextLabel(labelPrfKey, "1")
+        val valueCol = c.output.find(_.name == "value").get
         s"""
-           |WITH dex_rid_filter(value, counter) RECURSIVE AS (
-           |  SELECT value, $firstCounter  FROM t_select WHERE rid = $firstLabel
+           |(WITH dex_rid_filter(value, counter) RECURSIVE AS (
+           |  SELECT t_select.value, 1  FROM t_select WHERE rid = $firstLabel
            |  UNION ALL
            |  SELECT t_select.value, dex_rid_filter.counter + 1 FROM dex_rid_filter, t_select
-           |  WHERE dex_token(${c.predicate}, dex_rid_filter.counter + 1) = t_select.rid
+           |  WHERE ${nextLabel(labelPrfKey, "dex_rid_filter.counter + 1")} = t_select.rid
            |)
-           |SELECT value FROM dex_rid_filter
+           |SELECT ${decryptCol(valueDecKey, valueCol.name)} FROM dex_rid_filter)
          """.stripMargin
 
     }
+
+    def emmKeys(predicate: String): (String, String) =
+      (dialect.compileValue(predicate).asInstanceOf[String],
+        dialect.compileValue(predicate).asInstanceOf[String])
+
+    def nextLabel(labelPrfKey: String, nextCounter: String): String =
+      s"${dialect.compileValue(labelPrfKey)} || ${dialect.compileValue("~")} || ${dialect.compileValue(nextCounter)}"
+
+    def decryptCol(decKey: String, col: String): String =
+      s"decrypt(${dialect.compileValue(decKey)}, $col)"
 
   }
 
@@ -308,7 +327,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
 
     private def translateAttribute(attr: Attribute): NamedExpression = {
-      Decrypt(metadataDecKey, attrEncOf(attr)).cast(attr.dataType).as(attr.name)
+      DexDecrypt(metadataDecKey, attrEncOf(attr)).cast(attr.dataType).as(attr.name)
     }
 
     private def attrEncOf(attr: Attribute): Attribute = $"${attr.name}_prf"
@@ -444,7 +463,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     private def dexFilterOf(predicateTableName: String, predicate: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val ridFilter = DexRidFilter(predicate, tFilter)
-        .select(Decrypt(s"$emmDecKeyPrefix~$predicate", $"value").as(ridOrder))
+        .select(DexDecrypt(s"value_dec_key", $"value").as(ridOrder))
 
       if (isNegated) {
         childView.join(ridFilter, UsingJoin(LeftAnti, Seq(ridOrder)))
@@ -470,8 +489,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             // "right" relation is a new relation to join
             val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l)
             val ridJoinProject = ridJoin.output.collect {
-              case x: Attribute if x.name == "value" => Decrypt($"label", x).as(rightRidOrder)
-              case x: Attribute if x.name != "label" => // remove label column
+              case x: Attribute if x.name == "value" => DexDecrypt($"value_dec_key", x).as(rightRidOrder)
+              case x: Attribute if x.name != "value_dec_key" => // remove extra value_dec_key column
                 // Unresolve all but the emm attributes.  This is overshooting a bit, because we only care about
                 // the case for natural joining the base table for joining attributes (rid_1#33, rid_1#90),
                 // but the optimizer will insert a new project node on top of this join and only takes one of the
@@ -484,8 +503,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
           case (Some(l), Some(r)) =>
             // "right" relation is a previously joined relation
-            // don't have extra "label" column
-            val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, Decrypt($"label", $"value")))
+            // don't have extra "value_dec_key" column
+            val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
             val ridJoinProject = childView.output
             ridJoin.select(ridJoinProject: _*)
 
@@ -520,7 +539,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 }
 
-case class Decrypt(key: Expression, value: Expression) extends BinaryExpression with ExpectsInputTypes with CodegenFallback {
+case class DexDecrypt(key: Expression, value: Expression) extends BinaryExpression with ExpectsInputTypes with CodegenFallback {
 
   override def left: Expression = key
   override def right: Expression = value
@@ -567,7 +586,12 @@ case class DexRidFilterExec(predicate: String, emm: SparkPlan) extends UnaryExec
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
 
-  override def output: Seq[Attribute] = emm.output
+  override def output: Seq[Attribute] = emm.output.collect {
+    case x: Attribute if x.name == "label" =>
+      // rename column "label"
+      x.withName("value_dec_key")
+    case x => x
+  }
 
   /*override def requiredChildDistribution: Seq[Distribution] = emmType match {
     case EmmTSelect =>
@@ -619,7 +643,12 @@ case class DexRidCorrelatedJoinExec(predicate: String, childView: SparkPlan, emm
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
 
-  override def output: Seq[Attribute] = left.output ++ right.output
+  override def output: Seq[Attribute] = left.output ++ (right.output.collect {
+    case x: Attribute if x.name == "label" =>
+      // rename column "label"
+      x.withName("value_dec_key")
+    case x => x
+  })
 }
 
 

@@ -245,6 +245,11 @@ abstract class Expression extends TreeNode[Expression] {
     val childrenSQL = children.map(_.sql).mkString(", ")
     s"$prettyName($childrenSQL)"
   }
+
+  def dialectSql(quoteIdent: String => String): String = {
+    val childrenSQL = children.map(_.dialectSql(quoteIdent)).mkString(", ")
+    s"$prettyName($childrenSQL)"
+  }
 }
 
 

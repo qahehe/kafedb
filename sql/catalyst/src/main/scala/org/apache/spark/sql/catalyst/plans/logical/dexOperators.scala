@@ -23,7 +23,10 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet}
 case class DexRidFilter(predicate: String, emm: LogicalPlan) extends UnaryNode {
 
   // todo: for t_m of joinning a new table, need to add new rid to output
-  override def output: Seq[Attribute] = emm.output
+  override def output: Seq[Attribute] = emm.output.collect {
+    case x: Attribute if x.name == "label" => x.withName("value_dec_key")
+    case x => x
+  }
 
   override def child: LogicalPlan = emm
 
@@ -34,7 +37,7 @@ case class DexRidFilter(predicate: String, emm: LogicalPlan) extends UnaryNode {
   // e.g. tselect.rid can be projected away immediately because they think
   // we're not using it anywhere in the query plan, though we do in doExecute()
   // syntatically we need to let the optimizer know
-  override def references: AttributeSet = super.references ++ AttributeSet(emm.output)
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
 case class DexRidCorrelateJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
@@ -42,8 +45,11 @@ case class DexRidCorrelateJoin(predicate: String, childView: LogicalPlan, emm: L
 
   override def right: LogicalPlan = emm
 
-  override def output: Seq[Attribute] = left.output ++ right.output
+  override def output: Seq[Attribute] = left.output ++ (right.output.collect {
+    case x: Attribute if x.name == "label" => x.withName("value_dec_key")
+    case x => x
+  })
 
-  override def references: AttributeSet = super.references ++ AttributeSet(emm.output)
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
