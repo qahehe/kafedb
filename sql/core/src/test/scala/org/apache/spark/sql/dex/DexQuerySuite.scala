@@ -34,7 +34,7 @@ class DexQuerySuite extends DexQueryTest {
     //println("query: " ++ result.mkString)
 
     val queryDex = query.dex
-    queryDex.explain(extended = true)
+    //queryDex.explain(extended = true)
     //val resultDex = queryDex.collect()
     //println("dex: " ++ resultDex.mkString)
 
