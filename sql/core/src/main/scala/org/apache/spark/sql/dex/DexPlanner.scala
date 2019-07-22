@@ -81,8 +81,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
       DelayDataTableLeftSemiJoinAfterFilters
     ),
     Batch("Postprocess Dex query", Once,
-      RemoveDexPlanNode
-      //ConvertDexPlanToSQL
+      //RemoveDexPlanNode
+      ConvertDexPlanToSQL
     )
   )
 
@@ -117,6 +117,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
    */
   object ConvertDexPlanToSQL extends Rule[LogicalPlan] {
 
+    private val genSubqueryName = "__dex_gen_subquery_name"
+    private val curId = new java.util.concurrent.atomic.AtomicLong(0L)
+
     private val dialect = JdbcDialects.get(JDBCOptions.JDBC_URL)
 
     override def apply(plan: LogicalPlan): LogicalPlan = {
@@ -139,8 +142,13 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private def convertToSQL(plan: LogicalPlan): String = plan match {
       case p: DexPlan => convertToSQL(p.child)
       case p: Project =>
-        val projectList = p.projectList.map(_.dialectSql(dialect.quoteIdentifier))
-        s"SELECT ${projectList} FROM " ++ convertToSQL(p.child)
+        val projectList = p.projectList.map {
+          case Alias(d: DexDecrypt, name) =>
+            decryptCol(d.left.dialectSql(dialect.quoteIdentifier), d.right.dialectSql(dialect.quoteIdentifier))
+          case x =>
+            x.dialectSql(dialect.quoteIdentifier)
+        } mkString ", "
+        s"SELECT $projectList FROM " ++ convertToSQL(p.child)
       case p: LogicalRelation =>
         p.relation match {
           case j: JDBCRelation => j.jdbcOptions.tableOrQuery
@@ -152,32 +160,37 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val rightSubquery = convertToSQL(j.right)
         // Maybe a debugging hell to use natural join
         // alias for subqueries?
-        s"($leftSubquery) NATURAL JOIN ($rightSubquery)"
+        s"($leftSubquery) AS ${generateSubqueryName()} NATURAL JOIN ($rightSubquery) AS ${generateSubqueryName()}"
       case c: DexRidFilter =>
         val (labelPrfKey, valueDecKey) = emmKeys(c.predicate)
         val firstLabel = nextLabel(labelPrfKey, "1")
-        val valueCol = c.output.find(_.name == "value").get
+        val outputCols = c.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val emm = dialect.quoteIdentifier(tFilter.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         s"""
-           |(WITH dex_rid_filter(value, counter) RECURSIVE AS (
-           |  SELECT t_select.value, 1  FROM t_select WHERE rid = $firstLabel
+           |(WITH RECURSIVE dex_rid_filter(value_dec_key, value, counter) AS (
+           |  SELECT $valueDecKey, $emm.value, 1  FROM $emm WHERE label = $firstLabel
            |  UNION ALL
-           |  SELECT t_select.value, dex_rid_filter.counter + 1 FROM dex_rid_filter, t_select
-           |  WHERE ${nextLabel(labelPrfKey, "dex_rid_filter.counter + 1")} = t_select.rid
+           |  SELECT $valueDecKey, $emm.value, dex_rid_filter.counter + 1 FROM dex_rid_filter, $emm
+           |  WHERE ${nextLabel(labelPrfKey, "dex_rid_filter.counter + 1")} = $emm.label
            |)
-           |SELECT ${decryptCol(valueDecKey, valueCol.name)} FROM dex_rid_filter)
+           |SELECT $outputCols FROM dex_rid_filter) AS ${generateSubqueryName()}
          """.stripMargin
 
     }
 
-    def emmKeys(predicate: String): (String, String) =
+    private def emmKeys(predicate: String): (String, String) =
       (dialect.compileValue(predicate).asInstanceOf[String],
         dialect.compileValue(predicate).asInstanceOf[String])
 
-    def nextLabel(labelPrfKey: String, nextCounter: String): String =
-      s"${dialect.compileValue(labelPrfKey)} || ${dialect.compileValue("~")} || ${dialect.compileValue(nextCounter)}"
+    private def nextLabel(labelPrfKey: String, nextCounter: String): String =
+      s"$labelPrfKey || ${dialect.compileValue("~")} || $nextCounter"
 
-    def decryptCol(decKey: String, col: String): String =
-      s"decrypt(${dialect.compileValue(decKey)}, $col)"
+    private def decryptCol(decKey: String, col: String): String =
+      // todo: use SQL decrypt like s"decrypt($decKey, $col)"
+      s"regexp_matches($col, '(.+)_enc$$')"
+
+    private def generateSubqueryName() =
+      s"${genSubqueryName}_${curId.getAndIncrement()}"
 
   }
 
@@ -463,7 +476,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     private def dexFilterOf(predicateTableName: String, predicate: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val ridFilter = DexRidFilter(predicate, tFilter)
-        .select(DexDecrypt(s"value_dec_key", $"value").as(ridOrder))
+        .select(DexDecrypt($"value_dec_key", $"value").as(ridOrder))
 
       if (isNegated) {
         childView.join(ridFilter, UsingJoin(LeftAnti, Seq(ridOrder)))

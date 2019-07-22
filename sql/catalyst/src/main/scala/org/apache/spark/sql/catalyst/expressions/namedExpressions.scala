@@ -215,7 +215,7 @@ case class Alias(child: Expression, name: String)(
     else {
       ""
     }
-    s"$qualifierPrefix${quoteIdent(name)}"
+    s"${child.dialectSql(quoteIdent)} AS $qualifierPrefix${quoteIdent(name)}"
   }
 }
 
