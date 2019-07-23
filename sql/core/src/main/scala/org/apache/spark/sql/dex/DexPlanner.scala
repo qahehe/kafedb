@@ -118,6 +118,32 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
        FROM udf_select(testdata2~a~2)
      ) AS ???
    )
+
+   'Project [cast(dexdecrypt(metadata_dec_key, 'a_prf) as int) AS a#26, cast(dexdecrypt(metadata_dec_key, 'b_prf) as int) AS b#27, cast(dexdecrypt(metadata_dec_key, 'c_prf) as int) AS c#28, cast(dexdecrypt(metadata_dec_key, 'd_prf) as int) AS d#29]
++- 'DexPlan
+   +- 'Join NaturalJoin(LeftOuter)
+      :- 'Project ['rid_0, 'a_prf, 'b_prf, dexdecrypt('value_dec_key, value#16) AS rid_1#21]
+      :  +- DexRidCorrelatedJoin testdata2~b~testdata3~c, rid_0#20: string
+      :     :- Project [rid#17 AS rid_0#20, a_prf#18, b_prf#19]
+      :     :  +- Relation[rid#17,a_prf#18,b_prf#19] JDBCRelation(testdata2_prf) [numPartitions=1]
+      :     +- Relation[label#15,value#16] JDBCRelation(t_correlated_join) [numPartitions=1]
+      +- Project [rid#22 AS rid_1#25, c_prf#23, d_prf#24]
+         +- Relation[rid#22,c_prf#23,d_prf#24] JDBCRelation(testdata3_prf) [numPartitions=1]
+
+         'Project [cast(dexdecrypt(metadata_dec_key, 'a_prf) as int) AS a#27, cast(dexdecrypt(metadata_dec_key, 'b_prf) as int) AS b#28, cast(dexdecrypt(metadata_dec_key, 'c_prf) as int) AS c#29, cast(dexdecrypt(metadata_dec_key, 'd_prf) as int) AS d#30]
++- 'DexPlan
+   +- 'Join NaturalJoin(LeftOuter)
+      :- 'Project ['rid_0, 'a_prf, 'b_prf, 'rid_0, dexdecrypt('value_dec_key, value#16) AS rid_1#22]
+      :  +- 'DexRidCorrelatedJoin testdata2~b~testdata3~c, rid_0#20: string
+      :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+      :     :  :- Project [rid#17 AS rid_0#20, a_prf#18, b_prf#19]
+      :     :  :  +- Relation[rid#17,a_prf#18,b_prf#19] JDBCRelation(testdata2_prf) [numPartitions=1]
+      :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#21]
+      :     :     +- DexRidFilter testdata2~a~2
+      :     :        +- Relation[label#13,value#14] JDBCRelation(t_filter) [numPartitions=1]
+      :     +- Relation[label#15,value#16] JDBCRelation(t_correlated_join) [numPartitions=1]
+      +- Project [rid#23 AS rid_1#26, c_prf#24, d_prf#25]
+         +- Relation[rid#23,c_prf#24,d_prf#25] JDBCRelation(testdata3_prf) [numPartitions=1]
    */
   object ConvertDexPlanToSQL extends Rule[LogicalPlan] {
 
@@ -159,7 +185,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           case x =>
             x.dialectSql(dialect.quoteIdentifier)
         } mkString ", "
-        s"SELECT $projectList FROM " ++ convertToSQL(p.child)
+        s"""
+           |SELECT $projectList
+           |FROM ${convertToSQL(p.child)}
+          """.stripMargin
       case p: LogicalRelation =>
         p.relation match {
           case j: JDBCRelation => j.jdbcOptions.tableOrQuery
@@ -171,25 +200,68 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val rightSubquery = convertToSQL(j.right)
         // Maybe a debugging hell to use natural join
         // alias for subqueries?
-        s"($leftSubquery) AS ${generateSubqueryName()} NATURAL JOIN ($rightSubquery) AS ${generateSubqueryName()}"
-      case c: DexRidFilter =>
-        val (labelPrfKey, valueDecKey) = emmKeys(c.predicate)
+        s"""($leftSubquery) AS ${generateSubqueryName()}
+           |
+           |NATURAL JOIN
+           |
+           |($rightSubquery) AS ${generateSubqueryName()}
+          """.stripMargin
+      case f: DexRidFilter =>
+        val (labelPrfKey, valueDecKey) = emmKeys(f.predicate)
         val firstLabel = nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")
-        val outputCols = c.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val outputCols = f.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
         val emm = dialect.quoteIdentifier(tFilter.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         s"""
-           |(WITH RECURSIVE dex_rid_filter(value_dec_key, value, counter) AS (
-           |  SELECT $valueDecKey, $emm.value, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabel
-           |  UNION ALL
-           |  SELECT $valueDecKey, $emm.value, dex_rid_filter.counter + 1 FROM dex_rid_filter, $emm
-           |  WHERE ${nextLabel(labelPrfKey, "dex_rid_filter.counter + 1")} = $emm.label
-           |)
-           |SELECT $outputCols FROM dex_rid_filter) AS ${generateSubqueryName()}
+           |(
+           |  WITH RECURSIVE dex_rid_filter(value_dec_key, value, counter) AS (
+           |    SELECT $valueDecKey, $emm.value, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabel
+           |    UNION ALL
+           |    SELECT $valueDecKey, $emm.value, dex_rid_filter.counter + 1 FROM dex_rid_filter, $emm
+           |    WHERE ${nextLabel(labelPrfKey, "dex_rid_filter.counter + 1")} = $emm.label
+           |  )
+           |  SELECT $outputCols FROM dex_rid_filter
+           |) AS ${generateSubqueryName()}
+         """.stripMargin
+      case j: DexRidCorrelatedJoin =>
+        val leftSubquery = convertToSQL(j.left)
+        val leftRid = j.childViewRid.dialectSql(dialect.quoteIdentifier)
+        val (labelPrfKey, valueDecKey) = emmKeysOfRidCol(leftRid, j.predicate)
+        val emm = dialect.quoteIdentifier(tCorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
+        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        s"""
+           |(
+           |  WITH RECURSIVE left_subquery_all_cols AS (
+           |    SELECT * FROM ($leftSubquery) AS ${generateSubqueryName()}
+           |  ),
+           |  left_subquery($leftRid, label_prf_key, value_dec_key) AS(
+           |    SELECT $leftRid, $labelPrfKey, $valueDecKey FROM left_subquery_all_cols
+           |  ),
+           |  dex_rid_correlated_join($leftRid, label_prf_key, value_dec_key, value, counter) AS (
+           |    SELECT left_subquery.*, $emm.value, ${DexConstants.cashCounterStart} AS counter
+           |    FROM left_subquery, $emm
+           |    WHERE $emm.label =
+           |      ${nextLabel("label_prf_key", s"${DexConstants.cashCounterStart}")}
+           |
+           |    UNION ALL
+           |
+           |    SELECT $leftRid, label_prf_key, value_dec_key, $emm.value, counter + 1 AS counter
+           |    FROM dex_rid_correlated_join, $emm
+           |    WHERE $emm.label = ${nextLabel("label_prf_key", "counter + 1")}
+           |  )
+           |  SELECT $outputCols FROM dex_rid_correlated_join NATURAL JOIN left_subquery_all_cols
+           |) AS ${generateSubqueryName()}
          """.stripMargin
 
     }
 
+    private def emmKeysOfRidCol(ridCol: String, predicate: String): (String, String) = {
+      // todo: append 1 and 2 to form two keys
+      val predRidCol = s"'$predicate' || '~' || $ridCol"
+      (predRidCol, predRidCol)
+    }
+
     private def emmKeys(predicate: String): (String, String) =
+      // todo: append 1 and 2 to form two keys
       (dialect.compileValue(predicate).asInstanceOf[String],
         dialect.compileValue(predicate).asInstanceOf[String])
 
@@ -511,7 +583,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         (leftRidOrderAttr, rightRidOrderAttr) match {
           case (Some(l), None) =>
             // "right" relation is a new relation to join
-            val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l)
+            val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
             val ridJoinProject = ridJoin.output.collect {
               case x: Attribute if x.name == "value" => DexDecrypt($"value_dec_key", x).as(rightRidOrder)
               case x: Attribute if x.name != "value_dec_key" => // remove extra value_dec_key column
@@ -528,7 +600,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           case (Some(l), Some(r)) =>
             // "right" relation is a previously joined relation
             // don't have extra "value_dec_key" column
-            val ridJoin = DexRidCorrelateJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
+            val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
             val ridJoinProject = childView.output
             ridJoin.select(ridJoinProject: _*)
 

@@ -40,7 +40,7 @@ case class DexRidFilter(predicate: String, emm: LogicalPlan) extends UnaryNode {
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
-case class DexRidCorrelateJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
+case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = childView
 
   override def right: LogicalPlan = emm

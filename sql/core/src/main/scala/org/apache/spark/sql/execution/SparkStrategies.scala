@@ -537,7 +537,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
     override def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
       case DexRidFilter(predicate, emm) =>
         DexRidFilterExec(predicate, planLater(emm)) :: Nil
-      case DexRidCorrelateJoin(predicate, childView, emm, childViewRid) =>
+      case DexRidCorrelatedJoin(predicate, childView, emm, childViewRid) =>
         DexRidCorrelatedJoinExec(predicate, planLater(childView), planLater(emm), childViewRid) :: Nil
       case _ =>
         Nil
