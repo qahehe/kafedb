@@ -227,7 +227,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val leftRid = j.childViewRid.dialectSql(dialect.quoteIdentifier)
         val (labelPrfKey, valueDecKey) = emmKeysOfRidCol(leftRid, j.predicate)
         val emm = dialect.quoteIdentifier(tCorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
-        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val outputCols = j.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
         s"""
            |(
            |  WITH RECURSIVE left_subquery_all_cols AS (
@@ -595,7 +595,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                 // later on resolution onto the new project.
                 UnresolvedAttribute(x.name)
             }
-            ridJoin.select(ridJoinProject: _*)
+            // Need to deduplicate ridJoinProject because left subquery might have the same attribute name
+            // as the right subquery, such as simple one filter one join case where rid_0 are from both
+            // the filter operator and the join operator.
+            ridJoin.select(ridJoinProject.distinct: _*)
 
           case (Some(l), Some(r)) =>
             // "right" relation is a previously joined relation

@@ -45,10 +45,10 @@ case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: 
 
   override def right: LogicalPlan = emm
 
-  override def output: Seq[Attribute] = left.output ++ (right.output.collect {
+  override def output: Seq[Attribute] = left.output ++ right.output.collect {
     case x: Attribute if x.name == "label" => x.withName("value_dec_key")
     case x => x
-  })
+  }
 
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
