@@ -595,6 +595,10 @@ abstract class BinaryOperator extends BinaryExpression with ExpectsInputTypes {
   }
 
   override def sql: String = s"(${left.sql} $sqlOperator ${right.sql})"
+
+  override def dialectSql(quoteIdent: String => String): String =
+    s"(${left.dialectSql(quoteIdent)} $sqlOperator ${right.dialectSql(quoteIdent)})"
+
 }
 
 

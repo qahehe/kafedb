@@ -46,6 +46,13 @@ object DexConstants {
   val cashCounterStart: Int = 0
 }
 
+object DexSQLFunctions {
+
+  def decryptCol(decKey: String, col: String): String =
+  // todo: use SQL decrypt like s"decrypt($decKey, $col)"
+    s"substring($col, '(.+)_enc$$')"
+}
+
 class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
 
   private val tFilter = LogicalRelation(
@@ -178,15 +185,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private def convertToSQL(plan: LogicalPlan): String = plan match {
       case p: DexPlan => convertToSQL(p.child)
       case p: Project =>
-        val projectList = p.projectList.map {
-          case Alias(d: DexDecrypt, name) =>
-            val decValue = decryptCol(d.left.dialectSql(dialect.quoteIdentifier), d.right.dialectSql(dialect.quoteIdentifier))
-            s"$decValue AS ${dialect.quoteIdentifier(name)}"
-          case x =>
-            x.dialectSql(dialect.quoteIdentifier)
-        } mkString ", "
+        val projectList = p.projectList.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
         s"""
-           |SELECT $projectList
+           |SELECT DISTINCT $projectList
            |FROM ${convertToSQL(p.child)}
           """.stripMargin
       case p: LogicalRelation =>
@@ -194,6 +195,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           case j: JDBCRelation => j.jdbcOptions.tableOrQuery
           case _ => throw DexException("unsupported")
         }
+      case f: Filter =>
+        // This is a regular filter, added for example for the case of join partially coincide with filters
+        s"""
+           |${convertToSQL(f.child)}
+           |WHERE ${f.condition.dialectSql(dialect.quoteIdentifier)}
+         """.stripMargin
       case j: Join =>
         // todo: turn left semi join to a subquery
         val leftSubquery = convertToSQL(j.left)
@@ -268,9 +275,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private def nextLabel(labelPrfKey: String, nextCounter: String): String =
       s"$labelPrfKey || ${dialect.compileValue("~")} || $nextCounter"
 
-    private def decryptCol(decKey: String, col: String): String =
-      // todo: use SQL decrypt like s"decrypt($decKey, $col)"
-      s"substring($col, '(.+)_enc$$')"
 
     private def generateSubqueryName() =
       s"${genSubqueryName}_${curId.getAndIncrement()}"
@@ -657,6 +661,10 @@ case class DexDecrypt(key: Expression, value: Expression) extends BinaryExpressi
           ${ev.value} = $value.split(UTF8String.fromString("_enc"), 0)[0];
       """)
   }*/
+
+  override def dialectSql(quoteIdent: String => String): String = {
+    DexSQLFunctions.decryptCol(left.dialectSql(quoteIdent), right.dialectSql(quoteIdent))
+  }
 }
 
 case class DexRidFilterExec(predicate: String, emm: SparkPlan) extends UnaryExecNode {
