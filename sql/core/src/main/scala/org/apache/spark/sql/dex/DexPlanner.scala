@@ -186,6 +186,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case p: DexPlan => convertToSQL(p.child)
       case p: Project =>
         val projectList = p.projectList.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        // Duplicate rows (rid_0, rid_1, ..., rid_k, cols...) happens when joins are handled independently and then
+        // joined together, like A join B join C = (A join B) join (B join C)
+        // Deduplication makes sense because the projection list always have one rid_i for relation i in some join,
+        // and each rid is unique by definition, so deduplication always corresponds to the final join result.
         s"""
            |SELECT DISTINCT $projectList
            |FROM ${convertToSQL(p.child)}
@@ -205,8 +209,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // todo: turn left semi join to a subquery
         val leftSubquery = convertToSQL(j.left)
         val rightSubquery = convertToSQL(j.right)
-        // Maybe a debugging hell to use natural join
-        // alias for subqueries?
         s"""($leftSubquery) AS ${generateSubqueryName()}
            |
            |NATURAL JOIN
