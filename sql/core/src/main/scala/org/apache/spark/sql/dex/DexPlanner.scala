@@ -74,9 +74,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
   private val emmTables = Set(tFilter, tCorrelatedJoin)
 
   //private val decKey = Literal.create("dummy_dec_key", StringType)
-  private val metadataDecKey = "metadata_dec_key"
-  private val emmDecKeyPrefix = "emm_dec_key_prefix"
-  private val attrPrfKey = Literal.create("dummy_attr_prf_key", StringType)
+  private val encKey = "enc"
+  private val prfKey = "prf"
 
   private val resolver = sparkSession.sqlContext.conf.resolver
 
@@ -234,7 +233,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case j: DexRidCorrelatedJoin =>
         val leftSubquery = convertToSQL(j.left)
         val leftRid = j.childViewRid.dialectSql(dialect.quoteIdentifier)
-        val (labelPrfKey, valueDecKey) = emmKeysOfRidCol(leftRid, j.predicate)
+        val (labelPrfKey, valueDecKey) = emmKeysOfRidCol(prfKey, leftRid, j.predicate)
         val emm = dialect.quoteIdentifier(tCorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         val outputCols = j.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
         s"""
@@ -263,8 +262,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     }
 
-    private def emmKeysOfRidCol(ridCol: String, predicate: String): (String, String) = {
+    private def emmKeysOfRidCol(prfKey: String, ridCol: String, predicate: String): (String, String) = {
       // todo: append 1 and 2 to form two keys
+      // todo: randomized the predicate using prfKey
       val predRidCol = s"'$predicate' || '~' || $ridCol"
       (predRidCol, predRidCol)
     }
@@ -429,10 +429,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
 
     private def translateAttribute(attr: Attribute): NamedExpression = {
-      DexDecrypt(metadataDecKey, attrEncOf(attr)).cast(attr.dataType).as(attr.name)
+      DexDecrypt(encKey, randomAttr(prfKey, attr)).cast(attr.dataType).as(attr.name)
     }
 
-    private def attrEncOf(attr: Attribute): Attribute = $"${attr.name}_prf"
+    private def randomAttr(prfKey: String, attr: Attribute): Attribute = $"${attr.name}_${prfKey}"
 
     private def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = {
       plan match {

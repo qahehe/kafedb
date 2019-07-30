@@ -35,6 +35,10 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
   val properties = new Properties()
   properties.setProperty("Driver", "org.postgresql.Driver")
 
+  lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
+  lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
+  lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
+
   protected override def sparkConf = super.sparkConf
     .set(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL, urlEnc)
     .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
@@ -45,7 +49,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
   }
 
   // Whether to materialize all encrypted test data before the first test is run
-  private var provideEncryptedData = false
+  protected def provideEncryptedData: Boolean
 
   protected override def beforeAll(): Unit = {
     super.beforeAll()
@@ -109,117 +113,119 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       .executeUpdate()
     conn.commit()
 
-    connEnc.prepareStatement("create table testdata2_prf (rid varchar, a_prf varchar, b_prf varchar)")
+    if (provideEncryptedData) {
+      connEnc.prepareStatement("create table testdata2_prf (rid varchar, a_prf varchar, b_prf varchar)")
         .executeUpdate()
-    connEnc.prepareStatement(
-      """
-        |insert into testdata2_prf values
-        |('r1', '1_enc', '1_enc'),
-        |('r2', '1_enc', '2_enc'),
-        |('r3', '2_enc', '1_enc'),
-        |('r4', '2_enc', '2_enc'),
-        |('r5', '3_enc', '1_enc'),
-        |('r6', '3_enc', '2_enc')
-      """.stripMargin)
-      .executeUpdate()
-    connEnc.commit()
+      connEnc.prepareStatement(
+        """
+          |insert into testdata2_prf values
+          |('1', '1_enc', '1_enc'),
+          |('2', '1_enc', '2_enc'),
+          |('3', '2_enc', '1_enc'),
+          |('4', '2_enc', '2_enc'),
+          |('5', '3_enc', '1_enc'),
+          |('6', '3_enc', '2_enc')
+        """.stripMargin)
+        .executeUpdate()
+      connEnc.commit()
 
-    connEnc.prepareStatement("create table testdata3_prf (rid varchar, c_prf varchar, d_prf varchar)")
-      .executeUpdate()
-    connEnc.prepareStatement(
-      """
-        |insert into testdata3_prf values
-        |('r1', '1_enc', '1_enc'),
-        |('r2', '1_enc', '2_enc'),
-        |('r3', '2_enc', '3_enc')
-      """.stripMargin)
-      .executeUpdate()
-    connEnc.commit()
+      connEnc.prepareStatement("create table testdata3_prf (rid varchar, c_prf varchar, d_prf varchar)")
+        .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into testdata3_prf values
+          |('1', '1_enc', '1_enc'),
+          |('2', '1_enc', '2_enc'),
+          |('3', '2_enc', '3_enc')
+        """.stripMargin)
+        .executeUpdate()
+      connEnc.commit()
 
-    connEnc.prepareStatement("create table testdata4_prf (rid varchar, e_prf varchar, f_prf varchar)")
-      .executeUpdate()
-    connEnc.prepareStatement(
-      """
-        |insert into testdata4_prf values
-        |('r1', '2_enc', '1_enc'),
-        |('r2', '2_enc', '2_enc'),
-        |('r3', '2_enc', '3_enc'),
-        |('r4', '3_enc', '4_enc'),
-        |('r5', '3_enc', '5_enc')
-      """.stripMargin)
-      .executeUpdate()
-    connEnc.commit()
+      connEnc.prepareStatement("create table testdata4_prf (rid varchar, e_prf varchar, f_prf varchar)")
+        .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into testdata4_prf values
+          |('1', '2_enc', '1_enc'),
+          |('2', '2_enc', '2_enc'),
+          |('3', '2_enc', '3_enc'),
+          |('4', '3_enc', '4_enc'),
+          |('5', '3_enc', '5_enc')
+        """.stripMargin)
+        .executeUpdate()
+      connEnc.commit()
 
-    connEnc.prepareStatement("create table t_filter (label varchar, value varchar)")
-      .executeUpdate()
-    connEnc.prepareStatement(
-      """
-        |insert into t_filter values
-        |('testdata2~a~1~0', 'r1_enc'),
-        |('testdata2~a~1~1', 'r2_enc'),
-        |('testdata2~a~2~0', 'r3_enc'),
-        |('testdata2~a~2~1', 'r4_enc'),
-        |('testdata2~a~3~0', 'r5_enc'),
-        |('testdata2~a~3~1', 'r6_enc'),
-        |
-        |('testdata2~b~1~0', 'r1_enc'),
-        |('testdata2~b~1~1', 'r3_enc'),
-        |('testdata2~b~1~2', 'r5_enc'),
-        |('testdata2~b~2~0', 'r2_enc'),
-        |('testdata2~b~2~1', 'r4_enc'),
-        |('testdata2~b~2~2', 'r6_enc'),
-        |
-        |('testdata3~c~1~0', 'r1_enc'),
-        |('testdata3~c~1~1', 'r2_enc'),
-        |('testdata3~c~2~0', 'r3_enc'),
-        |
-        |('testdata2~a~b~0', 'r1_enc'),
-        |('testdata2~a~b~1', 'r4_enc')
-      """.stripMargin)
-      .executeUpdate()
-    connEnc.commit()
+      connEnc.prepareStatement("create table t_filter (label varchar, value varchar)")
+        .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into t_filter values
+          |('testdata2~a~1~0', '1_enc'),
+          |('testdata2~a~1~1', '2_enc'),
+          |('testdata2~a~2~0', '3_enc'),
+          |('testdata2~a~2~1', '4_enc'),
+          |('testdata2~a~3~0', '5_enc'),
+          |('testdata2~a~3~1', '6_enc'),
+          |
+          |('testdata2~b~1~0', '1_enc'),
+          |('testdata2~b~1~1', '3_enc'),
+          |('testdata2~b~1~2', '5_enc'),
+          |('testdata2~b~2~0', '2_enc'),
+          |('testdata2~b~2~1', '4_enc'),
+          |('testdata2~b~2~2', '6_enc'),
+          |
+          |('testdata3~c~1~0', '1_enc'),
+          |('testdata3~c~1~1', '2_enc'),
+          |('testdata3~c~2~0', '3_enc'),
+          |
+          |('testdata2~a~b~0', '1_enc'),
+          |('testdata2~a~b~1', '4_enc')
+        """.stripMargin)
+        .executeUpdate()
+      connEnc.commit()
 
-    connEnc.prepareStatement("create table t_correlated_join (label varchar, value varchar)")
-      .executeUpdate()
-    connEnc.prepareStatement(
-      """
-        |insert into t_correlated_join values
-        |('testdata2~a~testdata4~e~r3~0', 'r1_enc'),
-        |('testdata2~a~testdata4~e~r3~1', 'r2_enc'),
-        |('testdata2~a~testdata4~e~r3~2', 'r3_enc'),
-        |('testdata2~a~testdata4~e~r4~0', 'r1_enc'),
-        |('testdata2~a~testdata4~e~r4~1', 'r2_enc'),
-        |('testdata2~a~testdata4~e~r4~2', 'r3_enc'),
-        |('testdata2~a~testdata4~e~r5~0', 'r4_enc'),
-        |('testdata2~a~testdata4~e~r5~1', 'r5_enc'),
-        |('testdata2~a~testdata4~e~r6~0', 'r4_enc'),
-        |('testdata2~a~testdata4~e~r6~1', 'r5_enc'),
-        |
-        |('testdata2~a~testdata3~c~r1~0', 'r1_enc'),
-        |('testdata2~a~testdata3~c~r1~1', 'r2_enc'),
-        |('testdata2~a~testdata3~c~r2~0', 'r1_enc'),
-        |('testdata2~a~testdata3~c~r2~1', 'r2_enc'),
-        |('testdata2~a~testdata3~c~r3~0', 'r3_enc'),
-        |('testdata2~a~testdata3~c~r4~0', 'r3_enc'),
-        |
-        |('testdata2~b~testdata3~c~r1~0', 'r1_enc'),
-        |('testdata2~b~testdata3~c~r1~1', 'r2_enc'),
-        |('testdata2~b~testdata3~c~r2~0', 'r3_enc'),
-        |('testdata2~b~testdata3~c~r3~0', 'r1_enc'),
-        |('testdata2~b~testdata3~c~r3~1', 'r2_enc'),
-        |('testdata2~b~testdata3~c~r4~0', 'r3_enc'),
-        |('testdata2~b~testdata3~c~r5~0', 'r1_enc'),
-        |('testdata2~b~testdata3~c~r5~1', 'r2_enc'),
-        |('testdata2~b~testdata3~c~r6~0', 'r3_enc'),
-        |
-        |('testdata2~b~testdata3~d~r1~0', 'r1_enc'),
-        |('testdata2~b~testdata3~d~r2~0', 'r2_enc'),
-        |('testdata2~b~testdata3~d~r3~0', 'r1_enc'),
-        |('testdata2~b~testdata3~d~r4~0', 'r2_enc'),
-        |('testdata2~b~testdata3~d~r5~0', 'r1_enc'),
-        |('testdata2~b~testdata3~d~r6~0', 'r2_enc')
-      """.stripMargin)
-      .executeUpdate()
-    connEnc.commit()
+      connEnc.prepareStatement("create table t_correlated_join (label varchar, value varchar)")
+        .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into t_correlated_join values
+          |('testdata2~a~testdata4~e~3~0', '1_enc'),
+          |('testdata2~a~testdata4~e~3~1', '2_enc'),
+          |('testdata2~a~testdata4~e~3~2', '3_enc'),
+          |('testdata2~a~testdata4~e~4~0', '1_enc'),
+          |('testdata2~a~testdata4~e~4~1', '2_enc'),
+          |('testdata2~a~testdata4~e~4~2', '3_enc'),
+          |('testdata2~a~testdata4~e~5~0', '4_enc'),
+          |('testdata2~a~testdata4~e~5~1', '5_enc'),
+          |('testdata2~a~testdata4~e~6~0', '4_enc'),
+          |('testdata2~a~testdata4~e~6~1', '5_enc'),
+          |
+          |('testdata2~a~testdata3~c~1~0', '1_enc'),
+          |('testdata2~a~testdata3~c~1~1', '2_enc'),
+          |('testdata2~a~testdata3~c~2~0', '1_enc'),
+          |('testdata2~a~testdata3~c~2~1', '2_enc'),
+          |('testdata2~a~testdata3~c~3~0', '3_enc'),
+          |('testdata2~a~testdata3~c~4~0', '3_enc'),
+          |
+          |('testdata2~b~testdata3~c~1~0', '1_enc'),
+          |('testdata2~b~testdata3~c~1~1', '2_enc'),
+          |('testdata2~b~testdata3~c~2~0', '3_enc'),
+          |('testdata2~b~testdata3~c~3~0', '1_enc'),
+          |('testdata2~b~testdata3~c~3~1', '2_enc'),
+          |('testdata2~b~testdata3~c~4~0', '3_enc'),
+          |('testdata2~b~testdata3~c~5~0', '1_enc'),
+          |('testdata2~b~testdata3~c~5~1', '2_enc'),
+          |('testdata2~b~testdata3~c~6~0', '3_enc'),
+          |
+          |('testdata2~b~testdata3~d~1~0', '1_enc'),
+          |('testdata2~b~testdata3~d~2~0', '2_enc'),
+          |('testdata2~b~testdata3~d~3~0', '1_enc'),
+          |('testdata2~b~testdata3~d~4~0', '2_enc'),
+          |('testdata2~b~testdata3~d~5~0', '1_enc'),
+          |('testdata2~b~testdata3~d~6~0', '2_enc')
+        """.stripMargin)
+        .executeUpdate()
+      connEnc.commit()
+    }
   }
 }

@@ -20,13 +20,10 @@ package org.apache.spark.sql.dex
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.{DataFrame, Row}
-import org.scalatest.exceptions.TestFailedException
 
 class DexQuerySuite extends DexQueryTest {
 
-  private lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
-  private lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
-  private lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
+  override protected def provideEncryptedData: Boolean = true
 
   private def checkDexFor(query: DataFrame): Unit = {
     //query.explain(extended = true)
@@ -72,17 +69,17 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
-  test("disjunctive filters") {
+  ignore("disjunctive filters") {
     val query = data2.where("a == 2 or b == 1")
     checkDexFor(query)
   }
 
-  test("IN filter") {
+  ignore("IN filter") {
     val query = data2.where("a in (1, 2)")
     checkDexFor(query)
   }
 
-  test("NOT filter") {
+  ignore("NOT filter") {
     val query = data2.where("a != 2")
     checkDexFor(query)
   }
@@ -97,12 +94,12 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
-  test("disjunctive joins: same tables") {
+  ignore("disjunctive joins: same tables") {
     val query = data2.join(data3).where("a == c or b == d")
     checkDexFor(query)
   }
 
-  test("disjunctive joins: same tables, transitive attrs") {
+  ignore("disjunctive joins: same tables, transitive attrs") {
     val query = data2.join(data3).where("a == c or b == c")
     checkDexFor(query)
   }
