@@ -538,7 +538,8 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
       case DexRidFilter(predicate, emm) =>
         DexRidFilterExec(predicate, planLater(emm)) :: Nil
       case DexRidCorrelatedJoin(predicate, childView, emm, childViewRid) =>
-        DexRidCorrelatedJoinExec(predicate, planLater(childView), planLater(emm), childViewRid) :: Nil
+        DexRidCorrelatedJoinExec(
+          predicate, planLater(childView), planLater(emm), childViewRid) :: Nil
       case _ =>
         Nil
     }
