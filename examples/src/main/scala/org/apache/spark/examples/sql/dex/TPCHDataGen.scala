@@ -17,8 +17,13 @@
 package org.apache.spark.examples.sql.dex
 // scalastyle:off
 
+import java.nio.file.FileSystems
+
 import org.apache.spark.deploy.SparkHadoopUtil
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.dex.DexBuilder.TableAttribute
+import org.apache.spark.sql.functions.min
+import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.{SaveMode, SparkSession, functions}
 // For datagens
 import java.io._
 import scala.sys.process._
@@ -26,22 +31,44 @@ import scala.sys.process._
 
 object TPCHDataGen {
 
+  private def absPathOf(path: String): String = {
+    val fs = FileSystems.getDefault
+    fs.getPath(path).toAbsolutePath.toString
+  }
+
   val benchmark = "TPCH"
   //val scaleFactors = Seq("1", "10", "100", "1000", "10000") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
   val scaleFactors = Seq("1") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
-  val baseLocation = s"bench/data"
-  val baseDatagenFolder = "bench/datagen"
+  val baseLocation = absPathOf("bench/data")
+  val baseDatagenFolder = absPathOf("bench/datagen")
+  println(s"baseLocation=${baseLocation}")
+  println(s"baseDatagenFolder=${baseDatagenFolder}")
 
   // Output file formats
   val fileFormat = "parquet" // only parquet was tested
   val shuffle = true // If true, partitions will be coalesced into a single file during generation up to spark.sql.files.maxRecordsPerFile (if set)
-  val overwrite = false //if to delete existing files (doesn't check if results are complete on no-overwrite)
+  val overwrite = true //if to delete existing files (doesn't check if results are complete on no-overwrite)
 
   // Generate stats for CBO
   val createTableStats = false
   val createColumnStats = false
 
-  val dbSuffix = "postgres"
+  val dbSuffix = ""
+
+  val tableNamesToDex = Set("part", "partsupp", "nation", "region", "supplier")
+  // p_partkey = ps_partkey
+  // and s_suppkey = ps_suppkey
+  //	and p_size = 15
+  //	and p_type like '%BRASS'
+  //	and s_nationkey = n_nationkey
+  //	and n_regionkey = r_regionkey
+  //	and r_name = 'EUROPE'
+  val joinableAttrsToDex = Seq(
+    (TableAttribute("part", "p_partkey"), TableAttribute("partsupp", "ps_partkey")),
+    (TableAttribute("partsupp", "ps_suppkey"), TableAttribute("supplier", "s_suppkey")),
+    (TableAttribute("nation", "n_nationKey"), TableAttribute("supplier", "s_nationkey")),
+    (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey"))
+  )
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession
@@ -51,9 +78,12 @@ object TPCHDataGen {
       .getOrCreate()
 
     //val workers: Int = spark.conf.get("spark.databricks.clusterUsageTags.clusterTargetWorkers").toInt //number of nodes, assumes one executor per node
-    //val workers: Int = spark.sparkContext.getConf.getInt("spark.executor.instances", 1)
-    val workers: Int = 1
+    val workers: Int = spark.sparkContext.getConf.getInt("spark.executor.instances", 1)
+    println(s"workers=${workers}")
+
+    //val workers: Int = 1
     val cores: Int = Runtime.getRuntime.availableProcessors //number of CPU-cores
+    println(s"cores=${cores}")
 
     // Set Spark config to produce same and comparable source files across systems
     // do not change unless you want to derive from default source file composition, in that case also set a DB suffix
@@ -62,7 +92,7 @@ object TPCHDataGen {
     // Prevent very large files. 20 million records creates between 500 and 1500MB files in TPCH
     spark.sqlContext.setConf("spark.sql.files.maxRecordsPerFile", "20000000")  // This also regulates the file coalesce
 
-    waitForWorkers(spark, workers, 3600) //wait up to an hour
+    //waitForWorkers(spark, workers, 3600) //wait up to an hour
 
     // install (build) the data generators in all nodes
     val worker = 1l
@@ -84,7 +114,7 @@ object TPCHDataGen {
       // Import data to Spark
       time {
         println(s"\nImporting data for $benchmark into DB $dbname from $location")
-        importData(spark, dbname, tables, location)
+        importDataToSpark(spark, dbname, tables, location)
       }
       if (createTableStats) time {
         println(s"\nGenerating table statistics for DB $dbname (with analyzeColumns=$createColumnStats)")
@@ -93,6 +123,65 @@ object TPCHDataGen {
 
       // Validate data in Spark
       //validate(spark, scaleFactor, dbname)
+
+      // Encrypt data to Postgres
+      println(s"\nEncrypting data for $benchmark into Postgres from $location")
+      val allTableNames = tables.tables.map(_.name).toSet
+      assert(tableNamesToDex.forall(allTableNames.contains))
+      assert(joinableAttrsToDex.map(_._1.table).forall(allTableNames.contains))
+      assert(joinableAttrsToDex.map(_._2.table).forall(allTableNames.contains))
+
+      val nameToDfForDex = tableNamesToDex.map { t =>
+        t -> spark.table(t)
+      }.toMap
+      time {
+        spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex)
+      }
+
+      println(s"\n benchmark 1")
+      // TPCH Query 2
+      time {
+        val q2a = nameToDfForDex("region").where("r_name == 'EUROPE'").dex.collect()
+        println(s"q2a count=${q2a.length}")
+      }
+      time {
+        val q2b = nameToDfForDex("nation").join(nameToDfForDex("region")).where("n_regionkey = r_regionkey").select("n_name").dex.collect()
+        println(s"q2b count=${q2b.length}")
+      }
+
+      time {
+        // 		select
+        //			min(ps_supplycost)
+        //		from
+        //      part,
+        //			partsupp,
+        //			supplier,
+        //			nation,
+        //			region
+        //		where
+        //			p_partkey = ps_partkey
+        //			and s_suppkey = ps_suppkey
+        //			and s_nationkey = n_nationkey
+        //			and n_regionkey = r_regionkey
+        //			and r_name = 'EUROPE'
+        val part = nameToDfForDex("part")
+        val partsupp = nameToDfForDex("partsupp")
+        val supplier = nameToDfForDex("supplier")
+        val nation = nameToDfForDex("nation")
+        val region = nameToDfForDex("region")
+
+        val q2c = part.join(partsupp).where("p_partkey == ps_partkey")
+          .join(supplier).where("ps_suppkey == s_suppkey")
+          .join(nation).where("s_nationkey== n_nationkey")
+          .join(region).where("n_regionkey = r_regionkey")
+          .where("p_size = 15 AND r_name == 'EUROPE'")
+          .select("ps_supplycost")
+          .dex
+          .agg(min("ps_supplycost"))
+          .collect()
+
+        println(s"q2c count=${q2c.length}")
+      }
     }
   }
 
@@ -119,11 +208,12 @@ object TPCHDataGen {
     result
   }
 
-  def installDBGEN(url: String = "https://github.com/databricks/tpch-dbgen.git",
-                   useStdout: Boolean = true,
+  def installDBGEN(url: String = "https://github.com/zheguang/tpch-dbgen.git",
+                   //useStdout: Boolean = false,
                    baseFolder: String = "/tmp")(i: java.lang.Long): String = {
     // check if we want the revision which makes dbgen output to stdout
-    val checkoutRevision: String = if (useStdout) "git checkout 0469309147b42abac8857fa61b4cf69a6d3128a8 -- bm_utils.c" else ""
+    //val checkoutRevision: String = if (useStdout) "git checkout 0469309147b42abac8857fa61b4cf69a6d3128a8 -- bm_utils.c" else ""
+
     Seq("mkdir", "-p", baseFolder).!
     val pw = new PrintWriter(new File(s"$baseFolder/dbgen_$i.sh" ))
     pw.write(
@@ -131,11 +221,7 @@ object TPCHDataGen {
          |rm -rf $baseFolder/dbgen
          |rm -rf $baseFolder/dbgen_install_$i
          |mkdir $baseFolder/dbgen_install_$i
-         |cd $baseFolder/dbgen_install_$i
-         |git clone '$url'
-         |cd tpch-dbgen
-         |$checkoutRevision
-         |make
+         |(cd $baseFolder/dbgen_install_$i && git clone '$url' && cd tpch-dbgen && make)
          |ln -sf $baseFolder/dbgen_install_$i/tpch-dbgen $baseFolder/dbgen || echo "ln -sf failed"
          |test -e $baseFolder/dbgen/dbgen
          |echo "OK"
@@ -148,8 +234,13 @@ object TPCHDataGen {
   // Checks that we have the correct number of worker nodes to start the data generation
   // Make sure you have set the workers variable correctly, as the datagens binaries need to be present in all nodes
   def waitForWorkers(spark: SparkSession, requiredWorkers: Int, tries: Int) : Unit = {
-    def numWorkers: Int = spark.sparkContext.getExecutorMemoryStatus.size - 1
+    require(requiredWorkers > 0)
+    def getNumWorkers(): Int =
+      spark.sparkContext.getExecutorMemoryStatus.size - 1
+
     for (i <- 0 until tries) {
+      val numWorkers = getNumWorkers()
+      println(s"numWorkers=${numWorkers}")
       if (numWorkers == requiredWorkers) {
         println(s"Waited ${i}s. for $numWorkers workers to be ready")
         return
@@ -168,7 +259,7 @@ object TPCHDataGen {
         dbgenDir = s"$baseDatagenFolder/dbgen",
         scaleFactor,
         useDoubleForDecimal = false,
-        useStringForDate = false,
+        useStringForDate = true,
         generatorParams = Nil
       ),
       s"$baseLocation/tpch/sf${scaleFactor}_$fileFormat"
@@ -221,7 +312,7 @@ object TPCHDataGen {
     }
   }
 
-  def importData(spark: SparkSession, dbname: String, tables: Tables, location: String): Unit = {
+  def importDataToSpark(spark: SparkSession, dbname: String, tables: Tables, location: String): Unit = {
     def createExternal(location: String, dbname: String, tables: Tables): Unit = {
       tables.createExternalTables(location, fileFormat, dbname, overwrite = overwrite, discoverPartitions = true)
     }
