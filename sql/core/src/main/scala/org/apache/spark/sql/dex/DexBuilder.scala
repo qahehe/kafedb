@@ -117,7 +117,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     require(ridDf.columns.contains("rid"))
     val colToRandCol = ridDf.columns.collect {
       case c if c == "rid" => "rid" -> "rid"
-      case c => c -> randomId(encKey, c)
+      case c => c -> randomId(prfKey, c)
     }.toMap
     val ridDfProject = colToRandCol.values.map(col).toSeq
 

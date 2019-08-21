@@ -17,6 +17,7 @@
 package org.apache.spark.examples.sql.dex
 
 import org.apache.spark.examples.sql.dex.TPCHDataGen.time
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 // scalastyle:off
 
@@ -25,53 +26,74 @@ object TPCHBench {
   def main(args: Array[String]): Unit = {
     val spark = TPCHDataGen.newSparkSession()
 
+    TPCHDataGen.setScaleConfig(spark, TPCHDataGen.scaleFactor)
+
+    val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(spark, TPCHDataGen.scaleFactor)
+    TPCHDataGen.pointDataToSpark(spark, dbname, tables, location)
+
     val nameToDfForDex = TPCHDataGen.tableNamesToDex.map { t =>
       t -> spark.table(t)
     }.toMap
 
+    val part = nameToDfForDex("part")
+    val partsupp = nameToDfForDex("partsupp")
+    val supplier = nameToDfForDex("supplier")
+    val nation = nameToDfForDex("nation")
+    val region = nameToDfForDex("region")
+
     println(s"\n benchmark 1")
     // TPCH Query 2
+    val q2a = "select * from region where r_name = 'EUROPE'"
+    val q2aDf = region.where("r_name == 'EUROPE'")
+    benchQuery(spark, q2a, q2aDf, q2aDf.dex)
+
+    val q2b = "select n_name from nation, region where n_regionkey = r_regionkey"
+    val q2bDf = nation.join(region).where("n_regionkey = r_regionkey").select("n_name")
+    benchQuery(spark, q2b, q2bDf, q2bDf.dex)
+
+    val q2c =
+      """
+        |select
+        |  min(ps_supplycost)
+        |from
+        |  part,
+        |  partsupp,
+        |  supplier,
+        |  nation,
+        |  region
+        |where
+        |  p_partkey = ps_partkey
+        |  and ps_suppkey = s_suppkey
+        |  and s_nationkey = n_nationkey
+        |  and n_regionkey = r_regionkey
+        |  and r_name = 'EUROPE'
+        |  and p_size = 15
+      """.stripMargin
+    val q2cMain = part.join(partsupp).where("p_partkey == ps_partkey")
+      .join(supplier).where("ps_suppkey == s_suppkey")
+      .join(nation).where("n_nationkey== s_nationkey")
+      .join(region).where("n_regionkey = r_regionkey")
+      .where("r_name == 'EUROPE' and p_size == 15")
+      .select("ps_supplycost")
+    val q2cDf = q2cMain.agg(min("ps_supplycost"))
+    val q2cDex = q2cMain.dex.agg(min("ps_supplycost"))
+    benchQuery(spark, q2c, q2cDf, q2cDex)
+  }
+
+
+  private def benchQuery(spark: SparkSession, query: String, queryDf: DataFrame, queryDex: DataFrame): Unit = {
+    println(s"\nBench query=\n$query")
     time {
-      val q2a = nameToDfForDex("region").where("r_name == 'EUROPE'").dex.collect()
-      println(s"q2a count=${q2a.length}")
+      val sparkResult = queryDf.collect()
+      println(s"spark result size=${sparkResult.length}")
     }
     time {
-      val q2b = nameToDfForDex("nation").join(nameToDfForDex("region")).where("n_regionkey = r_regionkey").select("n_name").dex.collect()
-      println(s"q2b count=${q2b.length}")
+      val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"(${query}) as postgresResult", TPCHDataGen.dbProps).collect()
+      println(s"postgres result size=${postgresResult.length}")
     }
-
     time {
-      // 		select
-      //			min(ps_supplycost)
-      //		from
-      //      part,
-      //			partsupp,
-      //			supplier,
-      //			nation,
-      //			region
-      //		where
-      //			p_partkey = ps_partkey
-      //			and s_suppkey = ps_suppkey
-      //			and s_nationkey = n_nationkey
-      //			and n_regionkey = r_regionkey
-      //			and r_name = 'EUROPE'
-      val part = nameToDfForDex("part")
-      val partsupp = nameToDfForDex("partsupp")
-      val supplier = nameToDfForDex("supplier")
-      val nation = nameToDfForDex("nation")
-      val region = nameToDfForDex("region")
-
-      val q2c = part.join(partsupp).where("p_partkey == ps_partkey")
-        .join(supplier).where("ps_suppkey == s_suppkey")
-        .join(nation).where("s_nationkey== n_nationkey")
-        .join(region).where("n_regionkey = r_regionkey")
-        .where("p_size = 15 AND r_name == 'EUROPE'")
-        .select("ps_supplycost")
-        .dex
-        .agg(min("ps_supplycost"))
-        .collect()
-
-      println(s"q2c count=${q2c.length}")
+      val dexResult = queryDf.dex.collect()
+      println(s"dex result size=${dexResult.length}")
     }
   }
 }

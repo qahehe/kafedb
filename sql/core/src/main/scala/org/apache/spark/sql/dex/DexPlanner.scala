@@ -34,7 +34,7 @@ import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Dist
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD, JDBCRelation, JdbcRelationProvider}
-import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
+import org.apache.spark.sql.execution.datasources.{CatalogFileIndex, DataSource, HadoopFsRelation, InMemoryFileIndex, LogicalRelation}
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.jdbc.JdbcDialects
@@ -404,14 +404,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     private lazy val joinOrder: String => Int =
       dexPlan.collect {
-        case LogicalRelation(relation: JDBCRelation, _, _, _) =>
-          relation.jdbcOptions.tableOrQuery
+        case l: LogicalRelation =>
+          tableNameFromLogicalRelation(l)
       }.indexOf
 
     private lazy val exprIdToTable: ExprId => String =
       dexPlan.collect {
-        case l@LogicalRelation(relation: JDBCRelation, _, _, _) =>
-          l.output.map(x => (x.exprId, relation.jdbcOptions.tableOrQuery))
+        case l: LogicalRelation =>
+          l.output.map(x => (x.exprId, tableNameFromLogicalRelation(l)))
       }.flatten.toMap
 
     private lazy val output = dexPlan.output.map(translateAttribute)
@@ -441,18 +441,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           // So here we simply return it as is
           d
         case l: LogicalRelation =>
-          l.relation match {
-            case j: JDBCRelation =>
-              val tableName = j.jdbcOptions.tableOrQuery
-              val tableEnc = tableEncOf(tableName)
-              childView match {
-                case Some(w) =>
-                  w.join(tableEnc, NaturalJoin(LeftOuter))
-                //w
-                case None =>
-                  tableEnc
-              }
-            case x => throw DexException("unsupported: " + x.toString)
+          val tableName = tableNameFromLogicalRelation(l)
+          val tableEnc = tableEncOf(tableName)
+          childView match {
+            case Some(w) =>
+              w.join(tableEnc, NaturalJoin(LeftOuter))
+            //w
+            case None =>
+              tableEnc
           }
 
         case p: Project =>
@@ -487,6 +483,23 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         case x => throw DexException("unsupported: " + x.toString)
       }
+    }
+
+    private def tableNameFromLogicalRelation(relation: LogicalRelation) = relation.relation match {
+      case j: JDBCRelation =>
+        j.jdbcOptions.tableOrQuery
+      case h: HadoopFsRelation =>
+        // DataSource.resolveRelation(.)
+        h.location match {
+          case c: CatalogFileIndex =>
+            c.table.identifier.table
+          case i: InMemoryFileIndex =>
+            val rootPathSet = i.rootPaths.map(_.getName).toSet
+            require(rootPathSet.size == 1)
+            rootPathSet.head
+          case x => throw DexException("unsupported: " + x.getClass.toString)
+        }
+      case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
     private def nonIsNotNullPredsIn(conds: Seq[Expression]): AttributeSet = {

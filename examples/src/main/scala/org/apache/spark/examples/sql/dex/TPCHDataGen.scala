@@ -18,6 +18,7 @@ package org.apache.spark.examples.sql.dex
 // scalastyle:off
 
 import java.nio.file.FileSystems
+import java.util.Properties
 
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.dex.DexBuilder.TableAttribute
@@ -36,9 +37,17 @@ object TPCHDataGen {
     fs.getPath(path).toAbsolutePath.toString
   }
 
+  val dbUrl = "jdbc:postgresql://localhost:7433/test_db"
+  val dbProps = {
+    val p = new Properties()
+    p.setProperty("Driver", "org.postgresql.Driver")
+    p
+  }
+
   val benchmark = "TPCH"
   //val scaleFactors = Seq("1", "10", "100", "1000", "10000") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
-  val scaleFactors = Seq("1") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
+  //val scaleFactors = Seq("1") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
+  val scaleFactor = "1"
   val baseLocation = absPathOf("bench/data")
   val baseDatagenFolder = absPathOf("bench/datagen")
   println(s"baseLocation=${baseLocation}")
@@ -73,9 +82,6 @@ object TPCHDataGen {
   def newSparkSession(): SparkSession = SparkSession
     .builder()
     .appName("TPCH Data Generation")
-    .config("spark.jars", "/Users/shuyuan/repo/encrypted-spark/lib/postgresql-42.0.0.jar")
-    .config("spark.driver.extraClassPath", "/Users/shuyuan/repo/encrypted-spark/lib/postgresql-42.0.0.jar")
-    .config("spark.executor.extraClassPath", "/Users/shuyuan/repo/encrypted-spark/lib/postgresql-42.0.0.jar")
     .getOrCreate()
 
   def main(args: Array[String]): Unit = {
@@ -103,45 +109,60 @@ object TPCHDataGen {
     s"TPCH worker $worker\n" + installDBGEN(baseFolder = baseDatagenFolder)(worker)
 
     // Generate the data, import the tables, generate stats for selected benchmarks and scale factors
-    scaleFactors.foreach { scaleFactor =>
-      // First set some config settings affecting OOMs/performance
-      setScaleConfig(spark, scaleFactor)
 
-      val (dbname, tables, location) = getBenchmarkData(spark, scaleFactor)
+    // First set some config settings affecting OOMs/performance
+    setScaleConfig(spark, scaleFactor)
 
-      // Generate data
-      time {
-        println(s"Generating data for $benchmark SF $scaleFactor at $location")
-        generateData(tables, location, scaleFactor, workers, cores)
-      }
+    val (dbname, tables, location) = getBenchmarkData(spark, scaleFactor)
 
-      // Import data to Spark
-      time {
-        println(s"\nImporting data for $benchmark into DB $dbname from $location")
-        importDataToSpark(spark, dbname, tables, location)
-      }
-      if (createTableStats) time {
-        println(s"\nGenerating table statistics for DB $dbname (with analyzeColumns=$createColumnStats)")
-        tables.analyzeTables(dbname, analyzeColumns = createColumnStats)
-      }
+    // Generate data
+    time {
+      println(s"Generating data for $benchmark SF $scaleFactor at $location")
+      generateData(tables, location, scaleFactor, workers, cores)
+    }
 
-      // Validate data in Spark
-      //validate(spark, scaleFactor, dbname)
+    // Import data to Spark
+    time {
+      println(s"\nImporting data for $benchmark into DB $dbname from $location")
+      pointDataToSpark(spark, dbname, tables, location)
+    }
+    if (createTableStats) time {
+      println(s"\nGenerating table statistics for DB $dbname (with analyzeColumns=$createColumnStats)")
+      tables.analyzeTables(dbname, analyzeColumns = createColumnStats)
+    }
 
-      // Encrypt data to Postgres
-      println(s"\nEncrypting data for $benchmark into Postgres from $location")
-      val allTableNames = tables.tables.map(_.name).toSet
-      assert(tableNamesToDex.forall(allTableNames.contains))
-      assert(joinableAttrsToDex.map(_._1.table).forall(allTableNames.contains))
-      assert(joinableAttrsToDex.map(_._2.table).forall(allTableNames.contains))
+    // Validate data in Spark
+    //validate(spark, scaleFactor, dbname)
 
-      val nameToDfForDex = tableNamesToDex.map { t =>
-        t -> spark.table(t)
-      }.toMap
+    time {
+      println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location")
+      loadPlaintext(spark, tables)
+    }
 
-      time {
-        spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex)
-      }
+    time {
+      println(s"\nBuilding DEX for $benchmark into Postgres from $location")
+      buildDex(spark, tables)
+    }
+  }
+
+  private def buildDex(spark: SparkSession, tables: TPCHTables): Unit = {
+    // Encrypt data to Postgres
+    val allTableNames = tables.tables.map(_.name).toSet
+    assert(tableNamesToDex.forall(allTableNames.contains))
+    assert(joinableAttrsToDex.map(_._1.table).forall(allTableNames.contains))
+    assert(joinableAttrsToDex.map(_._2.table).forall(allTableNames.contains))
+
+    val nameToDfForDex = tableNamesToDex.map { t =>
+      t -> spark.table(t)
+    }.toMap
+
+    spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex)
+  }
+
+  private def loadPlaintext(spark: SparkSession, tables: TPCHTables): Unit = {
+    tables.tables.map(_.name).foreach { t =>
+      val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Ignore
+      spark.table(t).write.mode(saveMode).jdbc(dbUrl, t, dbProps)
     }
   }
 
@@ -272,7 +293,7 @@ object TPCHDataGen {
     }
   }
 
-  def importDataToSpark(spark: SparkSession, dbname: String, tables: Tables, location: String): Unit = {
+  def pointDataToSpark(spark: SparkSession, dbname: String, tables: Tables, location: String): Unit = {
     def createExternal(location: String, dbname: String, tables: Tables): Unit = {
       tables.createExternalTables(location, fileFormat, dbname, overwrite = overwrite, discoverPartitions = true)
     }
