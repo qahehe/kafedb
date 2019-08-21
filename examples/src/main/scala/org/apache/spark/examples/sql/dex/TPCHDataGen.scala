@@ -47,7 +47,7 @@ object TPCHDataGen {
   // Output file formats
   val fileFormat = "parquet" // only parquet was tested
   val shuffle = true // If true, partitions will be coalesced into a single file during generation up to spark.sql.files.maxRecordsPerFile (if set)
-  val overwrite = true //if to delete existing files (doesn't check if results are complete on no-overwrite)
+  val overwrite = false //if to delete existing files (doesn't check if results are complete on no-overwrite)
 
   // Generate stats for CBO
   val createTableStats = false
@@ -134,53 +134,9 @@ object TPCHDataGen {
       val nameToDfForDex = tableNamesToDex.map { t =>
         t -> spark.table(t)
       }.toMap
+
       time {
         spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex)
-      }
-
-      println(s"\n benchmark 1")
-      // TPCH Query 2
-      time {
-        val q2a = nameToDfForDex("region").where("r_name == 'EUROPE'").dex.collect()
-        println(s"q2a count=${q2a.length}")
-      }
-      time {
-        val q2b = nameToDfForDex("nation").join(nameToDfForDex("region")).where("n_regionkey = r_regionkey").select("n_name").dex.collect()
-        println(s"q2b count=${q2b.length}")
-      }
-
-      time {
-        // 		select
-        //			min(ps_supplycost)
-        //		from
-        //      part,
-        //			partsupp,
-        //			supplier,
-        //			nation,
-        //			region
-        //		where
-        //			p_partkey = ps_partkey
-        //			and s_suppkey = ps_suppkey
-        //			and s_nationkey = n_nationkey
-        //			and n_regionkey = r_regionkey
-        //			and r_name = 'EUROPE'
-        val part = nameToDfForDex("part")
-        val partsupp = nameToDfForDex("partsupp")
-        val supplier = nameToDfForDex("supplier")
-        val nation = nameToDfForDex("nation")
-        val region = nameToDfForDex("region")
-
-        val q2c = part.join(partsupp).where("p_partkey == ps_partkey")
-          .join(supplier).where("ps_suppkey == s_suppkey")
-          .join(nation).where("s_nationkey== n_nationkey")
-          .join(region).where("n_regionkey = r_regionkey")
-          .where("p_size = 15 AND r_name == 'EUROPE'")
-          .select("ps_supplycost")
-          .dex
-          .agg(min("ps_supplycost"))
-          .collect()
-
-        println(s"q2c count=${q2c.length}")
       }
     }
   }
