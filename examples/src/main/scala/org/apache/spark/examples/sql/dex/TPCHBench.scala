@@ -30,6 +30,7 @@ object TPCHBench {
 
     val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(spark, TPCHDataGen.scaleFactor)
     TPCHDataGen.pointDataToSpark(spark, dbname, tables, location)
+    tables.analyzeTables(dbname, analyzeColumns = true)
 
     val nameToDfForDex = TPCHDataGen.tableNamesToDex.map { t =>
       t -> spark.table(t)

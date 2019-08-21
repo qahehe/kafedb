@@ -17,6 +17,8 @@ sudo apt install -y libpostgresql-jdbc-java
 sudo pip3 install --upgrade setuptools
 sudo pip3 install postgres
 
+git config --global user.name "Zheguang Zhao"
+git config --global user.email "zheguang.zhao@gmail.com"
 
 cd /data
 
