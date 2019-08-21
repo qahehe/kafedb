@@ -1553,7 +1553,7 @@ object SQLConf {
     buildConf("spark.sql.dex.encryptedDataSourceJdbcUrl")
     .doc("Encrypted DataSource JDBC url of the form `jdbc:<vendor>://<host>:<port>/<db>")
     .stringConf
-    .createWithDefault("jdbc:postgresql://localhost:7433/test_edb")
+    .createWithDefault("jdbc:postgresql://localhost:8433/test_edb")
 }
 
 /**

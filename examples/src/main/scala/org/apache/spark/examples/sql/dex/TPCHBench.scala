@@ -17,18 +17,13 @@
 package org.apache.spark.examples.sql.dex
 
 import org.apache.spark.examples.sql.dex.TPCHDataGen.time
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 // scalastyle:off
 
 object TPCHBench {
 
   def main(args: Array[String]): Unit = {
-    val spark = SparkSession
-      .builder()
-      .appName("TPCH Data Generation")
-      .config("spark.some.config.option", "some-value")
-      .getOrCreate()
+    val spark = TPCHDataGen.newSparkSession()
 
     val nameToDfForDex = TPCHDataGen.tableNamesToDex.map { t =>
       t -> spark.table(t)

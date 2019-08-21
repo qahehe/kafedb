@@ -17,6 +17,7 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
+import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
@@ -25,6 +26,7 @@ import org.apache.spark.sql.dex.DexBuilder.{JoinableAttrs, TableAttribute, Table
 import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, udf}
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.util.Utils
 
 object DexBuilder {
   type TableName = String
@@ -38,7 +40,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   // take a dataframe, encrypt it, and load it into remote postgres.  Store keys into sessionCatalog.
   import session.sqlContext.implicits._
 
-  private val encDbUrl = SQLConf.get.dexEncryptedDataSourceUrl
+  //private val encDbUrl = SQLConf.get.dexEncryptedDataSourceUrl
+  private val encDbUrl = "jdbc:postgresql://localhost:8433/test_edb"
   private val encDbProps = {
     val p = new Properties()
     p.setProperty("Driver", "org.postgresql.Driver")
@@ -90,10 +93,24 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     val tCorrJoinDf = tCorrJoinDfParts.reduce((d1, d2) => d1 union d2)
 
     encNameToEncDf.foreach { case (n, e) =>
-        e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
+      e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
     }
     tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, tFilterName, encDbProps)
     tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, tCorrJoinName, encDbProps)
+
+    Utils.classForName("org.postgresql.Driver")
+    val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
+    try {
+      encNameToEncDf.foreach { case (n, e) =>
+        createHashIndex(encConn, n, e, "rid")
+      }
+      createHashIndex(encConn, tFilterName, tFilterDf, "label")
+      createHashIndex(encConn, tCorrJoinName, tCorrJoinDf, "label")
+    } finally {
+      encConn.close()
+    }
+
+
   }
 
   private def encryptTable(table: TableName, ridDf: DataFrame): (String, DataFrame) = {
@@ -121,6 +138,16 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         .withColumn("value", udfValue($"rid"))
         .select("label", "value")
     }
+  }
+
+  private def createHashIndex(dexConn: Connection, dexTableName: String, dexDf: DataFrame, col: String): Unit = {
+    dexConn.prepareStatement(
+      s"""
+       |CREATE INDEX "${dexTableName}_${col}_hash"
+       |ON "$dexTableName"
+       |USING HASH ($col)
+      """.stripMargin).executeUpdate()
+
   }
 
   private def randomId(prfKey: String, ident: String): String = {

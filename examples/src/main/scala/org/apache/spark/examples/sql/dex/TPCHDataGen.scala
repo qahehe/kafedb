@@ -70,12 +70,16 @@ object TPCHDataGen {
     (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey"))
   )
 
+  def newSparkSession(): SparkSession = SparkSession
+    .builder()
+    .appName("TPCH Data Generation")
+    .config("spark.jars", "/Users/shuyuan/repo/encrypted-spark/lib/postgresql-42.0.0.jar")
+    .config("spark.driver.extraClassPath", "/Users/shuyuan/repo/encrypted-spark/lib/postgresql-42.0.0.jar")
+    .config("spark.executor.extraClassPath", "/Users/shuyuan/repo/encrypted-spark/lib/postgresql-42.0.0.jar")
+    .getOrCreate()
+
   def main(args: Array[String]): Unit = {
-    val spark = SparkSession
-      .builder()
-      .appName("TPCH Data Generation")
-      .config("spark.some.config.option", "some-value")
-      .getOrCreate()
+    val spark = newSparkSession()
 
     //val workers: Int = spark.conf.get("spark.databricks.clusterUsageTags.clusterTargetWorkers").toInt //number of nodes, assumes one executor per node
     val workers: Int = spark.sparkContext.getConf.getInt("spark.executor.instances", 1)
