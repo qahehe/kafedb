@@ -75,8 +75,8 @@ object TPCHBench {
       .join(region).where("n_regionkey = r_regionkey")
       .where("r_name == 'EUROPE' and p_size == 15")
       .select("ps_supplycost")
-    val q2cDf = q2cMain.select(min("ps_supplycost"))
-    val q2cDex = q2cMain.dex.select(min("ps_supplycost"))
+    val q2cDf = q2cMain.agg(min("ps_supplycost"))
+    val q2cDex = q2cMain.dex.agg(min("ps_supplycost"))
     benchQuery(spark, q2c, q2cDf, q2cDex)
   }
 
