@@ -19,7 +19,7 @@ package org.apache.spark.sql.dex
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row, functions}
 
 class DexQuerySuite extends DexQueryTest {
 
@@ -44,14 +44,9 @@ class DexQuerySuite extends DexQueryTest {
   }
 
   test("mix dex and non-dex query") {
-    val queryDex = data2.select("b").where("a == 2").dex
-    queryDex.explain(extended = true)
-
-    val queryMix = queryDex.selectExpr("b * 2")
-    queryMix.explain(extended = true)
-    val result = queryMix.collect()
-    println("dex: " ++ result.mkString)
-    checkAnswer(queryMix, Row(2) :: Row(4):: Nil)
+    val query =  data2.select("b").where("a == 2")
+    val queryMix = query.dex.agg(functions.min("b"))
+    checkAnswer(query.agg(functions.min("b")), queryMix)
   }
 
   test("one filter one join") {

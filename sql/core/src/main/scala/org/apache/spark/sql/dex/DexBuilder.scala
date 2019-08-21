@@ -140,7 +140,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     val ridDfProject = colToRandCol.values.map(col).toSeq
 
     (randomId(prfKey, table),
-      ridDf.columns.foldLeft(ridDf) { case (d, c) =>
+      ridDf.columns.filterNot(_ == "rid").foldLeft(ridDf) { case (d, c) =>
         d.withColumn(colToRandCol(c), udfCell(col(c)))
       }.select(ridDfProject: _*))
   }
