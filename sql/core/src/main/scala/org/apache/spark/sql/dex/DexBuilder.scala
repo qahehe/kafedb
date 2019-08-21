@@ -81,6 +81,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private val udfRandPred = udf(randomPredicate(prfKey) _)
 
+  private val udfRid = udf((rid: Number) => s"$rid")
+
   def buildFromData(nameToDf: Map[TableName, DataFrame], joins: Seq[JoinableAttrs]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
       n -> d.withColumn("rid", monotonically_increasing_id).cache()
@@ -140,8 +142,11 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     val ridDfProject = colToRandCol.values.map(col).toSeq
 
     (randomId(prfKey, table),
-      ridDf.columns.filterNot(_ == "rid").foldLeft(ridDf) { case (d, c) =>
-        d.withColumn(colToRandCol(c), udfCell(col(c)))
+      ridDf.columns.foldLeft(ridDf) {
+        case (d, c) if c == "rid" =>
+          d.withColumn(colToRandCol(c), udfRid(col(c)))
+        case (d, c) =>
+          d.withColumn(colToRandCol(c), udfCell(col(c)))
       }.select(ridDfProject: _*))
   }
 
