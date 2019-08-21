@@ -128,9 +128,9 @@ object TPCHDataGen {
       generateData(tables, location, scaleFactor, workers, cores)
     }
 
-    // Import data to Spark
+    // Point data to Spark
     time {
-      println(s"\nImporting data for $benchmark into DB $dbname from $location")
+      println(s"\nPointing data for $benchmark to Spark database $dbname from $location")
       pointDataToSpark(spark, dbname, tables, location)
     }
     if (createTableStats) time {
@@ -142,8 +142,10 @@ object TPCHDataGen {
     //validate(spark, scaleFactor, dbname)
 
     time {
-      println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location")
-      loadPlaintext(spark, tables)
+      if (overwrite) {
+        println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location")
+        loadPlaintext(spark, tables)
+      }
     }
 
     time {
@@ -168,22 +170,21 @@ object TPCHDataGen {
 
   private def loadPlaintext(spark: SparkSession, tables: TPCHTables): Unit = {
     tables.tables.map(_.name).foreach { t =>
-      val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Ignore
-      spark.table(t).write.mode(saveMode).jdbc(dbUrl, t, dbProps)
-    }
+      spark.table(t).write.mode(SaveMode.Overwrite).jdbc(dbUrl, t, dbProps)
 
-    Utils.classForName("org.postgresql.Driver")
-    val conn = DriverManager.getConnection(dbUrl, dbProps)
-    try {
-      filterAttrsToDex.foreach { f =>
-        createTreeIndex(conn, f.table, spark.table(f.table), f.attr)
+      Utils.classForName("org.postgresql.Driver")
+      val conn = DriverManager.getConnection(dbUrl, dbProps)
+      try {
+        filterAttrsToDex.foreach { f =>
+          createTreeIndex(conn, f.table, spark.table(f.table), f.attr)
+        }
+        joinableAttrsToDex.foreach { case (j1, j2) =>
+          createTreeIndex(conn, j1.table, spark.table(j1.table), j1.attr)
+          createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
+        }
+      } finally {
+        conn.close()
       }
-      joinableAttrsToDex.foreach { case (j1, j2) =>
-        createTreeIndex(conn, j1.table, spark.table(j1.table), j1.attr)
-        createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
-      }
-    } finally {
-      conn.close()
     }
   }
 
