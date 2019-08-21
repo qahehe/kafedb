@@ -599,25 +599,29 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         val predicate = s"$leftTableName~$leftColName~$rightTableName~$rightColName"
 
+        def newRidJoinOf(l: Attribute, rightRidOrder: String) = {
+          // "right" relation is a new relation to join
+          val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
+          val ridJoinProject = ridJoin.output.collect {
+            case x: Attribute if x.name == "value" => DexDecrypt($"value_dec_key", x).as(rightRidOrder)
+            case x: Attribute if x.name != "value_dec_key" => // remove extra value_dec_key column
+              // Unresolve all but the emm attributes.  This is overshooting a bit, because we only care about
+              // the case for natural joining the base table for joining attributes (rid_1#33, rid_1#90),
+              // but the optimizer will insert a new project node on top of this join and only takes one of the
+              // join columns, say rid_1#33.  This step happens AFTER DexPlan translation, so to go around this
+              // we need to unresolve all the output attributes from the existing projection to allow
+              // later on resolution onto the new project.
+              UnresolvedAttribute(x.name)
+          }
+          // Need to deduplicate ridJoinProject because left subquery might have the same attribute name
+          // as the right subquery, such as simple one filter one join case where rid_0 are from both
+          // the filter operator and the join operator.
+          ridJoin.select(ridJoinProject.distinct: _*)
+        }
+
         (leftRidOrderAttr, rightRidOrderAttr) match {
           case (Some(l), None) =>
-            // "right" relation is a new relation to join
-            val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
-            val ridJoinProject = ridJoin.output.collect {
-              case x: Attribute if x.name == "value" => DexDecrypt($"value_dec_key", x).as(rightRidOrder)
-              case x: Attribute if x.name != "value_dec_key" => // remove extra value_dec_key column
-                // Unresolve all but the emm attributes.  This is overshooting a bit, because we only care about
-                // the case for natural joining the base table for joining attributes (rid_1#33, rid_1#90),
-                // but the optimizer will insert a new project node on top of this join and only takes one of the
-                // join columns, say rid_1#33.  This step happens AFTER DexPlan translation, so to go around this
-                // we need to unresolve all the output attributes from the existing projection to allow
-                // later on resolution onto the new project.
-                UnresolvedAttribute(x.name)
-            }
-            // Need to deduplicate ridJoinProject because left subquery might have the same attribute name
-            // as the right subquery, such as simple one filter one join case where rid_0 are from both
-            // the filter operator and the join operator.
-            ridJoin.select(ridJoinProject.distinct: _*)
+            newRidJoinOf(l, rightRidOrder)
 
           case (Some(l), Some(r)) =>
             // "right" relation is a previously joined relation
@@ -626,9 +630,13 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             val ridJoinProject = childView.output
             ridJoin.select(ridJoinProject: _*)
 
-          case _ => ???
+          case (None, Some(r)) =>
+            // "left" relation is a new relation to join
+            newRidJoinOf(r, leftRidOrder)
+
+          case x => throw DexException("unsupported: (None, None)")
         }
-      case _ => ???
+      case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
     private def tableEncOf(tableName: String): LogicalPlan = {
