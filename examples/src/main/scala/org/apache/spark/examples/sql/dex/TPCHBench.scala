@@ -92,7 +92,7 @@ object TPCHBench {
       println(s"postgres result size=${postgresResult.length}")
     }
     time {
-      val dexResult = queryDf.dex.collect()
+      val dexResult = queryDex.collect()
       println(s"dex result size=${dexResult.length}")
     }
   }
