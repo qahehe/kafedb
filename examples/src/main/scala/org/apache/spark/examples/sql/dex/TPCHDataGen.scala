@@ -18,13 +18,16 @@ package org.apache.spark.examples.sql.dex
 // scalastyle:off
 
 import java.nio.file.FileSystems
+import java.sql.DriverManager
 import java.util.Properties
 
 import org.apache.spark.deploy.SparkHadoopUtil
-import org.apache.spark.sql.dex.DexBuilder.TableAttribute
+import org.apache.spark.sql.dex.DexBuilder
+import org.apache.spark.sql.dex.DexBuilder.{TableAttribute, createHashIndex, createTreeIndex}
 import org.apache.spark.sql.functions.min
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.{SaveMode, SparkSession, functions}
+import org.apache.spark.util.Utils
 // For datagens
 import java.io._
 import scala.sys.process._
@@ -77,6 +80,10 @@ object TPCHDataGen {
     (TableAttribute("partsupp", "ps_suppkey"), TableAttribute("supplier", "s_suppkey")),
     (TableAttribute("nation", "n_nationKey"), TableAttribute("supplier", "s_nationkey")),
     (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey"))
+  )
+  val filterAttrsToDex = Seq(
+    TableAttribute("part", "p_size"),
+    TableAttribute("region", "r_name")
   )
 
   def newSparkSession(): SparkSession = SparkSession
@@ -163,6 +170,20 @@ object TPCHDataGen {
     tables.tables.map(_.name).foreach { t =>
       val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Ignore
       spark.table(t).write.mode(saveMode).jdbc(dbUrl, t, dbProps)
+    }
+
+    Utils.classForName("org.postgresql.Driver")
+    val conn = DriverManager.getConnection(dbUrl, dbProps)
+    try {
+      filterAttrsToDex.foreach { f =>
+        createTreeIndex(conn, f.table, spark.table(f.table), f.attr)
+      }
+      joinableAttrsToDex.foreach { case (j1, j2) =>
+        createTreeIndex(conn, j1.table, spark.table(j1.table), j1.attr)
+        createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
+      }
+    } finally {
+      conn.close()
     }
   }
 

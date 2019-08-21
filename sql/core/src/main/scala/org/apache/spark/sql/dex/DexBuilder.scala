@@ -22,7 +22,7 @@ import java.util.Properties
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.expressions.MonotonicallyIncreasingID
-import org.apache.spark.sql.dex.DexBuilder.{JoinableAttrs, TableAttribute, TableName}
+import org.apache.spark.sql.dex.DexBuilder.{JoinableAttrs, TableAttribute, TableName, createTreeIndex}
 import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, udf}
 import org.apache.spark.sql.internal.SQLConf
@@ -33,6 +33,24 @@ object DexBuilder {
   type AttrName = String
   case class TableAttribute(table: TableName, attr: AttrName)
   type JoinableAttrs = (TableAttribute, TableAttribute)
+
+  def createHashIndex(conn: Connection, tableName: String, df: DataFrame, col: String): Unit = {
+    conn.prepareStatement(
+      s"""
+         |CREATE INDEX "${tableName}_${col}_hash"
+         |ON "$tableName"
+         |USING HASH ($col)
+      """.stripMargin).executeUpdate()
+  }
+
+  def createTreeIndex(conn: Connection, tableName: String, df: DataFrame, col: String): Unit = {
+    conn.prepareStatement(
+      s"""
+         |CREATE INDEX "${tableName}_${col}_tree"
+         |ON "$tableName"
+         |($col)
+      """.stripMargin).executeUpdate()
+  }
 }
 
 class DexBuilder(session: SparkSession) extends Serializable with Logging {
@@ -102,10 +120,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
     try {
       encNameToEncDf.foreach { case (n, e) =>
-        createHashIndex(encConn, n, e, "rid")
+        createTreeIndex(encConn, n, e, "rid")
       }
-      createHashIndex(encConn, tFilterName, tFilterDf, "label")
-      createHashIndex(encConn, tCorrJoinName, tCorrJoinDf, "label")
+      createTreeIndex(encConn, tFilterName, tFilterDf, "label")
+      createTreeIndex(encConn, tCorrJoinName, tCorrJoinDf, "label")
     } finally {
       encConn.close()
     }
@@ -138,16 +156,6 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         .withColumn("value", udfValue($"rid"))
         .select("label", "value")
     }
-  }
-
-  private def createHashIndex(dexConn: Connection, dexTableName: String, dexDf: DataFrame, col: String): Unit = {
-    dexConn.prepareStatement(
-      s"""
-       |CREATE INDEX "${dexTableName}_${col}_hash"
-       |ON "$dexTableName"
-       |USING HASH ($col)
-      """.stripMargin).executeUpdate()
-
   }
 
   private def randomId(prfKey: String, ident: String): String = {
