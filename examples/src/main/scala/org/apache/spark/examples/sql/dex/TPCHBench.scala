@@ -80,6 +80,10 @@ object TPCHBench {
     val q2cDf = q2cMain.agg(min("ps_supplycost"))
     val q2cDex = q2cMain.dex.agg(min("ps_supplycost"))
     benchQuery(spark, q2c, q2cDf, q2cDex)
+
+    val q2d = "select * from part where p_size = 15"
+    val q2dDf = part.where("p_size == 15")
+    benchQuery(spark, q2d, q2dDf, q2dDf.dex)
   }
 
 
