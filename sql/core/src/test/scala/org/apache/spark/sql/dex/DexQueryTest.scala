@@ -69,6 +69,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     connEnc.prepareStatement("drop table if exists testdata4_prf").executeUpdate()
     connEnc.prepareStatement("drop table if exists t_filter").executeUpdate()
     connEnc.prepareStatement("drop table if exists t_correlated_join").executeUpdate()
+    connEnc.prepareStatement("drop table if exists t_uncorrelated_join").executeUpdate()
     conn.commit()
     connEnc.commit()
 
@@ -225,6 +226,25 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
           |('testdata2~b~testdata3~d~6~0', '2_enc')
         """.stripMargin)
         .executeUpdate()
+      connEnc.commit()
+
+      connEnc.prepareStatement("create table t_uncorrelated_join (label varchar, value_left varchar, value_right varchar)")
+        .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into t_uncorrelated_join values
+          |('testdata2~a~testdata4~e~0', '3_enc', '1_enc'),
+          |('testdata2~a~testdata4~e~1', '3_enc', '2_enc'),
+          |('testdata2~a~testdata4~e~2', '3_enc', '3_enc'),
+          |('testdata2~a~testdata4~e~3', '4_enc', '1_enc'),
+          |('testdata2~a~testdata4~e~4', '4_enc', '2_enc'),
+          |('testdata2~a~testdata4~e~5', '4_enc', '3_enc'),
+          |('testdata2~a~testdata4~e~6', '5_enc', '4_enc'),
+          |('testdata2~a~testdata4~e~7', '5_enc', '5_enc'),
+          |('testdata2~a~testdata4~e~8', '6_enc', '4_enc'),
+          |('testdata2~a~testdata4~e~9', '6_enc', '5_enc')
+        """.stripMargin
+      ).executeUpdate()
       connEnc.commit()
     }
   }

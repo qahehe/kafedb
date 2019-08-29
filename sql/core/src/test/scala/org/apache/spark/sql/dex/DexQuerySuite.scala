@@ -19,6 +19,7 @@ package org.apache.spark.sql.dex
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.{DataFrame, Row, functions}
 
 class DexQuerySuite extends DexQueryTest {
@@ -122,6 +123,12 @@ class DexQuerySuite extends DexQueryTest {
 
   test("two joins: three tables star schema transitive attributes") {
     val query = data2.join(data4).join(data3).where("a == e and a == c")
+    checkDexFor(query)
+  }
+
+  test("spx join") {
+    spark.conf.set(SQLConf.get.dexTranslationMode, "Spx")
+    val query = data2.join(data4).where("a == e")
     checkDexFor(query)
   }
 

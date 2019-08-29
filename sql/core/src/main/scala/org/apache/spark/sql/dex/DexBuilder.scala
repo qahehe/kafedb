@@ -66,9 +66,6 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     p
   }
 
-  private val tFilterName = "t_filter"
-  private val tCorrJoinName = "t_correlated_join"
-
   private val encKey: String = "enc"
   private val prfKey: String = "prf"
 
@@ -115,8 +112,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     encNameToEncDf.foreach { case (n, e) =>
       e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
     }
-    tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, tFilterName, encDbProps)
-    tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, tCorrJoinName, encDbProps)
+    tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tFilterName, encDbProps)
+    tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tCorrJoinName, encDbProps)
 
     Utils.classForName("org.postgresql.Driver")
     val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
@@ -124,8 +121,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       encNameToEncDf.foreach { case (n, e) =>
         createTreeIndex(encConn, n, e, "rid")
       }
-      createTreeIndex(encConn, tFilterName, tFilterDf, "label")
-      createTreeIndex(encConn, tCorrJoinName, tCorrJoinDf, "label")
+      createTreeIndex(encConn, DexConstants.tFilterName, tFilterDf, "label")
+      createTreeIndex(encConn, DexConstants.tCorrJoinName, tCorrJoinDf, "label")
     } finally {
       encConn.close()
     }

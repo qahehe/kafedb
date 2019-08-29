@@ -20,9 +20,7 @@ package org.apache.spark.sql.catalyst.plans.logical
 
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet}
 
-case class DexRidFilter(predicate: String, emm: LogicalPlan) extends UnaryNode {
-
-  // todo: for t_m of joinning a new table, need to add new rid to output
+abstract class DexUnaryOperator(predicate: String, emm: LogicalPlan) extends UnaryNode {
   override def output: Seq[Attribute] = emm.output.collect {
     case x: Attribute if x.name == "label" => x.withName("value_dec_key")
     case x => x
@@ -40,6 +38,10 @@ case class DexRidFilter(predicate: String, emm: LogicalPlan) extends UnaryNode {
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
+case class DexRidFilter(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+
+case class SpxRidUncorrelatedJoin(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+
 case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = childView
 
@@ -52,4 +54,3 @@ case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: 
 
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
-

@@ -44,6 +44,9 @@ import org.apache.spark.unsafe.types.UTF8String
 
 object DexConstants {
   val cashCounterStart: Int = 0
+  val tFilterName = "t_filter"
+  val tCorrJoinName = "t_correlated_join"
+  val tUncorrJoinName = "t_uncorrelated_join"
 }
 
 object DexSQLFunctions {
@@ -55,23 +58,25 @@ object DexSQLFunctions {
 
 class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
 
-  private val tFilter = LogicalRelation(
-    DataSource.apply(
-      sparkSession,
-      className = "jdbc",
-      options = Map(
-        JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
-        JDBCOptions.JDBC_TABLE_NAME -> "t_filter")).resolveRelation())
+  def emmTableOf(name: String): LogicalRelation = {
+    LogicalRelation(
+      DataSource.apply(
+        sparkSession,
+        className = "jdbc",
+        options = Map(
+          JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
+          JDBCOptions.JDBC_TABLE_NAME -> name)).resolveRelation())
+  }
 
-  private val tCorrelatedJoin = LogicalRelation(
-    DataSource.apply(
-      sparkSession,
-      className = "jdbc",
-      options = Map(
-        JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
-        JDBCOptions.JDBC_TABLE_NAME -> "t_correlated_join")).resolveRelation())
+  private val sqlConf = SQLConf.get
 
-  private val emmTables = Set(tFilter, tCorrelatedJoin)
+  private val tFilter = emmTableOf(DexConstants.tFilterName)
+
+  private val tCorrelatedJoin = emmTableOf(DexConstants.tCorrJoinName)
+
+  private val tUncorrelatedJoin = emmTableOf(DexConstants.tUncorrJoinName)
+
+  private val emmTables = Set(tFilter, tCorrelatedJoin, tUncorrelatedJoin)
 
   //private val decKey = Literal.create("dummy_dec_key", StringType)
   private val encKey = "enc"
@@ -230,6 +235,22 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_rid_filter
            |) AS ${generateSubqueryName()}
          """.stripMargin
+      case j: SpxRidUncorrelatedJoin =>
+        val (labelPrfKey, valueDecKey) = emmKeys(j.predicate)
+        val firstLabel = nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")
+        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val emm = dialect.quoteIdentifier(tUncorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
+        s"""
+           |(
+           |  WITH RECURSIVE spx_rid_uncorrelated_join(value_dec_key, value_left, value_right, counter) AS (
+           |    SELECT $valueDecKey, $emm.value_left, $emm.value_right, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabel
+           |    UNION ALL
+           |    SELECT $valueDecKey, $emm.value_left, $emm.value_right, spx_rid_uncorrelated_join.counter + 1 FROM spx_rid_uncorrelated_join, $emm
+           |    WHERE ${nextLabel(labelPrfKey, "spx_rid_uncorrelated_join.counter + 1")} = $emm.label
+           |  )
+           |  SELECT $outputCols FROM spx_rid_uncorrelated_join
+           |) AS ${generateSubqueryName()}
+         """.stripMargin
       case j: DexRidCorrelatedJoin =>
         val leftSubquery = convertToSQL(j.left)
         val leftRid = j.childViewRid.dialectSql(dialect.quoteIdentifier)
@@ -259,7 +280,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_rid_correlated_join NATURAL JOIN left_subquery_all_cols
            |) AS ${generateSubqueryName()}
          """.stripMargin
-
+      case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
     private def emmKeysOfRidCol(prfKey: String, ridCol: String, predicate: String): (String, String) = {
@@ -394,27 +415,39 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     override def apply(plan: LogicalPlan): LogicalPlan = {
       plan transformUp {
         case p: DexPlan =>
-          val translator = new DexPlanTranslator(p)
+          val translator = DexPlanTranslator.ofMode(sqlConf, p)
           translator.translate
       }
     }
   }
 
-  class DexPlanTranslator(dexPlan: DexPlan) {
+  object DexPlanTranslator {
+    def ofMode(sqlConf: SQLConf, dexPlan: DexPlan): DexPlanTranslator = sqlConf.dexTranslationMode match {
+      case "Spx" =>
+        log.warn("DexPlanTranslator=SpxTranslator")
+        SpxTranslator(dexPlan)
+      case "DexCorrelation" =>
+        log.warn("DexPlanTranslator=DexCorrelationTranslator")
+        DexCorrelationTranslator(dexPlan)
+      case x => throw DexException("unsupported: " + x)
+    }
+  }
 
-    private lazy val joinOrder: String => Int =
+  abstract class DexPlanTranslator(dexPlan: DexPlan) {
+
+    protected lazy val joinOrder: String => Int =
       dexPlan.collect {
         case l: LogicalRelation =>
           tableNameFromLogicalRelation(l)
       }.indexOf
 
-    private lazy val exprIdToTable: ExprId => String =
+    protected lazy val exprIdToTable: ExprId => String =
       dexPlan.collect {
         case l: LogicalRelation =>
           l.output.map(x => (x.exprId, tableNameFromLogicalRelation(l)))
       }.flatten.toMap
 
-    private lazy val output = dexPlan.output.map(translateAttribute)
+    protected lazy val output = dexPlan.output.map(translateAttribute)
 
     def translate: LogicalPlan = {
       // We want to preserve the DexPlan nodes during the translation process because we will use them to determine
@@ -599,45 +632,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         val predicate = s"$leftTableName~$leftColName~$rightTableName~$rightColName"
 
-        def newRidJoinOf(l: Attribute, rightRidOrder: String) = {
-          // "right" relation is a new relation to join
-          val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
-          val ridJoinProject = ridJoin.output.collect {
-            case x: Attribute if x.name == "value" => DexDecrypt($"value_dec_key", x).as(rightRidOrder)
-            case x: Attribute if x.name != "value_dec_key" => // remove extra value_dec_key column
-              // Unresolve all but the emm attributes.  This is overshooting a bit, because we only care about
-              // the case for natural joining the base table for joining attributes (rid_1#33, rid_1#90),
-              // but the optimizer will insert a new project node on top of this join and only takes one of the
-              // join columns, say rid_1#33.  This step happens AFTER DexPlan translation, so to go around this
-              // we need to unresolve all the output attributes from the existing projection to allow
-              // later on resolution onto the new project.
-              UnresolvedAttribute(x.name)
-          }
-          // Need to deduplicate ridJoinProject because left subquery might have the same attribute name
-          // as the right subquery, such as simple one filter one join case where rid_0 are from both
-          // the filter operator and the join operator.
-          ridJoin.select(ridJoinProject.distinct: _*)
-        }
+        translateEquiJoin(predicate: String, childView: LogicalPlan, leftRidOrder, rightRidOrder, leftRidOrderAttr, rightRidOrderAttr)
 
-        (leftRidOrderAttr, rightRidOrderAttr) match {
-          case (Some(l), None) =>
-            newRidJoinOf(l, rightRidOrder)
-
-          case (Some(l), Some(r)) =>
-            // "right" relation is a previously joined relation
-            // don't have extra "value_dec_key" column
-            val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
-            val ridJoinProject = childView.output
-            ridJoin.select(ridJoinProject: _*)
-
-          case (None, Some(r)) =>
-            // "left" relation is a new relation to join
-            newRidJoinOf(r, leftRidOrder)
-
-          case x => throw DexException("unsupported: (None, None)")
-        }
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
+
+    protected def translateEquiJoin(predicate: String, chidlView: LogicalPlan, leftRidOrder: String, rightRidOrder: String, leftRidOrderAttr: Option[Attribute], rightRidOrderAttr: Option[Attribute]): LogicalPlan
 
     private def tableEncOf(tableName: String): LogicalPlan = {
       val tableEncName = s"${tableName}_prf"
@@ -661,6 +661,57 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         }
       }
       tableEnc.select(columns: _*)
+    }
+  }
+
+  case class SpxTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
+    override protected def translateEquiJoin(predicate: String, childView: LogicalPlan, leftRidOrder: String, rightRidOrder: String, leftRidOrderAttr: Option[Attribute], rightRidOrderAttr: Option[Attribute]): LogicalPlan = {
+      val ridJoin = SpxRidUncorrelatedJoin(predicate, tUncorrelatedJoin)
+          .select(DexDecrypt($"value_dec_key", $"value_left").as(leftRidOrder), DexDecrypt($"value_dec_key", $"value_right").as(rightRidOrder))
+
+      childView.join(ridJoin, NaturalJoin(Inner))
+    }
+  }
+
+  case class DexCorrelationTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
+    override protected def translateEquiJoin(predicate: String, childView: LogicalPlan, leftRidOrder: String, rightRidOrder: String, leftRidOrderAttr: Option[Attribute], rightRidOrderAttr: Option[Attribute]): LogicalPlan = {
+      def newRidJoinOf(l: Attribute, rightRidOrder: String) = {
+        // "right" relation is a new relation to join
+        val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
+        val ridJoinProject = ridJoin.output.collect {
+          case x: Attribute if x.name == "value" => DexDecrypt($"value_dec_key", x).as(rightRidOrder)
+          case x: Attribute if x.name != "value_dec_key" => // remove extra value_dec_key column
+            // Unresolve all but the emm attributes.  This is overshooting a bit, because we only care about
+            // the case for natural joining the base table for joining attributes (rid_1#33, rid_1#90),
+            // but the optimizer will insert a new project node on top of this join and only takes one of the
+            // join columns, say rid_1#33.  This step happens AFTER DexPlan translation, so to go around this
+            // we need to unresolve all the output attributes from the existing projection to allow
+            // later on resolution onto the new project.
+            UnresolvedAttribute(x.name)
+        }
+        // Need to deduplicate ridJoinProject because left subquery might have the same attribute name
+        // as the right subquery, such as simple one filter one join case where rid_0 are from both
+        // the filter operator and the join operator.
+        ridJoin.select(ridJoinProject.distinct: _*)
+      }
+
+      (leftRidOrderAttr, rightRidOrderAttr) match {
+        case (Some(l), None) =>
+          newRidJoinOf(l, rightRidOrder)
+
+        case (Some(l), Some(r)) =>
+          // "right" relation is a previously joined relation
+          // don't have extra "value_dec_key" column
+          val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
+          val ridJoinProject = childView.output
+          ridJoin.select(ridJoinProject: _*)
+
+        case (None, Some(r)) =>
+          // "left" relation is a new relation to join
+          newRidJoinOf(r, leftRidOrder)
+
+        case x => throw DexException("unsupported: (None, None)")
+      }
     }
   }
 }
@@ -773,12 +824,12 @@ case class DexRidCorrelatedJoinExec(predicate: String, childView: SparkPlan, emm
     }.takeWhile(!_.isEmpty()).reduceOption(_ ++ _).getOrElse(sparkContext.emptyRDD)
   }
 
-  override def output: Seq[Attribute] = left.output ++ (right.output.collect {
+  override def output: Seq[Attribute] = left.output ++ right.output.collect {
     case x: Attribute if x.name == "label" =>
       // rename column "label"
       x.withName("value_dec_key")
     case x => x
-  })
+  }
 }
 
 
