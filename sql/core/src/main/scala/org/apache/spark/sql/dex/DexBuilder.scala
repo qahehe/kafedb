@@ -36,7 +36,7 @@ object DexBuilder {
   def createHashIndex(conn: Connection, tableName: String, df: DataFrame, col: String): Unit = {
     conn.prepareStatement(
       s"""
-         |CREATE INDEX "${tableName}_${col}_hash"
+         |CREATE INDEX IF NOT EXISTS "${tableName}_${col}_hash"
          |ON "$tableName"
          |USING HASH ($col)
       """.stripMargin).executeUpdate()
@@ -45,7 +45,7 @@ object DexBuilder {
   def createTreeIndex(conn: Connection, tableName: String, df: DataFrame, col: String): Unit = {
     conn.prepareStatement(
       s"""
-         |CREATE INDEX "${tableName}_${col}_tree"
+         |CREATE INDEX IF NOT EXISTS "${tableName}_${col}_tree"
          |ON "$tableName"
          |($col)
       """.stripMargin).executeUpdate()

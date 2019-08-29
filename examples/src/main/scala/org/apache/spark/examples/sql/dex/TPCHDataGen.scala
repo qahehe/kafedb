@@ -139,10 +139,8 @@ object TPCHDataGen {
     //validate(spark, scaleFactor, dbname)
 
     time {
-      if (overwrite) {
-        println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location")
-        loadPlaintext(spark, tables)
-      }
+      println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location, overwrite=$overwrite")
+      loadPlaintext(spark, tables, overwrite)
     }
 
     time {
@@ -165,9 +163,10 @@ object TPCHDataGen {
     spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex)
   }
 
-  private def loadPlaintext(spark: SparkSession, tables: TPCHTables): Unit = {
+  private def loadPlaintext(spark: SparkSession, tables: TPCHTables, overwrite: Boolean): Unit = {
     tables.tables.map(_.name).foreach { t =>
-      spark.table(t).write.mode(SaveMode.Overwrite).jdbc(dbUrl, t, dbProps)
+      val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Ignore
+      spark.table(t).write.mode(saveMode).jdbc(dbUrl, t, dbProps)
 
       Utils.classForName("org.postgresql.Driver")
       val conn = DriverManager.getConnection(dbUrl, dbProps)
@@ -180,7 +179,9 @@ object TPCHDataGen {
           createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
         }
 
-        conn.prepareStatement("analyze").execute()
+        if (overwrite) {
+          conn.prepareStatement("analyze").execute()
+        }
       } finally {
         conn.close()
       }
