@@ -25,7 +25,19 @@ import org.apache.spark.sql.internal.SQLConf
 object TPCHBench {
 
   def main(args: Array[String]): Unit = {
-    val spark = TPCHDataGen.newSparkSession()
+    require(args.length == 1)
+    val translationMode = args(1)
+    println(s"translationMode=$translationMode")
+
+    SparkSession.cleanupAnyExistingSession()
+    val spark = SparkSession
+      .builder()
+      .appName("TPCH Bench")
+      .config("spark.sql.dex.translationMode", translationMode)
+      .getOrCreate()
+    SparkSession.setActiveSession(spark)
+    SparkSession.setDefaultSession(spark)
+    println(s"spark.sql.dex.translationMode=${spark.conf.get("spark.sql.dex.translationMode")}")
 
     TPCHDataGen.setScaleConfig(spark, TPCHDataGen.scaleFactor)
 
@@ -56,7 +68,7 @@ object TPCHBench {
     val q2c =
       """
         |select
-        |  min(ps_supplycost)
+        |  ps_supplycost
         |from
         |  part,
         |  partsupp,
@@ -77,13 +89,33 @@ object TPCHBench {
       .join(region).where("n_regionkey = r_regionkey")
       .where("r_name == 'EUROPE' and p_size == 15")
       .select("ps_supplycost")
-    val q2cDf = q2cMain.agg(min("ps_supplycost"))
-    val q2cDex = q2cMain.dex.agg(min("ps_supplycost"))
+    val q2cDf = q2cMain
+    val q2cDex = q2cMain.dex
     benchQuery(spark, q2c, q2cDf, q2cDex)
 
     val q2d = "select * from part where p_size = 15"
     val q2dDf = part.where("p_size == 15")
     benchQuery(spark, q2d, q2dDf, q2dDf.dex)
+
+    val q2e =
+      """
+        |select
+        |  ps_supplycost
+        |from
+        |  part,
+        |  partsupp
+        |where
+        |  p_partkey = ps_partkey
+        |  and p_size = 15
+      """.stripMargin
+    val q2eMain = part.join(partsupp).where("p_partkey == ps_partkey")
+        .where("p_size == 15")
+        .select("ps_supplycost")
+    val q2eDf = q2eMain
+    val q2eDex = q2eMain.dex
+    benchQuery(spark, q2e, q2eDf, q2eDex)
+
+    spark.stop()
   }
 
 
@@ -98,12 +130,6 @@ object TPCHBench {
       println(s"postgres result size=${postgresResult.length}")
     }
     time {
-      spark.conf.set(SQLConf.get.dexTranslationMode, "Spx")
-      val spxResult = queryDex.collect()
-      println(s"spx result size=${spxResult.length}")
-    }
-    time {
-      spark.conf.set(SQLConf.get.dexTranslationMode, "DexCorrelation")
       val dexResult = queryDex.collect()
       println(s"dexCorrelation result size=${dexResult.length}")
     }

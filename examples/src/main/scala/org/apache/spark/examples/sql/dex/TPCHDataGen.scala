@@ -83,13 +83,13 @@ object TPCHDataGen {
     TableAttribute("region", "r_name")
   )
 
-  def newSparkSession(): SparkSession = SparkSession
+  def newSparkSession(name: String): SparkSession = SparkSession
     .builder()
-    .appName("TPCH Data Generation")
+    .appName(name)
     .getOrCreate()
 
   def main(args: Array[String]): Unit = {
-    val spark = newSparkSession()
+    val spark = newSparkSession("TPCH Data Generation")
 
     //val workers: Int = spark.conf.get("spark.databricks.clusterUsageTags.clusterTargetWorkers").toInt //number of nodes, assumes one executor per node
     val workers: Int = spark.sparkContext.getConf.getInt("spark.executor.instances", 1)
@@ -147,6 +147,8 @@ object TPCHDataGen {
       println(s"\nBuilding DEX for $benchmark into Postgres from $location")
       buildDex(spark, tables)
     }
+
+    spark.stop()
   }
 
   private def buildDex(spark: SparkSession, tables: TPCHTables): Unit = {
