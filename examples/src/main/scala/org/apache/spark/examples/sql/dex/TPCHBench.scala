@@ -29,7 +29,7 @@ object TPCHBench {
 
     TPCHDataGen.setScaleConfig(spark, TPCHDataGen.scaleFactor)
 
-    val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(spark, TPCHDataGen.scaleFactor)
+    val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(spark, TPCHDataGen.scaleFactor, TPCHDataGen.seed)
     TPCHDataGen.pointDataToSpark(spark, dbname, tables, location)
     tables.analyzeTables(dbname, analyzeColumns = true)
 
