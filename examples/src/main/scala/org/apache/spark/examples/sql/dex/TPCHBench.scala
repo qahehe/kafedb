@@ -19,6 +19,7 @@ package org.apache.spark.examples.sql.dex
 import org.apache.spark.examples.sql.dex.TPCHDataGen.time
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.internal.SQLConf
 // scalastyle:off
 
 object TPCHBench {
@@ -89,12 +90,18 @@ object TPCHBench {
       println(s"spark result size=${sparkResult.length}")
     }
     time {
-      val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"(${query}) as postgresResult", TPCHDataGen.dbProps).collect()
+      val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps).collect()
       println(s"postgres result size=${postgresResult.length}")
     }
     time {
+      spark.conf.set(SQLConf.get.dexTranslationMode, "Spx")
+      val spxResult = queryDex.collect()
+      println(s"spx result size=${spxResult.length}")
+    }
+    time {
+      spark.conf.set(SQLConf.get.dexTranslationMode, "DexCorrelation")
       val dexResult = queryDex.collect()
-      println(s"dex result size=${dexResult.length}")
+      println(s"dexCorrelation result size=${dexResult.length}")
     }
   }
 }

@@ -139,6 +139,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       createTreeIndex(encConn, DexConstants.tFilterName, tFilterDf, "label")
       createTreeIndex(encConn, DexConstants.tUncorrJoinName, tUncorrJoinDf, "label")
       createTreeIndex(encConn, DexConstants.tCorrJoinName, tCorrJoinDf, "label")
+
+      encConn.prepareStatement("analyze").execute()
     } finally {
       encConn.close()
     }

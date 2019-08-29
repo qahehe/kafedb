@@ -22,11 +22,8 @@ import java.sql.DriverManager
 import java.util.Properties
 
 import org.apache.spark.deploy.SparkHadoopUtil
-import org.apache.spark.sql.dex.DexBuilder
-import org.apache.spark.sql.dex.DexBuilder.{TableAttribute, createHashIndex, createTreeIndex}
-import org.apache.spark.sql.functions.min
-import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.{SaveMode, SparkSession, functions}
+import org.apache.spark.sql.dex.DexBuilder.{TableAttribute, createTreeIndex}
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.util.Utils
 // For datagens
 import java.io._
@@ -182,6 +179,8 @@ object TPCHDataGen {
           createTreeIndex(conn, j1.table, spark.table(j1.table), j1.attr)
           createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
         }
+
+        conn.prepareStatement("analyze").execute()
       } finally {
         conn.close()
       }
