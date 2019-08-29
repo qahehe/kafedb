@@ -48,7 +48,6 @@ object TPCHDataGen {
   //val scaleFactors = Seq("1", "10", "100", "1000", "10000") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
   //val scaleFactors = Seq("1") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
   val scaleFactor = "1"
-  val seed = "1234"
   val baseLocation = absPathOf("bench/data")
   val baseDatagenFolder = absPathOf("bench/datagen")
   println(s"baseLocation=${baseLocation}")
@@ -118,7 +117,7 @@ object TPCHDataGen {
     // First set some config settings affecting OOMs/performance
     setScaleConfig(spark, scaleFactor)
 
-    val (dbname, tables, location) = getBenchmarkData(spark, scaleFactor, seed)
+    val (dbname, tables, location) = getBenchmarkData(spark, scaleFactor)
 
     // Generate data
     time {
@@ -255,14 +254,13 @@ object TPCHDataGen {
     throw new Exception(s"Timed out waiting for workers to be ready after ${tries}s.")
   }
 
-  def getBenchmarkData(spark: SparkSession, scaleFactor: String, seed: String): (String, TPCHTables, String) =
+  def getBenchmarkData(spark: SparkSession, scaleFactor: String): (String, TPCHTables, String) =
     (
       s"tpch_sf${scaleFactor}_$fileFormat$dbSuffix",
       new TPCHTables(
         spark.sqlContext,
         dbgenDir = s"$baseDatagenFolder/dbgen",
         scaleFactor,
-        seed,
         useDoubleForDecimal = false,
         useStringForDate = true,
         generatorParams = Nil

@@ -26,7 +26,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SQLContext, SaveMode}
 
 
-abstract class Tables(sqlContext: SQLContext, scaleFactor: String, seed: String,
+abstract class Tables(sqlContext: SQLContext, scaleFactor: String, seed: String = "123",
                       useDoubleForDecimal: Boolean = false, useStringForDate: Boolean = false)
   extends Serializable {
 
