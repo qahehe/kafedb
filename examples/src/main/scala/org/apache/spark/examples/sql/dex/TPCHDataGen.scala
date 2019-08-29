@@ -167,24 +167,24 @@ object TPCHDataGen {
     tables.tables.map(_.name).foreach { t =>
       val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Ignore
       spark.table(t).write.mode(saveMode).jdbc(dbUrl, t, dbProps)
+    }
 
-      Utils.classForName("org.postgresql.Driver")
-      val conn = DriverManager.getConnection(dbUrl, dbProps)
-      try {
-        filterAttrsToDex.foreach { f =>
-          createTreeIndex(conn, f.table, spark.table(f.table), f.attr)
-        }
-        joinableAttrsToDex.foreach { case (j1, j2) =>
-          createTreeIndex(conn, j1.table, spark.table(j1.table), j1.attr)
-          createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
-        }
-
-        if (overwrite) {
-          conn.prepareStatement("analyze").execute()
-        }
-      } finally {
-        conn.close()
+    Utils.classForName("org.postgresql.Driver")
+    val conn = DriverManager.getConnection(dbUrl, dbProps)
+    try {
+      filterAttrsToDex.foreach { f =>
+        createTreeIndex(conn, f.table, spark.table(f.table), f.attr)
       }
+      joinableAttrsToDex.foreach { case (j1, j2) =>
+        createTreeIndex(conn, j1.table, spark.table(j1.table), j1.attr)
+        createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
+      }
+
+      if (overwrite) {
+        conn.prepareStatement("analyze").execute()
+      }
+    } finally {
+      conn.close()
     }
   }
 
