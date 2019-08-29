@@ -23,10 +23,11 @@ class TPCHTables(
                   sqlContext: SQLContext,
                   dbgenDir: String,
                   scaleFactor: String,
+                  seed: String,
                   useDoubleForDecimal: Boolean = false,
                   useStringForDate: Boolean = false,
                   generatorParams: Seq[String] = Nil)
-  extends Tables(sqlContext, scaleFactor, useDoubleForDecimal, useStringForDate) {
+  extends Tables(sqlContext, scaleFactor, seed, useDoubleForDecimal, useStringForDate) {
   import sqlContext.implicits._
 
   val dataGenerator = new DBGEN(dbgenDir, generatorParams)
