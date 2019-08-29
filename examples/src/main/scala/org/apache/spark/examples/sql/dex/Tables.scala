@@ -26,7 +26,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SQLContext, SaveMode}
 
 
-abstract class Tables(sqlContext: SQLContext, scaleFactor: String, seed: String = "123",
+abstract class Tables(sqlContext: SQLContext, scaleFactor: String,
                       useDoubleForDecimal: Boolean = false, useStringForDate: Boolean = false)
   extends Serializable {
 
@@ -49,7 +49,7 @@ abstract class Tables(sqlContext: SQLContext, scaleFactor: String, seed: String 
      *  converted to `schema`. Otherwise, it just outputs the raw data (as a single STRING column).
      */
     def df(convertToSchema: Boolean, numPartition: Int) = {
-      val generatedData = dataGenerator.generate(sparkContext, name, numPartition, scaleFactor, seed)
+      val generatedData = dataGenerator.generate(sparkContext, name, numPartition, scaleFactor)
       val rows = generatedData.mapPartitions { iter =>
         iter.map { l =>
           if (convertToSchema) {

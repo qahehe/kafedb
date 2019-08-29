@@ -25,13 +25,12 @@ trait DataGenerator extends Serializable {
                 sparkContext: SparkContext,
                 name: String,
                 partitions: Int,
-                scaleFactor: String,
-                seed: String): RDD[String]
+                scaleFactor: String): RDD[String]
 }
 
 class DBGEN(dbgenDir: String, params: Seq[String]) extends DataGenerator {
   val dbgen = s"$dbgenDir/dbgen"
-  def generate(sparkContext: SparkContext,name: String, partitions: Int, scaleFactor: String, seed: String) = {
+  def generate(sparkContext: SparkContext,name: String, partitions: Int, scaleFactor: String) = {
     val smallTables = Seq("nation", "region")
     val numPartitions = if (partitions > 1 && !smallTables.contains(name)) partitions else 1
     val generatedData = {
@@ -57,7 +56,7 @@ class DBGEN(dbgenDir: String, params: Seq[String]) extends DataGenerator {
         val paramsString = params.mkString(" ")
         val commands = Seq(
           "bash", "-c",
-          s"cd $localToolsDir && ./dbgen -q $paramsString -T ${shortTableNames(name)} -r $seed -s $scaleFactor $parallel")
+          s"cd $localToolsDir && ./dbgen -q $paramsString -T ${shortTableNames(name)} -s $scaleFactor $parallel")
         println(commands)
         BlockingLineStream(commands)
       }.repartition(numPartitions)
