@@ -21,11 +21,10 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.catalyst.expressions.MonotonicallyIncreasingID
 import org.apache.spark.sql.dex.DexBuilder.{JoinableAttrs, TableAttribute, TableName, createTreeIndex}
-import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, udf}
-import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.functions.{col, lit, collect_list, row_number, monotonically_increasing_id, posexplode, udf}
 import org.apache.spark.util.Utils
 
 object DexBuilder {
@@ -94,6 +93,21 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
     val tFilterDf = tFilterDfParts.reduce((d1, d2) => d1 union d2)
 
+    val tUncorrJoinDfParts = for {
+      (attrLeft, attrRight) <- joins
+    } yield {
+      val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
+      dfLeft.withColumnRenamed("rid", "rid_left")
+        .join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
+        .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1) // start from 0
+        .withColumn("predicate", lit(uncorrJoinPredicateOf(attrLeft, attrRight)))
+        .withColumn("label", udfLabel($"predicate", $"counter"))
+        .withColumn("value_left", udfValue($"rid_left"))
+        .withColumn("value_right", udfValue($"rid_right"))
+        .select("label", "value_left", "value_right")
+    }
+    val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)
+
     val tCorrJoinDfParts = for {
       (attrLeft, attrRight) <- joins
     } yield {
@@ -113,6 +127,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
     }
     tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tFilterName, encDbProps)
+    tUncorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tUncorrJoinName, encDbProps)
     tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tCorrJoinName, encDbProps)
 
     Utils.classForName("org.postgresql.Driver")
@@ -122,12 +137,11 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         createTreeIndex(encConn, n, e, "rid")
       }
       createTreeIndex(encConn, DexConstants.tFilterName, tFilterDf, "label")
+      createTreeIndex(encConn, DexConstants.tUncorrJoinName, tUncorrJoinDf, "label")
       createTreeIndex(encConn, DexConstants.tCorrJoinName, tCorrJoinDf, "label")
     } finally {
       encConn.close()
     }
-
-
   }
 
   private def encryptTable(table: TableName, ridDf: DataFrame): (String, DataFrame) = {
@@ -175,6 +189,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private def joinPredicateOf(attrLeft: TableAttribute, attrRight: TableAttribute)(ridLeft: String): String = {
     s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}~$ridLeft"
+  }
+
+  private def uncorrJoinPredicateOf(attrLeft: TableAttribute, attrRight: TableAttribute): String = {
+    s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}"
   }
 
   private def filterPredicateOf(table: String, column: String)(value: String): String = {
