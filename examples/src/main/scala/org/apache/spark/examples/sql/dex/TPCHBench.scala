@@ -26,7 +26,7 @@ object TPCHBench {
 
   def main(args: Array[String]): Unit = {
     require(args.length == 1)
-    val translationMode = args(1)
+    val translationMode = args(0)
     println(s"translationMode=$translationMode")
 
     SparkSession.cleanupAnyExistingSession()
