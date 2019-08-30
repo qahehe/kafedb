@@ -126,10 +126,34 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
-  test("spx join") {
+  test("spx") {
     spark.conf.set(SQLConf.get.dexTranslationMode, "Spx")
-    val query = data2.join(data4).where("a == e")
-    checkDexFor(query)
+    val query1 = data2.join(data4).where("a == e")
+    checkDexFor(query1)
+
+    val query2 = data2.join(data3).where("a == 2 and b == c")
+    checkDexFor(query2)
+
+
+    val query3 = data2.join(data3).where("a == c and b == d")
+    checkDexFor(query3)
+
+
+    val query4 = data2.join(data3).where("a == c and b == c")
+    checkDexFor(query4)
+
+
+    val query5 = data2.join(data3).where("a == c and b == d and a = 1")
+    checkDexFor(query5)
+
+
+    val query6 = data2.join(data4).join(data3).where("a == e and b == c")
+    checkDexFor(query6)
+
+
+    val query7 = data2.join(data4).join(data3).where("a == e and a == c")
+    checkDexFor(query7)
+
   }
 
   test("jdbc rdd internal rows are unmaterialized cursors") {

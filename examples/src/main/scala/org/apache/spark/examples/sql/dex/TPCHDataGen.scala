@@ -75,7 +75,7 @@ object TPCHDataGen {
   val joinableAttrsToDex = Seq(
     (TableAttribute("part", "p_partkey"), TableAttribute("partsupp", "ps_partkey")),
     (TableAttribute("partsupp", "ps_suppkey"), TableAttribute("supplier", "s_suppkey")),
-    (TableAttribute("nation", "n_nationKey"), TableAttribute("supplier", "s_nationkey")),
+    (TableAttribute("nation", "n_nationkey"), TableAttribute("supplier", "s_nationkey")),
     (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey"))
   )
   val filterAttrsToDex = Seq(

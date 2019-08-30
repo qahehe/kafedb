@@ -242,7 +242,31 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
           |('testdata2~a~testdata4~e~6', '5_enc', '4_enc'),
           |('testdata2~a~testdata4~e~7', '5_enc', '5_enc'),
           |('testdata2~a~testdata4~e~8', '6_enc', '4_enc'),
-          |('testdata2~a~testdata4~e~9', '6_enc', '5_enc')
+          |('testdata2~a~testdata4~e~9', '6_enc', '5_enc'),
+          |
+          |('testdata2~a~testdata3~c~0', '1_enc', '1_enc'),
+          |('testdata2~a~testdata3~c~1', '1_enc', '2_enc'),
+          |('testdata2~a~testdata3~c~2', '2_enc', '1_enc'),
+          |('testdata2~a~testdata3~c~3', '2_enc', '2_enc'),
+          |('testdata2~a~testdata3~c~4', '3_enc', '3_enc'),
+          |('testdata2~a~testdata3~c~5', '4_enc', '3_enc'),
+          |
+          |('testdata2~b~testdata3~c~0', '1_enc', '1_enc'),
+          |('testdata2~b~testdata3~c~1', '1_enc', '2_enc'),
+          |('testdata2~b~testdata3~c~2', '2_enc', '3_enc'),
+          |('testdata2~b~testdata3~c~3', '3_enc', '1_enc'),
+          |('testdata2~b~testdata3~c~4', '3_enc', '2_enc'),
+          |('testdata2~b~testdata3~c~5', '4_enc', '3_enc'),
+          |('testdata2~b~testdata3~c~6', '5_enc', '1_enc'),
+          |('testdata2~b~testdata3~c~7', '5_enc', '2_enc'),
+          |('testdata2~b~testdata3~c~8', '6_enc', '3_enc'),
+          |
+          |('testdata2~b~testdata3~d~0', '1_enc', '1_enc'),
+          |('testdata2~b~testdata3~d~1', '2_enc', '2_enc'),
+          |('testdata2~b~testdata3~d~2', '3_enc', '1_enc'),
+          |('testdata2~b~testdata3~d~3', '4_enc', '2_enc'),
+          |('testdata2~b~testdata3~d~4', '5_enc', '1_enc'),
+          |('testdata2~b~testdata3~d~5', '6_enc', '2_enc')
         """.stripMargin
       ).executeUpdate()
       connEnc.commit()
