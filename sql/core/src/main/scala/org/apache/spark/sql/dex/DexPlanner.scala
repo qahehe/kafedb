@@ -836,7 +836,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         DexDomainValues(leftPredicate, tDomain).select(DexDecrypt($"value_dec_key", $"value").as(s"value_dom")),
         DexDomainValues(rightPredicate, tDomain).select(DexDecrypt($"value_dec_key", $"value").as(s"value_dom"))
       )
-      val intersectDomain = leftDomainValues.intersect(rightDomainValues, isAll = false)
+      val intersectDomain = leftDomainValues.intersect(rightDomainValues, isAll = true)
       /*val (leftDomainRids, rightDomainRids) = (
         DexDomainRids(leftPredicate, intersectDomain, tFilter, $"value_dom").select("value_dom", DexDecrypt($"value_dec_key", $"value").as(joinAttrs.leftRidOrder)),
         DexDomainRids(rightPredicate, intersectDomain, tFilter, $"value_dom").select("value_dom", DexDecrypt($"value_dec_key", $"value").as(joinAttrs.rightRidOrder))
