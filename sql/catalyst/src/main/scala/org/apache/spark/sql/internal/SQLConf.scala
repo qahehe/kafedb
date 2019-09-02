@@ -1560,6 +1560,7 @@ object SQLConf {
     .doc("Spx, DexCorrelation")
     .withAlternative("Spx")
     .withAlternative("DexCorrelation")
+    .withAlternative("DexDomain")
     .stringConf
     .createWithDefault("DexCorrelation")
 }

@@ -19,6 +19,7 @@ package org.apache.spark.sql.catalyst.plans.logical
 // scalastyle:off
 
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet}
+import org.apache.spark.sql.catalyst.dsl.expressions._
 
 abstract class DexUnaryOperator(predicate: String, emm: LogicalPlan) extends UnaryNode {
   override def output: Seq[Attribute] = emm.output.collect {
@@ -42,7 +43,11 @@ case class DexRidFilter(predicate: String, emm: LogicalPlan) extends DexUnaryOpe
 
 case class SpxRidUncorrelatedJoin(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
 
-case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends BinaryNode {
+case class DexDomainValues(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+
+case class DexCorrelatedFilter(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+
+abstract class DexBinaryOperator(childView: LogicalPlan, emm: LogicalPlan) extends BinaryNode {
   override def left: LogicalPlan = childView
 
   override def right: LogicalPlan = emm
@@ -53,4 +58,24 @@ case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: 
   }
 
   override def references: AttributeSet = super.references ++ AttributeSet(output)
+}
+
+case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends DexBinaryOperator(childView, emm)
+
+case class DexDomainRids(predicatePrefix: String, domainValues: LogicalPlan, emm: LogicalPlan, domainValueAttr: Attribute) extends DexBinaryOperator(domainValues, emm)
+
+case class DexDomainJoin(leftPredicate: String, rightPredicate: String, intersectedDomainValues: LogicalPlan, emmLeft: LogicalPlan, emmRight: LogicalPlan) extends TertiaryNode {
+  override def left: LogicalPlan = emmLeft
+
+  override def middle: LogicalPlan = intersectedDomainValues
+
+  override def right: LogicalPlan = emmRight
+
+  override def output: Seq[Attribute] = middle.output ++ left.output.collect {
+    case x: Attribute if x.name == "label" => x.withName("value_dec_key_left")
+    case x: Attribute if x.name == "value" => x.withName("value_left")
+  } ++ right.output.collect {
+    case x: Attribute if x.name == "label" => x.withName("value_dec_key_right")
+    case x: Attribute if x.name == "value" => x.withName("value_right")
+  }
 }

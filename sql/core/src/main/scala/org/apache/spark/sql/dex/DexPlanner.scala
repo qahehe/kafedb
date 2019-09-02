@@ -41,12 +41,14 @@ import org.apache.spark.sql.jdbc.JdbcDialects
 import org.apache.spark.sql.types.{DataType, IntegerType, StringType}
 import org.apache.spark.sql.{Column, Dataset, Encoders, SparkSession}
 import org.apache.spark.unsafe.types.UTF8String
+import org.apache.spark.sql.functions.{col, lit, collect_list, row_number, monotonically_increasing_id, posexplode, udf}
 
 object DexConstants {
   val cashCounterStart: Int = 0
   val tFilterName = "t_filter"
   val tCorrJoinName = "t_correlated_join"
   val tUncorrJoinName = "t_uncorrelated_join"
+  val tDomainName = "t_domain"
 }
 
 object DexSQLFunctions {
@@ -76,7 +78,9 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
 
   private val tUncorrelatedJoin = emmTableOf(DexConstants.tUncorrJoinName)
 
-  private val emmTables = Set(tFilter, tCorrelatedJoin, tUncorrelatedJoin)
+  private val tDomain = emmTableOf(DexConstants.tDomainName)
+
+  private val emmTables = Set(tFilter, tCorrelatedJoin, tUncorrelatedJoin, tDomain)
 
   //private val decKey = Literal.create("dummy_dec_key", StringType)
   private val encKey = "enc"
@@ -219,6 +223,17 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |
            |($rightSubquery) AS ${generateSubqueryName()}
           """.stripMargin
+      case i: Intersect =>
+        val leftSubquery = convertToSQL(i.left)
+        val rightSubquery = convertToSQL(i.right)
+        val intersectClause = if (i.isAll) "INTERSECT ALL" else "INTERSECT"
+        s"""
+           |$leftSubquery
+           |
+           |$intersectClause
+           |
+           |$rightSubquery
+         """.stripMargin
       case f: DexRidFilter =>
         val (labelPrfKey, valueDecKey) = emmKeys(f.predicate)
         val firstLabel = nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")
@@ -280,7 +295,101 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_rid_correlated_join NATURAL JOIN left_subquery_all_cols
            |) AS ${generateSubqueryName()}
          """.stripMargin
+      case v: DexDomainValues =>
+        val (labelPrfKey, valueDecKey) = emmKeys(v.predicate)
+        val firstLabel = nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")
+        val outputCols = v.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val emm = dialect.quoteIdentifier(tDomain.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
+        s"""
+           |(
+           |  WITH RECURSIVE dex_domain_values(value_dec_key, value, counter) AS (
+           |    SELECT $valueDecKey, $emm.value, ${DexConstants.cashCounterStart} FROM $emm WHERE label = $firstLabel
+           |    UNION ALL
+           |    SELECT $valueDecKey, $emm.value, dex_domain_values.counter + 1 FROM dex_domain_values, $emm
+           |    WHERE ${nextLabel(labelPrfKey, "dex_domain_values.counter + 1")} = $emm.label
+           |  )
+           |  SELECT $outputCols FROM dex_domain_values
+           |) AS ${generateSubqueryName()}
+         """.stripMargin
+      case r: DexDomainRids =>
+        // todo: Don't want to pass on emm keys on plaintext predicate to the server because it would then know how to
+        // compose predicates by itself.  Instead, we do two-hop prf on plaintext predicate and only let the server
+        // know the second hop and its key
+        val domainValueSubquery = convertToSQL(r.domainValues)
+        val domainValue = r.domainValueAttr.dialectSql(dialect.quoteIdentifier)
+        val (labelPrfKey, valueDecKey) = emmKeysFromDomainValueColumn(prfKey, domainValue, r.predicatePrefix)
+        val emm = dialect.quoteIdentifier(tFilter.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
+        val outputCols = r.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        s"""
+           |(
+           |  WITH RECURSIVE dex_domain_values_keys($domainValue, label_prf_key, value_dec_key) AS (
+           |    SELECT $domainValue, $labelPrfKey, $valueDecKey FROM ($domainValueSubquery)
+           |  ),
+           |  dex_domain_rids($domainValue, label_prf_key, value_dec_key, value, counter) AS (
+           |    SELECT dex_domain_values_keys.*, $emm.value, ${DexConstants.cashCounterStart} AS counter
+           |    FROM dex_domain_values_keys, $emm
+           |    WHERE $emm.label =
+           |      ${nextLabel("label_prf_key", s"${DexConstants.cashCounterStart}")}
+           |    UNION ALL
+           |    SELECT $domainValue, label_prf_key, value_dec_key, $emm.value, counter + 1 AS counter
+           |    FROM dex_domain_rids, $emm
+           |    WHERE $emm.label = ${nextLabel("label_prf_key", "counter + 1")}
+           |  )
+           |  SELECT $outputCols FROM dex_domain_rids
+           |) AS ${generateSubqueryName()}
+         """.stripMargin
+      case j: DexDomainJoin =>
+        val domainValue = dialect.quoteIdentifier("value_dom") // todo: refactor
+        val emm = dialect.quoteIdentifier(tFilter.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
+        // do not use outputSet, because dexOperators renaming columns using "withName" would still be distinguished
+        // using the old names.
+        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+
+        val intersectedDomainValueSubquery =
+          s"""
+             |  dex_intersected_domain_values($domainValue) AS (
+             |    ${convertToSQL(j.intersectedDomainValues)}
+             |  )
+          """.stripMargin
+
+        def ctePartFor(joinSide: String, predicatePrefix: String) = {
+          val (labelPrfKey, valueDecKey) = emmKeysFromDomainValueColumn(prfKey, domainValue, predicatePrefix)
+          s"""
+             |  dex_domain_values_keys_$joinSide($domainValue, label_prf_key_$joinSide, value_dec_key_$joinSide) AS (
+             |    SELECT $domainValue, $labelPrfKey, $valueDecKey FROM dex_intersected_domain_values
+             |  ),
+             |  dex_domain_rids_$joinSide($domainValue, label_prf_key_$joinSide, value_dec_key_$joinSide, value_$joinSide, counter_$joinSide) AS (
+             |    SELECT dex_domain_values_keys_$joinSide.*, $emm.value, ${DexConstants.cashCounterStart} AS counter_$joinSide
+             |    FROM dex_domain_values_keys_$joinSide, $emm
+             |    WHERE $emm.label =
+             |      ${nextLabel(s"label_prf_key_$joinSide", s"${DexConstants.cashCounterStart}")}
+             |    UNION ALL
+             |    SELECT $domainValue, label_prf_key_$joinSide, value_dec_key_$joinSide, $emm.value, counter_$joinSide + 1 AS counter_$joinSide
+             |    FROM dex_domain_rids_$joinSide, $emm
+             |    WHERE $emm.label = ${nextLabel(s"label_prf_key_$joinSide", s"counter_$joinSide + 1")}
+             |  )
+         """.stripMargin
+        }
+
+        s"""
+           |(
+           |  WITH RECURSIVE
+           |  $intersectedDomainValueSubquery,
+           |  ${ctePartFor("left", j.leftPredicate)},
+           |  ${ctePartFor("right", j.rightPredicate)}
+           |  SELECT $outputCols FROM dex_domain_rids_left NATURAL JOIN dex_domain_rids_right
+           |) AS ${generateSubqueryName()}
+         """.stripMargin
+
       case x => throw DexException("unsupported: " + x.getClass.toString)
+    }
+
+    private def emmKeysFromDomainValueColumn(prfKey: String, domainValueCol: String, predicate: String): (String, String) = {
+      // todo: append 1 and 2 to form two keys
+      // todo: randomized the predicate using prfKey
+      val prfKeyCol = s"'$predicate' || '~' || $domainValueCol"
+      val decKeyCol = prfKeyCol
+      (prfKeyCol, decKeyCol)
     }
 
     private def emmKeysOfRidCol(prfKey: String, ridCol: String, predicate: String): (String, String) = {
@@ -429,6 +538,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case "DexCorrelation" =>
         log.warn("DexPlanTranslator=DexCorrelationTranslator")
         DexCorrelationTranslator(dexPlan)
+      case "DexDomain" =>
+        log.warn("DexPlanTranslator=DexDomain")
+        DexDomainTranslator(dexPlan)
       case x => throw DexException("unsupported: " + x)
     }
   }
@@ -621,23 +733,23 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       }
     }
 
+    case class JoinAttrs(left: Attribute, right: Attribute) {
+      val (leftColName, rightColName) = (left.name, right.name)
+      val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
+      val (leftTableOrder, rightTableOrder) = (joinOrder(leftTableName), joinOrder(rightTableName))
+      val (leftRidOrder, rightRidOrder) = (s"rid_${leftTableOrder}", s"rid_${rightTableOrder}")
+
+      def ridOrderAttrsGiven(childView: LogicalPlan): (Option[Attribute], Option[Attribute]) =
+        (childView.output.find(_.name == leftRidOrder), childView.output.find(_.name == rightRidOrder))
+    }
+
     private def translateJoinPredicate(p: Predicate, childView: LogicalPlan): LogicalPlan = p match {
       case EqualTo(left: Attribute, right: Attribute) =>
-        val (leftColName, rightColName) = (left.name, right.name)
-        val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
-        val (leftRidOrder, rightRidOrder) = (s"rid_${joinOrder(leftTableName)}", s"rid_${joinOrder(rightTableName)}")
-        val (leftRidOrderAttr, rightRidOrderAttr) = (
-          childView.output.find(_.name == leftRidOrder),
-          childView.output.find(_.name == rightRidOrder))
-
-        val predicate = s"$leftTableName~$leftColName~$rightTableName~$rightColName"
-
-        translateEquiJoin(predicate: String, childView: LogicalPlan, leftRidOrder, rightRidOrder, leftRidOrderAttr, rightRidOrderAttr)
-
+        translateEquiJoin(JoinAttrs(left, right), childView: LogicalPlan)
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
-    protected def translateEquiJoin(predicate: String, chidlView: LogicalPlan, leftRidOrder: String, rightRidOrder: String, leftRidOrderAttr: Option[Attribute], rightRidOrderAttr: Option[Attribute]): LogicalPlan
+    protected def translateEquiJoin(joinAttrs: JoinAttrs, chidlView: LogicalPlan): LogicalPlan
 
     private def tableEncOf(tableName: String): LogicalPlan = {
       val tableEncName = s"${tableName}_prf"
@@ -665,16 +777,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   case class SpxTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
-    override protected def translateEquiJoin(predicate: String, childView: LogicalPlan, leftRidOrder: String, rightRidOrder: String, leftRidOrderAttr: Option[Attribute], rightRidOrderAttr: Option[Attribute]): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childView: LogicalPlan): LogicalPlan = {
+      val predicate = s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
       val ridJoin = SpxRidUncorrelatedJoin(predicate, tUncorrelatedJoin)
-          .select(DexDecrypt($"value_dec_key", $"value_left").as(leftRidOrder), DexDecrypt($"value_dec_key", $"value_right").as(rightRidOrder))
+          .select(DexDecrypt($"value_dec_key", $"value_left").as(joinAttrs.leftRidOrder), DexDecrypt($"value_dec_key", $"value_right").as(joinAttrs.rightRidOrder))
 
       childView.join(ridJoin, NaturalJoin(Inner))
     }
   }
 
   case class DexCorrelationTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
-    override protected def translateEquiJoin(predicate: String, childView: LogicalPlan, leftRidOrder: String, rightRidOrder: String, leftRidOrderAttr: Option[Attribute], rightRidOrderAttr: Option[Attribute]): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childView: LogicalPlan): LogicalPlan = {
+      val predicate = s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
       def newRidJoinOf(l: Attribute, rightRidOrder: String) = {
         // "right" relation is a new relation to join
         val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
@@ -695,9 +809,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         ridJoin.select(ridJoinProject.distinct: _*)
       }
 
-      (leftRidOrderAttr, rightRidOrderAttr) match {
+      joinAttrs.ridOrderAttrsGiven(childView) match {
         case (Some(l), None) =>
-          newRidJoinOf(l, rightRidOrder)
+          newRidJoinOf(l, joinAttrs.rightRidOrder)
 
         case (Some(l), Some(r)) =>
           // "right" relation is a previously joined relation
@@ -708,10 +822,36 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         case (None, Some(r)) =>
           // "left" relation is a new relation to join
-          newRidJoinOf(r, leftRidOrder)
+          newRidJoinOf(r, joinAttrs.leftRidOrder)
 
         case x => throw DexException("unsupported: (None, None)")
       }
+    }
+  }
+
+  case class DexDomainTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childView: LogicalPlan): LogicalPlan = {
+      val (leftPredicate, rightPredicate) = (s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}",s"${joinAttrs.rightTableName}~${joinAttrs.rightColName}")
+      val (leftDomainValues, rightDomainValues) = (
+        DexDomainValues(leftPredicate, tDomain).select(DexDecrypt($"value_dec_key", $"value").as(s"value_dom")),
+        DexDomainValues(rightPredicate, tDomain).select(DexDecrypt($"value_dec_key", $"value").as(s"value_dom"))
+      )
+      val intersectDomain = leftDomainValues.intersect(rightDomainValues, isAll = false)
+      /*val (leftDomainRids, rightDomainRids) = (
+        DexDomainRids(leftPredicate, intersectDomain, tFilter, $"value_dom").select("value_dom", DexDecrypt($"value_dec_key", $"value").as(joinAttrs.leftRidOrder)),
+        DexDomainRids(rightPredicate, intersectDomain, tFilter, $"value_dom").select("value_dom", DexDecrypt($"value_dec_key", $"value").as(joinAttrs.rightRidOrder))
+      )
+      leftDomainRids.join(rightDomainRids, NaturalJoin(Inner)).join(childView, NaturalJoin(Inner))*/
+      // Intersetingly, the above won't be optimized because intersectDomain appears in two places, each in a CTE.
+      // CTEs are "optimization barriers" so they can't be extracted. (Ideally only one run is enough)
+      // On the other hand, cannot change the join order to the appearinlyg suboptimal (left join domain) inner join (right join domain)
+      // where inner join serves as intersection.  Can't hope the optimizer makes the right decisino to change it to
+      // (left join) domain intersect domain (right join), because usually this re-write is incorrect.
+      DexDomainJoin(leftPredicate, rightPredicate, intersectDomain, tFilter, tFilter)
+        .select(
+          DexDecrypt($"value_dec_key_left", $"value_left").as(joinAttrs.leftRidOrder),
+          DexDecrypt($"value_dec_key_right", $"value_right").as(joinAttrs.rightRidOrder)
+        ).join(childView, NaturalJoin(Inner))
     }
   }
 }

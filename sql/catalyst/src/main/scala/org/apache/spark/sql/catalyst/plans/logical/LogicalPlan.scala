@@ -189,3 +189,11 @@ abstract class BinaryNode extends LogicalPlan {
 abstract class OrderPreservingUnaryNode extends UnaryNode {
   override final def outputOrdering: Seq[SortOrder] = child.outputOrdering
 }
+
+abstract class TertiaryNode extends LogicalPlan {
+  def left: LogicalPlan
+  def middle: LogicalPlan
+  def right: LogicalPlan
+
+  override final def children: Seq[LogicalPlan] = Seq(left, middle, right)
+}

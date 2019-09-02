@@ -153,7 +153,12 @@ class DexQuerySuite extends DexQueryTest {
 
     val query7 = data2.join(data4).join(data3).where("a == e and a == c")
     checkDexFor(query7)
+  }
 
+  test("dex domain") {
+    spark.conf.set(SQLConf.get.dexTranslationMode, "DexDomain")
+    val query1 = data2.join(data3).where("a == c")
+    checkDexFor(query1)
   }
 
   test("jdbc rdd internal rows are unmaterialized cursors") {

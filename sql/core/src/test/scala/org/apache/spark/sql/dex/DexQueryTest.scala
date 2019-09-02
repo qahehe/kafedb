@@ -70,6 +70,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
     connEnc.prepareStatement("drop table if exists t_filter").executeUpdate()
     connEnc.prepareStatement("drop table if exists t_correlated_join").executeUpdate()
     connEnc.prepareStatement("drop table if exists t_uncorrelated_join").executeUpdate()
+    connEnc.prepareStatement("drop table if exists t_domain").executeUpdate()
     conn.commit()
     connEnc.commit()
 
@@ -156,6 +157,52 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         .executeUpdate()
       connEnc.commit()
 
+      // encrypted multi-map of attr -> domain value
+      connEnc.prepareStatement("create table t_domain(label varchar, value varchar)")
+          .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into t_domain values
+          |('testdata2~a~0', '1_enc'),
+          |('testdata2~a~1', '2_enc'),
+          |('testdata2~a~2', '3_enc'),
+          |
+          |('testdata3~c~0', '1_enc'),
+          |('testdata3~c~1', '2_enc')
+        """.stripMargin)
+          .executeUpdate()
+      connEnc.commit()
+
+      /*// encrypted set of (rid, domain valuea)
+      connEnc.prepareStatement("create table t_correlated_filter(label varchar, value varchar)")
+          .executeUpdate()
+      // note: just 1_dom_enc would be bad, because two columns can have same domain values
+      // adding b~2_dom_enc makes domain values unique to attribute b. Cannot relate to other attribute.
+      connEnc.prepareStatement(
+        """
+          |insert into t_correlated_filter values
+          |('testdata2~1~b~1'),
+          |('testdata2~2~b~2'),
+          |('testdata2~3~b~1'),
+          |('testdata2~4~b~2'),
+          |('testdata2~5~b~1'),
+          |('testdata2~6~b~2')
+        """.stripMargin
+      )*/
+      // t_domain: a -> a-1, a-2, a-3; c -> c-1, c-2.
+      // t_filter: a-1 -> [a1, a2], c-1 -> [c1, c2].  So a-1 equi-join c-1 -> [(a1, c1), (a2, c1), (a2, c1), (a2, c2)]
+      // selection push down:
+      // case 1: filter on joined attr. Filter on t_domain.  a == 1 match a-1? a-2?
+      // case 2: filter on unjoined attr.
+      //   Choice 1: Filter on t_domain(a) using t_e(b). Gonna do this for post-join filters anyways.
+      //   Choice 2: t_filter(b), then what?  t_e(t_filter(b), t_domain(c)) (retain t_domain(c)) join t_filter(retained t_domain(c))
+      // advantage: no more quadratic emms
+      // multi-way join:
+      // case 1: (a join b) join (a join c)
+      //   Choice 1: domain_join(a, b) join (domain_join(a, c)
+      //   Choice 2: t_e(domain_join(a, b), t_domain(c)) (retain t_domain(c)) join t_filter(retained t_domain(c))
+
+      // encrypted multi-map of (attr, domain value) -> rid
       connEnc.prepareStatement("create table t_filter (label varchar, value varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
@@ -185,6 +232,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         .executeUpdate()
       connEnc.commit()
 
+      // encrypted multi-map of (attr, attr, rid) -> rid
       connEnc.prepareStatement("create table t_correlated_join (label varchar, value varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
@@ -223,11 +271,15 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
           |('testdata2~b~testdata3~d~3~0', '1_enc'),
           |('testdata2~b~testdata3~d~4~0', '2_enc'),
           |('testdata2~b~testdata3~d~5~0', '1_enc'),
-          |('testdata2~b~testdata3~d~6~0', '2_enc')
+          |('testdata2~b~testdata3~d~6~0', '2_enc'),
+          |
+          |('testdata2~a~testdata2~b~0', '1_enc'),
+          |('testdata2~a~testdata2~b~1', '4_enc')
         """.stripMargin)
         .executeUpdate()
       connEnc.commit()
 
+      // encrypted multi-map of (attr, attr) -> (rid, rid)
       connEnc.prepareStatement("create table t_uncorrelated_join (label varchar, value_left varchar, value_right varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
