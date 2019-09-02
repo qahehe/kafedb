@@ -88,7 +88,7 @@ object TPCHDataGen {
     .appName(name)
     .getOrCreate()
 
-  private val modes = Set("tpch", "spark", "postgres", "dex")
+  private val modes = Set("tpch", "postgres", "dex")
 
   def main(args: Array[String]): Unit = {
     require(args.length >= 1)
@@ -139,15 +139,13 @@ object TPCHDataGen {
     }
 
     // Point data to Spark
-    if (neededModes.contains("spark")) {
-      time {
-        println(s"\nPointing data for $benchmark to Spark database $dbname from $location")
-        pointDataToSpark(spark, dbname, tables, location)
-      }
-      if (createTableStats) time {
-        println(s"\nGenerating table statistics for DB $dbname (with analyzeColumns=$createColumnStats)")
-        tables.analyzeTables(dbname, analyzeColumns = createColumnStats)
-      }
+    time {
+      println(s"\nPointing data for $benchmark to Spark database $dbname from $location")
+      pointDataToSpark(spark, dbname, tables, location)
+    }
+    if (createTableStats) time {
+      println(s"\nGenerating table statistics for DB $dbname (with analyzeColumns=$createColumnStats)")
+      tables.analyzeTables(dbname, analyzeColumns = createColumnStats)
     }
 
 
