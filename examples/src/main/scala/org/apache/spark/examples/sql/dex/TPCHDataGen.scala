@@ -88,7 +88,18 @@ object TPCHDataGen {
     .appName(name)
     .getOrCreate()
 
+  private val modes = Set("tpch", "spark", "postgres", "dex")
+
   def main(args: Array[String]): Unit = {
+    require(args.length >= 1)
+    val neededModes = args(0) match {
+      case "all" => modes
+      case _ =>
+        require(args.forall(modes.contains))
+        args.toSet
+    }
+    println(s"neededModes=${neededModes.mkString(", ")}")
+
     val spark = newSparkSession("TPCH Data Generation")
 
     //val workers: Int = spark.conf.get("spark.databricks.clusterUsageTags.clusterTargetWorkers").toInt //number of nodes, assumes one executor per node
@@ -120,33 +131,43 @@ object TPCHDataGen {
     val (dbname, tables, location) = getBenchmarkData(spark, scaleFactor)
 
     // Generate data
-    time {
-      println(s"Generating data for $benchmark SF $scaleFactor at $location")
-      generateData(tables, location, scaleFactor, workers, cores)
+    if (neededModes.contains("tpch")) {
+      time {
+        println(s"Generating data for $benchmark SF $scaleFactor at $location")
+        generateData(tables, location, scaleFactor, workers, cores)
+      }
     }
 
     // Point data to Spark
-    time {
-      println(s"\nPointing data for $benchmark to Spark database $dbname from $location")
-      pointDataToSpark(spark, dbname, tables, location)
+    if (neededModes.contains("spark")) {
+      time {
+        println(s"\nPointing data for $benchmark to Spark database $dbname from $location")
+        pointDataToSpark(spark, dbname, tables, location)
+      }
+      if (createTableStats) time {
+        println(s"\nGenerating table statistics for DB $dbname (with analyzeColumns=$createColumnStats)")
+        tables.analyzeTables(dbname, analyzeColumns = createColumnStats)
+      }
     }
-    if (createTableStats) time {
-      println(s"\nGenerating table statistics for DB $dbname (with analyzeColumns=$createColumnStats)")
-      tables.analyzeTables(dbname, analyzeColumns = createColumnStats)
-    }
+
 
     // Validate data in Spark
     //validate(spark, scaleFactor, dbname)
 
-    time {
-      println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location, overwrite=$overwrite")
-      loadPlaintext(spark, tables, overwrite)
+    if (neededModes.contains("postgres")) {
+      time {
+        println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location, overwrite=$overwrite")
+        loadPlaintext(spark, tables, overwrite)
+      }
     }
 
-    time {
-      println(s"\nBuilding DEX for $benchmark into Postgres from $location")
-      buildDex(spark, tables)
+    if (neededModes.contains("dex")) {
+      time {
+        println(s"\nBuilding DEX for $benchmark into Postgres from $location")
+        buildDex(spark, tables)
+      }
     }
+
 
     spark.stop()
   }

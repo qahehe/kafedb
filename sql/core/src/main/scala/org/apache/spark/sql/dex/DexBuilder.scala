@@ -150,6 +150,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         createTreeIndex(encConn, n, e, "rid")
       }
       createTreeIndex(encConn, DexConstants.tFilterName, tFilterDf, "label")
+      createTreeIndex(encConn, DexConstants.tDomainName, tDomainDf, "label")
       createTreeIndex(encConn, DexConstants.tUncorrJoinName, tUncorrJoinDf, "label")
       createTreeIndex(encConn, DexConstants.tCorrJoinName, tCorrJoinDf, "label")
 
