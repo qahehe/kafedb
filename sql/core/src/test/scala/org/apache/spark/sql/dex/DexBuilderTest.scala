@@ -42,11 +42,13 @@ class DexBuilderTest extends DexQueryTest with SharedSQLContext with BeforeAndAf
 
     val testData2Enc = spark.read.jdbc(urlEnc, "testdata2_prf", properties)
     val tFilter = spark.read.jdbc(urlEnc, "t_filter", properties)
+    val tDomain = spark.read.jdbc(urlEnc, "t_domain", properties)
     val tUncorrJoin = spark.read.jdbc(urlEnc, "t_uncorrelated_join", properties)
     val tCorrJoin = spark.read.jdbc(urlEnc, "t_correlated_join", properties)
 
     println("testData2Enc: \n" + testData2Enc.collect().mkString("\n"))
     println("t_filter: \n" + tFilter.collect().mkString("\n"))
+    println("t_domain: \n" + tDomain.collect().mkString("\n"))
     println("t_uncorrelated_join: \n" + tUncorrJoin.collect().mkString("\n"))
     println("t_correlated_join: \n" + tCorrJoin.collect().mkString("\n"))
   }

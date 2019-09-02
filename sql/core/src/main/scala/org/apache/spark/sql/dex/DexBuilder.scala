@@ -93,6 +93,18 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
     val tFilterDf = tFilterDfParts.reduce((d1, d2) => d1 union d2)
 
+    val tDomainDfParts = nameToRidDf.flatMap { case (n, r) =>
+      r.columns.filterNot(_ == "rid").map { c =>
+        r.select(col(c)).distinct()
+          .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1)
+          .withColumn("predicate", lit(domainPredicateOf(n, c)))
+          .withColumn("label", udfLabel($"predicate", $"counter"))
+          .withColumn("value", udfValue(col(c)))
+          .select("label", "value")
+      }
+    }
+    val tDomainDf = tDomainDfParts.reduce((d1, d2) => d1 union d2)
+
     val tUncorrJoinDfParts = for {
       (attrLeft, attrRight) <- joins
     } yield {
@@ -127,6 +139,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
     }
     tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tFilterName, encDbProps)
+    tDomainDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tDomainName, encDbProps)
     tUncorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tUncorrJoinName, encDbProps)
     tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tCorrJoinName, encDbProps)
 
@@ -199,6 +212,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private def filterPredicateOf(table: String, column: String)(value: String): String = {
     s"$table~$column~$value"
+  }
+
+  private def domainPredicateOf(table: String, column: String): String = {
+    s"$table~$column"
   }
 
   private def labelFrom(prfKey: String)(predicate: String, counter: Int): String = {
