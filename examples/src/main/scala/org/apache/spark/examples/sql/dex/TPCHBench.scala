@@ -18,8 +18,6 @@ package org.apache.spark.examples.sql.dex
 
 import org.apache.spark.examples.sql.dex.TPCHDataGen.time
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.internal.SQLConf
 // scalastyle:off
 
 object TPCHBench {
@@ -54,6 +52,7 @@ object TPCHBench {
     val supplier = nameToDfForDex("supplier")
     val nation = nameToDfForDex("nation")
     val region = nameToDfForDex("region")
+    val customer = nameToDfForDex("customer")
 
     println(s"\n benchmark 1")
     // TPCH Query 2
@@ -114,6 +113,17 @@ object TPCHBench {
     val q2eDf = q2eMain
     val q2eDex = q2eMain.dex
     benchQuery(spark, q2e, q2eDf, q2eDex)
+
+    val q5a = "select * from customer, supplier where c_nationkey = s_nationkey"
+    val q5aDf = customer.join(supplier).where("c_nationkey == s_nationkey")
+    val q5aDex = q5aDf.dex
+    benchQuery(spark, q5a, q5aDf, q5aDex)
+
+    val q5b = "select * from customer, supplier, region where c_nationkey = s_nationkey and r_name = 'EUROPE'"
+    val q5bDf = customer.join(supplier).where("c_nationkey = s_nationkey")
+        .join(region).where("r_name == 'EUROPE'")
+    val q5bDex = q5bDf.dex
+    benchQuery(spark, q5b, q5bDf, q5bDex)
 
     spark.stop()
   }

@@ -232,6 +232,21 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         .executeUpdate()
       connEnc.commit()
 
+      // encrypted map of (attr1, dom_value1, attr2) -> dom_value2
+      // where attr1 and attr2 are from the same table
+      connEnc.prepareStatement("create table t_correlated_domain (label varchar, value varchar)")
+          .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into t_correlated_domain values
+          |('testdata4~e~2~testdata4~b~0', '1_enc'),
+          |('testdata4~e~2~testdata4~b~1', '2_enc'),
+          |('testdata4~e~2~testdata4~b~2', '3_enc'),
+          |('testdata4~e~3~testdata4~b~0', '4_enc'),
+          |('testdata4~e~3~testdata4~b~1', '5_enc')
+        """.stripMargin
+      )
+
       // encrypted multi-map of (attr, attr, rid) -> rid
       connEnc.prepareStatement("create table t_correlated_join (label varchar, value varchar)")
         .executeUpdate()
@@ -271,10 +286,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
           |('testdata2~b~testdata3~d~3~0', '1_enc'),
           |('testdata2~b~testdata3~d~4~0', '2_enc'),
           |('testdata2~b~testdata3~d~5~0', '1_enc'),
-          |('testdata2~b~testdata3~d~6~0', '2_enc'),
-          |
-          |('testdata2~a~testdata2~b~0', '1_enc'),
-          |('testdata2~a~testdata2~b~1', '4_enc')
+          |('testdata2~b~testdata3~d~6~0', '2_enc')
         """.stripMargin)
         .executeUpdate()
       connEnc.commit()

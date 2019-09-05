@@ -45,7 +45,13 @@ case class SpxRidUncorrelatedJoin(predicate: String, emm: LogicalPlan) extends D
 
 case class DexDomainValues(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
 
-case class DexCorrelatedFilter(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+case class DexCorrelatedDomainsValues(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+
+case class DexDomainFilter(predicate: String, predicateAttr: Attribute, childView: LogicalPlan) extends UnaryNode {
+  override def child: LogicalPlan = childView
+
+  override def output: Seq[Attribute] = ???
+}
 
 abstract class DexBinaryOperator(childView: LogicalPlan, emm: LogicalPlan) extends BinaryNode {
   override def left: LogicalPlan = childView
