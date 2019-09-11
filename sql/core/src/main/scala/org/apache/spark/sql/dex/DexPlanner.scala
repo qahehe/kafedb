@@ -199,7 +199,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // Deduplication makes sense because the projection list always have one rid_i for relation i in some join,
         // and each rid is unique by definition, so deduplication always corresponds to the final join result.
         s"""
-           |SELECT DISTINCT $projectList
+           |SELECT $projectList
            |FROM ${convertToSQL(p.child)}
           """.stripMargin
       case p: LogicalRelation =>
@@ -275,10 +275,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE left_subquery_all_cols AS (
-           |    SELECT * FROM ($leftSubquery) AS ${generateSubqueryName()}
+           |   $leftSubquery
            |  ),
            |  left_subquery($leftRid, label_prf_key, value_dec_key) AS(
-           |    SELECT $leftRid, $labelPrfKey, $valueDecKey FROM left_subquery_all_cols
+           |    SELECT distinct $leftRid, $labelPrfKey, $valueDecKey FROM left_subquery_all_cols
            |  ),
            |  dex_rid_correlated_join($leftRid, label_prf_key, value_dec_key, value, counter) AS (
            |    SELECT left_subquery.*, $emm.value, ${DexConstants.cashCounterStart} AS counter

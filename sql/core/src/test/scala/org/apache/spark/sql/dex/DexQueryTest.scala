@@ -232,7 +232,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         .executeUpdate()
       connEnc.commit()
 
-      // encrypted map of (attr1, dom_value1, attr2) -> dom_value2
+      /*// encrypted map of (attr1, dom_value1, attr2) -> dom_value2
       // where attr1 and attr2 are from the same table
       connEnc.prepareStatement("create table t_correlated_domain (label varchar, value varchar)")
           .executeUpdate()
@@ -245,7 +245,7 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
           |('testdata4~e~3~testdata4~b~0', '4_enc'),
           |('testdata4~e~3~testdata4~b~1', '5_enc')
         """.stripMargin
-      )
+      )*/
 
       // encrypted multi-map of (attr, attr, rid) -> rid
       connEnc.prepareStatement("create table t_correlated_join (label varchar, value varchar)")
