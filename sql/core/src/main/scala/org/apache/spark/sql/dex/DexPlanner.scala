@@ -194,10 +194,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case p: DexPlan => convertToSQL(p.child)
       case p: Project =>
         val projectList = p.projectList.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
-        // Duplicate rows (rid_0, rid_1, ..., rid_k, cols...) happens when joins are handled independently and then
-        // joined together, like A join B join C = (A join B) join (B join C)
-        // Deduplication makes sense because the projection list always have one rid_i for relation i in some join,
-        // and each rid is unique by definition, so deduplication always corresponds to the final join result.
         s"""
            |SELECT $projectList
            |FROM ${convertToSQL(p.child)}
@@ -272,6 +268,16 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val (labelPrfKey, valueDecKey) = emmKeysOfRidCol(prfKey, leftRid, j.predicate)
         val emm = dialect.quoteIdentifier(tCorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         val outputCols = j.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+
+        // Semantically what we want is that for each (unique) leftRid to join in leftSubquery, find out what are the
+        // rightRid to join in t_correlated_join, and for the rows that are already associated with leftRid, copy
+        // them exactly X times where X = join size of leftRid join rightRid.
+        // But because the emm part is done using recursion, within the recursion, typical SQL does not allow
+        // "project all columns, replacing the one called counter with counter + 1 and name it counter "
+        // So we need to select distinct leftRid in left_subquery and once generated all join pairs of leftRid and rightRid,
+        // join the result back with rows associated with leftRid in left_subquery_all_cols.
+        // If we can do the row projection replacement, then we can also express the computation without the lastly natural
+        // join with left_sbuquery_all_cols, but potentially with duplicate calls to t_correlated_join.
         s"""
            |(
            |  WITH RECURSIVE left_subquery_all_cols AS (
