@@ -131,8 +131,9 @@ object TPCHBench {
         |  and l_orderkey = o_orderkey
       """.stripMargin
     val q3aDf = customer.filter("c_mktsegment == 'BUILDING'")
-        .join(orders).where("c_custkey == o_custkey")
-        .join(lineitem).where("o_orderkey == l_orderkey")
+      .join(orders).where("c_custkey == o_custkey")
+      .join(lineitem).where("o_orderkey == l_orderkey")
+      .select("l_orderkey", "l_extendedprice", "l_discount", "o_orderdate", "o_shippriority")
     val q3aDex = q3aDf.dex
     benchQuery(spark, q3a, q3aDf, q3aDex)
 
@@ -175,8 +176,11 @@ object TPCHBench {
         .join(supplier).where("l_suppkey == s_suppkey and c_nationkey == s_nationkey")
         .join(nation).where("n_nationkey == s_nationkey and c_nationkey == s_nationkey")
         .join(region).where("n_regionkey == r_regionkey and r_name == 'ASIA'")
+        .select("n_name", "l_extendedprice", "l_discount")
+    val q5cDex = q5cDf.dex
+    benchQuery(spark, q5c, q5cDf, q5cDex)
 
-    println("\nQ7")
+    println("\n Q7")
     val q7a =
       """
         |select
@@ -199,9 +203,18 @@ object TPCHBench {
         |  and s_nationkey = n1.n_nationkey
         |  and c_nationkey = n2.n_nationkey
         |  and (
-        |    (n1.n_name = '[NATION1]' and n2.n_name = '[NATION2]') or (n1.n_name = '[NATION2]' and n2.n_name = '[NATION1]')
+        |    (n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY') or (n1.n_name = 'GERMANY' and n2.n_name = 'FRANCE')
         |  )
       """.stripMargin
+    val q7aDf = supplier.join(lineitem).where("l_suppkey == s_suppkey")
+        .join(orders).where("l_orderkey == o_orderkey")
+        .join(customer).where("c_custkey == o_custkey")
+        .join(nation.as("n1")).where("n1.n_nationkey == s_nationkey")
+        .join(nation.as("n2")).where("c_nationkey == n2.n_nationkey")
+        .where("n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY') or (n1.n_name = 'GERMANY' and n2.n_name = 'FRANCE'")
+        .selectExpr("n1.n_name as supp_nation", "n2.n_name as cust_nation", "l_shipdate", "l_extendedprice", "l_discount")
+    val q7aDex = q7aDf.dex
+    benchQuery(spark, q7a, q7aDf, q7aDex)
 
 
     spark.stop()
