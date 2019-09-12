@@ -81,7 +81,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   def buildFromData(nameToDf: Map[TableName, DataFrame], joins: Seq[JoinableAttrs]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
-      n -> d.withColumn("rid", monotonically_increasing_id).cache()
+      n -> d.withColumn("rid", monotonically_increasing_id()).cache()
     }
 
     val encNameToEncDf = nameToRidDf.map { case (n, r) =>
@@ -89,18 +89,27 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
 
     val tFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
-        tFilterPartForTable(n, r)
+      r.columns.filterNot(_ == "rid").map { c =>
+        val udfPredicate = udf(filterPredicateOf(n, c) _)
+        r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
+          //.groupBy(c).agg(collect_list($"rid").as("rids"))
+          //.select(col(c), posexplode($"rids").as("counter" :: "rid" :: Nil))
+          .withColumn("predicate", udfRandPred(udfPredicate(col(c))))
+          .withColumn("label", udfLabel($"predicate", $"counter"))
+          .withColumn("value", udfValue($"rid"))
+          .select("label", "value")
+      }
     }
     val tFilterDf = tFilterDfParts.reduce((d1, d2) => d1 union d2)
 
     val tDomainDfParts = nameToRidDf.flatMap { case (n, r) =>
       r.columns.filterNot(_ == "rid").map { c =>
         r.select(col(c)).distinct()
-          .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1)
+          .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition(col(c))
           .withColumn("predicate", lit(domainPredicateOf(n, c)))
           .withColumn("label", udfLabel($"predicate", $"counter"))
           .withColumn("value", udfValue(col(c)))
-          .select("label", "value")
+          .select("label", "value").repartition($"label")
       }
     }
     val tDomainDf = tDomainDfParts.reduce((d1, d2) => d1 union d2)
@@ -111,7 +120,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
       dfLeft.withColumnRenamed("rid", "rid_left")
         .join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
-        .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1) // start from 0
+        .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition($"counter")
         .withColumn("predicate", lit(uncorrJoinPredicateOf(attrLeft, attrRight)))
         .withColumn("label", udfLabel($"predicate", $"counter"))
         .withColumn("value_left", udfValue($"rid_left"))
@@ -128,7 +137,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
         //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
         //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
-        .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1)
+        .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
         .withColumn("predicate", udfRandPred(udfJoinPred($"rid_left")))
         .withColumn("label", udfLabel($"predicate", $"counter"))
         .withColumn("value", udfValue($"rid_right"))

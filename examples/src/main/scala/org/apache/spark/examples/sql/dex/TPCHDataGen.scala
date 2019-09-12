@@ -64,7 +64,7 @@ object TPCHDataGen {
 
   val dbSuffix = ""
 
-  val tableNamesToDex = Set("part", "partsupp", "nation", "region", "supplier", "customer")
+  val tableNamesToDex = Set("customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier")
   // p_partkey = ps_partkey
   // and s_suppkey = ps_suppkey
   //	and p_size = 15
@@ -77,10 +77,26 @@ object TPCHDataGen {
     (TableAttribute("partsupp", "ps_suppkey"), TableAttribute("supplier", "s_suppkey")),
     (TableAttribute("nation", "n_nationkey"), TableAttribute("supplier", "s_nationkey")),
     (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey")),
-    (TableAttribute("customer", "c_nationkey"), TableAttribute("supplier", "s_nationkey"))
+    (TableAttribute("nation", "nation"))
+    (TableAttribute("customer", "c_nationkey"), TableAttribute("supplier", "s_nationkey")),
+    (TableAttribute("customer", "c_nationkey"), TableAttribute("nation", "n_nationkey")),
+    (TableAttribute("customer", "c_custkey"), TableAttribute("orders", "o_custkey")),
+    (TableAttribute("lineitem", "l_partkey"), TableAttribute("partsupp", "ps_partkey")),
+    (TableAttribute("lineitem", "l_suppkey"), TableAttribute("partsupp", "ps_suppkey")),
+    (TableAttribute("order", "o_orderkey"), TableAttribute("lineitem", "l_orderkey"))
   )
   val filterAttrsToDex = Seq(
+    TableAttribute("customer", "c_mktsegment"),
+    TableAttribute("lineitem", "l_returnflag"),
+    TableAttribute("lineitem", "l_shipmode"),
+    TableAttribute("lineitem", "l_shipinstruct"),
+    TableAttribute("nation", "n_name"),
+    TableAttribute("orders", "o_orderpriority"),
+    TableAttribute("orders", "o_orderstatus"),
     TableAttribute("part", "p_size"),
+    TableAttribute("part", "p_type"),
+    TableAttribute("part", "p_brand"),
+    TableAttribute("part", "p_container"),
     TableAttribute("region", "r_name")
   )
 

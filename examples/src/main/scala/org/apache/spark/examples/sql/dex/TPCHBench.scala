@@ -53,8 +53,10 @@ object TPCHBench {
     val nation = nameToDfForDex("nation")
     val region = nameToDfForDex("region")
     val customer = nameToDfForDex("customer")
+    val orders = nameToDfForDex("orders")
+    val lineitem = nameToDfForDex("lineitem")
 
-    println(s"\n benchmark 1")
+    println(s"\n Q2")
     // TPCH Query 2
     val q2a = "select * from region where r_name = 'EUROPE'"
     val q2aDf = region.where("r_name == 'EUROPE'")
@@ -114,16 +116,93 @@ object TPCHBench {
     val q2eDex = q2eMain.dex
     benchQuery(spark, q2e, q2eDf, q2eDex)
 
+    println("\n Q3")
+    val q3a =
+      """
+        |select
+        |  l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority
+        |from
+        |  customer,
+        |  orders,
+        |  lineitem
+        |where
+        |  c_mktsegment = 'BUILDING'
+        |  and c_custkey = o_custkey
+        |  and l_orderkey = o_orderkey
+      """.stripMargin
+    val q3aDf = customer.filter("c_mktsegment == 'BUILDING'")
+        .join(orders).where("c_custkey == o_custkey")
+        .join(lineitem).where("o_orderkey == l_orderkey")
+    val q3aDex = q3aDf.dex
+    benchQuery(spark, q3a, q3aDf, q3aDex)
+
+    println("\n Q5")
     val q5a = "select * from customer, supplier where c_nationkey = s_nationkey"
     val q5aDf = customer.join(supplier).where("c_nationkey == s_nationkey")
     val q5aDex = q5aDf.dex
     benchQuery(spark, q5a, q5aDf, q5aDex)
 
-    val q5b = "select * from customer, supplier, region where c_nationkey = s_nationkey and r_name = 'EUROPE'"
+    val q5b = "select * from customer, supplier, region where c_nationkey = s_nationkey and r_name = 'ASIA'"
     val q5bDf = customer.join(supplier).where("c_nationkey = s_nationkey")
-        .join(region).where("r_name == 'EUROPE'")
+        .join(region).where("r_name == 'ASIA'")
     val q5bDex = q5bDf.dex
     benchQuery(spark, q5b, q5bDf, q5bDex)
+
+    val q5c =
+      """
+        |select
+        |  n_name,
+        |  l_extendedprice,
+        |  l_discount
+        |from
+        |  customer,
+        |  orders,
+        |  lineitem,
+        |  supplier,
+        |  nation,
+        |  region
+        |where
+        |  c_custkey = o_custkey
+        |  and l_orderkey = o_orderkey
+        |  and l_suppkey = s_suppkey
+        |  and c_nationkey = s_nationkey
+        |  and s_nationkey = n_nationkey
+        |  and n_regionkey = r_regionkey
+        |  and r_name = 'ASIA'
+      """.stripMargin
+    val q5cDf = customer.join(orders).where("c_custkey == o_custkey")
+        .join(lineitem).where("l_orderkey == o_orderkey")
+        .join(supplier).where("l_suppkey == s_suppkey and c_nationkey == s_nationkey")
+        .join(nation).where("n_nationkey == s_nationkey and c_nationkey == s_nationkey")
+        .join(region).where("n_regionkey == r_regionkey and r_name == 'ASIA'")
+
+    println("\nQ7")
+    val q7a =
+      """
+        |select
+        |  n1.n_name as supp_nation,
+        |  n2.n_name as cust_nation,
+        |  l_shipdate,
+        |  l_extendedprice,
+        |  l_discount
+        |from
+        |  supplier,
+        |  lineitem,
+        |  orders,
+        |  customer,
+        |  nation n1,
+        |  nation n2
+        |where
+        |  s_suppkey = l_suppkey
+        |  and o_orderkey = l_orderkey
+        |  and c_custkey = o_custkey
+        |  and s_nationkey = n1.n_nationkey
+        |  and c_nationkey = n2.n_nationkey
+        |  and (
+        |    (n1.n_name = '[NATION1]' and n2.n_name = '[NATION2]') or (n1.n_name = '[NATION2]' and n2.n_name = '[NATION1]')
+        |  )
+      """.stripMargin
+
 
     spark.stop()
   }
@@ -141,7 +220,7 @@ object TPCHBench {
     }
     time {
       val dexResult = queryDex.collect()
-      println(s"dexCorrelation result size=${dexResult.length}")
+      println(s"dex result size=${dexResult.length}")
     }
   }
 }
