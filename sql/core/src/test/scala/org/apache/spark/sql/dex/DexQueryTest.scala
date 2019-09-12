@@ -286,7 +286,13 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
           |('testdata2~b~testdata3~d~3~0', '1_enc'),
           |('testdata2~b~testdata3~d~4~0', '2_enc'),
           |('testdata2~b~testdata3~d~5~0', '1_enc'),
-          |('testdata2~b~testdata3~d~6~0', '2_enc')
+          |('testdata2~b~testdata3~d~6~0', '2_enc'),
+          |
+          |('testdata3~c~testdata3~c~1~0', '1_enc'),
+          |('testdata3~c~testdata3~c~1~1', '2_enc'),
+          |('testdata3~c~testdata3~c~2~0', '1_enc'),
+          |('testdata3~c~testdata3~c~2~1', '2_enc'),
+          |('testdata3~c~testdata3~c~3~0', '3_enc')
         """.stripMargin)
         .executeUpdate()
       connEnc.commit()

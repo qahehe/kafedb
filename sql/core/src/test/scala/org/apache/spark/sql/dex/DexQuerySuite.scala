@@ -65,17 +65,17 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
-  ignore("disjunctive filters") {
+  test("disjunctive filters") {
     val query = data2.where("a == 2 or b == 1")
     checkDexFor(query)
   }
 
-  ignore("IN filter") {
+  test("IN filter") {
     val query = data2.where("a in (1, 2)")
     checkDexFor(query)
   }
 
-  ignore("NOT filter") {
+  test("NOT filter") {
     val query = data2.where("a != 2")
     checkDexFor(query)
   }
@@ -85,17 +85,27 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
+  test("table alias") {
+    val query = data2.join(data3.as("d3")).where("b == d3.c")
+    checkDexFor(query)
+  }
+
+  test("self join") {
+    val query = data3.as("d3a").join(data3.as("d3b")).where("d3a.c == d3b.c").select("d3a.c")
+    checkDexFor(query)
+  }
+
   test("cross join") {
     val query = data2.crossJoin(data3)
     checkDexFor(query)
   }
 
-  ignore("disjunctive joins: same tables") {
+  test("disjunctive joins: same tables") {
     val query = data2.join(data3).where("a == c or b == d")
     checkDexFor(query)
   }
 
-  ignore("disjunctive joins: same tables, transitive attrs") {
+  test("disjunctive joins: same tables, transitive attrs") {
     val query = data2.join(data3).where("a == c or b == c")
     checkDexFor(query)
   }

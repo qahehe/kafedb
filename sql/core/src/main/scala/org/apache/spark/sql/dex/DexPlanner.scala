@@ -213,12 +213,43 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // todo: turn left semi join to a subquery
         val leftSubquery = convertToSQL(j.left)
         val rightSubquery = convertToSQL(j.right)
-        s"""($leftSubquery) AS ${generateSubqueryName()}
-           |
-           |NATURAL JOIN
-           |
-           |($rightSubquery) AS ${generateSubqueryName()}
-          """.stripMargin
+        j.joinType match {
+          case x if x == Cross  =>
+            s"""
+               |($leftSubquery) AS ${generateSubqueryName()}
+               |
+               |CROSS JOIN
+               |
+               |($rightSubquery) AS ${generateSubqueryName()}
+              """.stripMargin
+          case x if x == Inner =>
+            s"""
+               |($leftSubquery) AS ${generateSubqueryName()}
+               |
+               |NATURAL INNER JOIN
+               |
+               |($rightSubquery) AS ${generateSubqueryName()}
+              """.stripMargin
+          case x if x == LeftSemi && j.condition.isDefined =>
+            val (leftRid, rightRid) = ridOrdersFromJoin(j)
+            s"""
+               |($leftSubquery) AS ${generateSubqueryName()}
+               |WHERE $leftRid IN (
+               |  SELECT $rightRid
+               |  FROM ($rightSubquery) AS ${generateSubqueryName()}
+               |)
+             """.stripMargin
+          case x if x == LeftAnti && j.condition.isDefined =>
+            val (leftRid, rightRid) = ridOrdersFromJoin(j)
+            s"""
+               |($leftSubquery) AS ${generateSubqueryName()}
+               |WHERE $leftRid NOT IN (
+               |  SELECT $rightRid
+               |  FROM ($rightSubquery) AS ${generateSubqueryName()}
+               |)
+             """.stripMargin
+        }
+
       case i: Intersect =>
         val leftSubquery = convertToSQL(i.left)
         val rightSubquery = convertToSQL(i.right)
@@ -230,6 +261,17 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |
            |$rightSubquery
          """.stripMargin
+      case Distinct(Union(left :: right :: Nil)) =>
+        val leftSubquery = convertToSQL(left)
+        val rightSubquery = convertToSQL(right)
+        s"""
+           |$leftSubquery
+           |
+           |UNION
+           |
+           |$rightSubquery
+         """.stripMargin
+
       case f: DexRidFilter =>
         val (labelPrfKey, valueDecKey) = emmKeys(f.predicate)
         val firstLabel = nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")
@@ -388,6 +430,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin
 
       case x => throw DexException("unsupported: " + x.getClass.toString)
+    }
+
+    private def ridOrdersFromJoin(j: Join): (String, String) = j.condition.get match {
+      case EqualTo(left, right) => (left.dialectSql(dialect.quoteIdentifier), right.dialectSql(dialect.quoteIdentifier))
     }
 
     private def emmKeysFromDomainValueColumn(prfKey: String, domainValueCol: String, predicate: String): (String, String) = {
@@ -596,7 +642,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           val tableEnc = tableEncOf(tableName)
           childView match {
             case Some(w) =>
-              w.join(tableEnc, NaturalJoin(LeftOuter))
+              w.join(tableEnc, NaturalJoin(Inner))
             //w
             case None =>
               tableEnc
@@ -818,6 +864,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       joinAttrs.ridOrderAttrsGiven(childView) match {
         case (Some(l), None) =>
           newRidJoinOf(l, joinAttrs.rightRidOrder)
+
+        case (Some(l), Some(r)) if l == r =>
+          // Self join: attr == attr
+          val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
+          val ridJoinProject = childView.output
+          ridJoin.select(ridJoinProject: _*)
 
         case (Some(l), Some(r)) =>
           // "right" relation is a previously joined relation
