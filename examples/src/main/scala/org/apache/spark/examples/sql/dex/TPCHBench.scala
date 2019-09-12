@@ -132,7 +132,7 @@ object TPCHBench {
       """.stripMargin
     val q3aDf = customer.filter("c_mktsegment == 'BUILDING'")
       .join(orders).where("c_custkey == o_custkey")
-      .join(lineitem).where("o_orderkey == l_orderkey")
+      .join(lineitem).where("l_orderkey == o_orderkey")
       .select("l_orderkey", "l_extendedprice", "l_discount", "o_orderdate", "o_shippriority")
     val q3aDex = q3aDf.dex
     benchQuery(spark, q3a, q3aDf, q3aDex)

@@ -82,7 +82,7 @@ object TPCHDataGen {
     (TableAttribute("customer", "c_custkey"), TableAttribute("orders", "o_custkey")),
     (TableAttribute("lineitem", "l_partkey"), TableAttribute("partsupp", "ps_partkey")),
     (TableAttribute("lineitem", "l_suppkey"), TableAttribute("partsupp", "ps_suppkey")),
-    (TableAttribute("order", "o_orderkey"), TableAttribute("lineitem", "l_orderkey"))
+    (TableAttribute("lineitem", "l_orderkey"), TableAttribute("orders", "o_orderkey"))
   )
   val filterAttrsToDex = Seq(
     TableAttribute("customer", "c_mktsegment"),
