@@ -77,7 +77,6 @@ object TPCHDataGen {
     (TableAttribute("partsupp", "ps_suppkey"), TableAttribute("supplier", "s_suppkey")),
     (TableAttribute("nation", "n_nationkey"), TableAttribute("supplier", "s_nationkey")),
     (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey")),
-    (TableAttribute("nation", "nation"))
     (TableAttribute("customer", "c_nationkey"), TableAttribute("supplier", "s_nationkey")),
     (TableAttribute("customer", "c_nationkey"), TableAttribute("nation", "n_nationkey")),
     (TableAttribute("customer", "c_custkey"), TableAttribute("orders", "o_custkey")),
