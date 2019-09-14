@@ -64,7 +64,7 @@ object TPCHDataGen {
 
   val dbSuffix = ""
 
-  val tableNamesToDex = Set("customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier")
+  val tableNamesToDex = Seq("customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier")
   // p_partkey = ps_partkey
   // and s_suppkey = ps_suppkey
   //	and p_size = 15
@@ -77,7 +77,7 @@ object TPCHDataGen {
     (TableAttribute("partsupp", "ps_suppkey"), TableAttribute("supplier", "s_suppkey")),
     (TableAttribute("nation", "n_nationkey"), TableAttribute("supplier", "s_nationkey")),
     (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey")),
-    (TableAttribute("customer", "c_nationkey"), TableAttribute("supplier", "s_nationkey")),
+    //(TableAttribute("customer", "c_nationkey"), TableAttribute("supplier", "s_nationkey")),
     (TableAttribute("customer", "c_nationkey"), TableAttribute("nation", "n_nationkey")),
     (TableAttribute("customer", "c_custkey"), TableAttribute("orders", "o_custkey")),
     (TableAttribute("lineitem", "l_partkey"), TableAttribute("partsupp", "ps_partkey")),

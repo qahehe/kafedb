@@ -62,8 +62,8 @@ object TPCHBench {
     val q2aDf = region.where("r_name == 'EUROPE'")
     benchQuery(spark, q2a, q2aDf, q2aDf.dex)
 
-    val q2b = "select n_name from nation, region where n_regionkey = r_regionkey"
-    val q2bDf = nation.join(region).where("n_regionkey = r_regionkey").select("n_name")
+    val q2b = "select n_name from region, nation where r_regionkey = n_regionkey"
+    val q2bDf = region.join(nation).where("r_regionkey = n_regionkey").select("n_name")
     benchQuery(spark, q2b, q2bDf, q2bDf.dex)
 
     val q2c =
@@ -84,12 +84,12 @@ object TPCHBench {
         |  and r_name = 'EUROPE'
         |  and p_size = 15
       """.stripMargin
-    val q2cMain = part.join(partsupp).where("p_partkey == ps_partkey")
+    val q2cMain = part.where("p_size == 15")
+      .join(partsupp).where("p_partkey == ps_partkey")
       .join(supplier).where("ps_suppkey == s_suppkey")
-      .join(nation).where("n_nationkey== s_nationkey")
-      .join(region).where("n_regionkey = r_regionkey")
-      .where("r_name == 'EUROPE' and p_size == 15")
-      .select("ps_supplycost")
+      .join(nation).where("s_nationkey == n_nationkey")
+      .join(region).where("n_regionkey == r_regionkey")
+
     val q2cDf = q2cMain
     val q2cDex = q2cMain.dex
     benchQuery(spark, q2c, q2cDf, q2cDex)
@@ -130,7 +130,7 @@ object TPCHBench {
         |  and c_custkey = o_custkey
         |  and l_orderkey = o_orderkey
       """.stripMargin
-    val q3aDf = customer.filter("c_mktsegment == 'BUILDING'")
+    val q3aDf = customer.where("c_mktsegment == 'BUILDING'")
       .join(orders).where("c_custkey == o_custkey")
       .join(lineitem).where("l_orderkey == o_orderkey")
       .select("l_orderkey", "l_extendedprice", "l_discount", "o_orderdate", "o_shippriority")
@@ -138,15 +138,24 @@ object TPCHBench {
     benchQuery(spark, q3a, q3aDf, q3aDex)
 
     println("\n Q5")
-    val q5a = "select * from customer, supplier where c_nationkey = s_nationkey"
-    val q5aDf = customer.join(supplier).where("c_nationkey == s_nationkey")
+    val q5a = "select * from customer, supplier, nation, region where r_name = 'ASIA' and r_nationkey = n_nationkey and n_nationkey = c_nationkey and n_nationkey = s_nationkey"
+    val q5aDf = region.where("r_name == 'ASIA'")
+        .join(nation).where("r_nationkey == n_nationkey")
+        .join(customer).where("n_nationkey == c_nationkey")
+        .join(supplier).where("n_nationkey == s_nationkey")
     val q5aDex = q5aDf.dex
     benchQuery(spark, q5a, q5aDf, q5aDex)
 
-    val q5b = "select * from customer, supplier, region where c_nationkey = s_nationkey and r_name = 'ASIA'"
+    /*val q5a = "select * from customer, supplier, nation where c_nationkey = n_nationkey and s_nationkey = n_nationkey"
+    val q5aDf = customer.join(nation).join(supplier).where("c_nationkey == s_nationkey and n_nationkey == s_nationkey")
+    val q5aDex = q5aDf.dex
+    benchQuery(spark, q5a, q5aDf, q5aDex)
+
+    val q5b = "select * from customer, supplier, nation, region where c_nationkey = s_nationkey and c_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'ASIA' limit 100"
     val q5bDf = customer.join(supplier).where("c_nationkey = s_nationkey")
-        .join(region).where("r_name == 'ASIA'")
-    val q5bDex = q5bDf.dex
+      .join(nation).where("c_nationkey = n_nationkey")
+      .join(region).where("n_regionkey = r_regionkey and r_name == 'ASIA'")
+    val q5bDex = q5bDf.dex.limit(100)
     benchQuery(spark, q5b, q5bDf, q5bDex)
 
     val q5c =
@@ -178,7 +187,7 @@ object TPCHBench {
         .join(region).where("n_regionkey == r_regionkey and r_name == 'ASIA'")
         .select("n_name", "l_extendedprice", "l_discount")
     val q5cDex = q5cDf.dex
-    benchQuery(spark, q5c, q5cDf, q5cDex)
+    benchQuery(spark, q5c, q5cDf, q5cDex)*/
 
     println("\n Q7")
     val q7a =
@@ -224,16 +233,16 @@ object TPCHBench {
   private def benchQuery(spark: SparkSession, query: String, queryDf: DataFrame, queryDex: DataFrame): Unit = {
     println(s"\nBench query=\n$query")
     time {
-      val sparkResult = queryDf.collect()
-      println(s"spark result size=${sparkResult.length}")
+      val sparkResult = queryDf.count()
+      println(s"spark result size=${sparkResult}")
     }
     time {
-      val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps).collect()
-      println(s"postgres result size=${postgresResult.length}")
+      val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
+      println(s"postgres result size=${postgresResult.count()}")
     }
     time {
-      val dexResult = queryDex.collect()
-      println(s"dex result size=${dexResult.length}")
+      val dexResult = queryDex.count()
+      println(s"dex result size=${dexResult}")
     }
   }
 }

@@ -32,7 +32,7 @@ class DexQuerySuite extends DexQueryTest {
     //println("query: " ++ result.mkString)
 
     val queryDex = query.dex
-    //queryDex.explain(extended = true)
+    queryDex.explain(extended = true)
     //val resultDex = queryDex.collect()
     //println("dex: " ++ resultDex.mkString)
 
@@ -82,6 +82,21 @@ class DexQuerySuite extends DexQueryTest {
 
   test("one join") {
     val query = data2.join(data3).where("b == c")
+    checkDexFor(query)
+  }
+
+  test("one join one filter, nonoverlap") {
+    val query = data2.join(data3).where("b == d and a == 1")
+    checkDexFor(query)
+  }
+
+  test("one join one filter, nonoverlap, post-join filter") {
+    val query = data2.join(data3).where("b == d and c == 1")
+    checkDexFor(query)
+  }
+
+  test("one join one filter, nonoverlap, reverse join pair order") {
+    val query = data2.join(data3).where("d == b and a == 1")
     checkDexFor(query)
   }
 
@@ -136,6 +151,13 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query)
   }
 
+  test("two joins: nested order") {
+    val query = data2.join(
+      data3.join(data4).where("c == e")
+    ).where("a == c")
+    checkDexFor(query)
+  }
+
   test("spx") {
     spark.conf.set(SQLConf.get.dexTranslationMode, "Spx")
     val query1 = data2.join(data4).where("a == e")
@@ -167,8 +189,11 @@ class DexQuerySuite extends DexQueryTest {
 
   test("dex domain") {
     spark.conf.set(SQLConf.get.dexTranslationMode, "DexDomain")
-    val query1 = data2.join(data3).where("a == c")
+    val query1 = data2.join(data3).where("a == c and b == 2")
     checkDexFor(query1)
+
+    val query2 = data2.where("b == 2").join(data3).where("a == c")
+    checkDexFor(query2)
   }
 
   test("jdbc rdd internal rows are unmaterialized cursors") {

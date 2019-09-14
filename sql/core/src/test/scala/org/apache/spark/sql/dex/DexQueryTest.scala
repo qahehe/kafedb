@@ -39,6 +39,13 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
   lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
   lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
 
+  /*lazy val fact1 = spark.read.jdbc(url, "test_fact1", properties)
+  lazy val dim1 = spark.read.jdbc(url, "test_dim1", properties)
+  lazy val dim2 = spark.read.jdbc(url, "test_dim2", properties)
+  lazy val dim3 = spark.read.jdbc(url, "test_dim3", properties)
+
+  lazy val fks = Map()*/
+
   protected override def sparkConf = super.sparkConf
     .set(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL, urlEnc)
     .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
@@ -115,6 +122,53 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
       .executeUpdate()
     conn.commit()
 
+    /*conn.prepareStatement("create table test_fact1 (f1_pk int, f1_d1_fk int, f1_d2_fk int, f1_a int)")
+      .executeUpdate()
+    conn.prepareStatement(
+      """
+        |insert into test_fact1 values
+        |(1, 1, 1, 10),
+        |(2, 2, 1, 10),
+        |(3, 3, 1, 20),
+        |(4, 1, 2, 30)
+      """.stripMargin)
+      .executeUpdate()
+    conn.commit()
+
+    conn.prepareStatement("create table test_dim1 (d1_pk int, d1_d3_fk int, d1_a int, d1_b int)")
+      .executeUpdate()
+    conn.prepareStatement(
+      """
+        |insert into test_dim1 values
+        |(1, 1, 10, 100),
+        |(2, 2, 10, 200),
+        |(3, 2, 20, 200)
+      """.stripMargin)
+      .executeUpdate()
+    conn.commit()
+
+    conn.prepareStatement("create table test_dim2 (d2_pk int, d2_d3_fk int, d2_a int)")
+      .executeUpdate()
+    conn.prepareStatement(
+      """
+        |insert into test_dim2 values
+        |(1, 1, 10),
+        |(2, 2, 20)
+      """.stripMargin)
+      .executeUpdate()
+    conn.commit()
+
+    conn.prepareStatement("create table test_dim3 (d3_pk int, d3_a int)")
+      .executeUpdate()
+    conn.prepareStatement(
+      """
+        |insert into test_dim2 values
+        |(1, 100),
+        |(2, 200)
+      """.stripMargin)
+      .executeUpdate()
+    conn.commit()*/
+
     if (provideEncryptedData) {
       connEnc.prepareStatement("create table testdata2_prf (rid varchar, a_prf varchar, b_prf varchar)")
         .executeUpdate()
@@ -172,6 +226,25 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
         """.stripMargin)
           .executeUpdate()
       connEnc.commit()
+
+      /*connEnc.prepareStatement("create table t_fk_pk(label varchar, value varchar)")
+        .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into t_fkdom values
+          |
+        """.stripMargin)
+        .executeUpdate()
+      connEnc.commit()
+
+      connEnc.prepareStatement("create table t_dom_pk(label varchar, value varchar)")
+          .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |
+        """.stripMargin)
+          .executeUpdate()
+      connEnc.commit()*/
 
       /*// encrypted set of (rid, domain valuea)
       connEnc.prepareStatement("create table t_correlated_filter(label varchar, value varchar)")
@@ -292,7 +365,11 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
           |('testdata3~c~testdata3~c~1~1', '2_enc'),
           |('testdata3~c~testdata3~c~2~0', '1_enc'),
           |('testdata3~c~testdata3~c~2~1', '2_enc'),
-          |('testdata3~c~testdata3~c~3~0', '3_enc')
+          |('testdata3~c~testdata3~c~3~0', '3_enc'),
+          |
+          |('testdata3~c~testdata4~e~3~0', '1_enc'),
+          |('testdata3~c~testdata4~e~3~1', '2_enc'),
+          |('testdata3~c~testdata4~e~3~2', '3_enc')
         """.stripMargin)
         .executeUpdate()
       connEnc.commit()
