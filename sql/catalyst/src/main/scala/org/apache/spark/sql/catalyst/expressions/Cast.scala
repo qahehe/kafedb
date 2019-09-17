@@ -206,6 +206,10 @@ case class Cast(child: Expression, dataType: DataType, timeZoneId: Option[String
 
   override def toString: String = s"cast($child as ${dataType.simpleString})"
 
+  override def dialectSql(quoteIdent: String => String): String = {
+    s"cast(${child.dialectSql(quoteIdent)} as ${dataType.sql})"
+  }
+
   override def checkInputDataTypes(): TypeCheckResult = {
     if (Cast.canCast(child.dataType, dataType)) {
       TypeCheckResult.TypeCheckSuccess

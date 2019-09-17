@@ -93,27 +93,34 @@ trait DexTPCHTest extends QueryTest with DexTest {
     // todo: in case primary key is meaningful and needs to conceal, one can easily create pseudo primary key
     // and then map the pseudo to real primary key via 'enc(key=f(table,pseudo_pk), real_pk)'.
     // For now, assume all primary keys are already pseudo.
+    // Note: fk-pk join (e.g. fpk_partsupp_part_prf) is encrytped using specific search tokens.  The actual fk attribute
+    // (if required to be queryable) is encrypted like any data cell.
     execute(connEnc,
       """
         |create table partsupp_prf (
         |  rid                       bigint,
+        |
         |  pfk_part_partsupp_prf     varchar,
         |  fpk_partsupp_part_prf     varchar,
+        |  ps_partkey_prf            varchar,
+        |
         |  pfk_supplier_partsupp_prf varchar,
         |  fpk_partsupp_supplier_prf varchar,
-        |  val_partsupp_ps_comment_prf        varchar,
-        |  ps_comment_prf        varchar
+        |  ps_suppkey_prf            varchar,
+        |
+        |  val_partsupp_ps_comment_prf varchar,
+        |  ps_comment_prf              varchar
         |)
       """.stripMargin)
     execute(connEnc,
       """
         |insert into partsupp_prf values
-        |(1, 'part~partsupp~1~0', '1_enc_partsupp~part~1', 'supplier~partsupp~1~0', '1_enc_partsupp~supplier~1', 'partsupp~ps_comment~psa~0', 'psa_enc'),
-        |(2, 'part~partsupp~2~0', '1_enc_partsupp~part~2', 'supplier~partsupp~2~0', '2_enc_partsupp~supplier~2', 'partsupp~ps_comment~psa~1', 'psa_enc'),
-        |(3, 'part~partsupp~1~1', '2_enc_partsupp~part~3', 'supplier~partsupp~2~1', '2_enc_partsupp~supplier~3', 'partsupp~ps_comment~psb~0', 'psb_enc'),
-        |(4, 'part~partsupp~3~0', '3_enc_partsupp~part~4', 'supplier~partsupp~3~0', '3_enc_partsupp~supplier~4', 'partsupp~ps_comment~psb~1', 'psb_enc'),
-        |(5, 'part~partsupp~4~0', '3_enc_partsupp~part~5', 'supplier~partsupp~3~1', '3_enc_partsupp~supplier~5', 'partsupp~ps_comment~psb~2', 'psb_enc'),
-        |(6, 'part~partsupp~3~1', '4_enc_partsupp~part~6', 'supplier~partsupp~3~2', '3_enc_partsupp~supplier~6', 'partsupp~ps_comment~psc~0', 'psc_enc')
+        |(1, 'part~partsupp~1~0', '1_enc_partsupp~part~1', '1_enc', 'supplier~partsupp~1~0', '1_enc_partsupp~supplier~1', '1_enc', 'partsupp~ps_comment~psa~0', 'psa_enc'),
+        |(2, 'part~partsupp~2~0', '2_enc_partsupp~part~2', '2_enc', 'supplier~partsupp~2~0', '2_enc_partsupp~supplier~2', '2_enc', 'partsupp~ps_comment~psa~1', 'psa_enc'),
+        |(3, 'part~partsupp~1~1', '1_enc_partsupp~part~3', '1_enc', 'supplier~partsupp~2~1', '2_enc_partsupp~supplier~3', '2_enc', 'partsupp~ps_comment~psb~0', 'psb_enc'),
+        |(4, 'part~partsupp~3~0', '3_enc_partsupp~part~4', '3_enc', 'supplier~partsupp~3~0', '3_enc_partsupp~supplier~4', '3_enc', 'partsupp~ps_comment~psb~1', 'psb_enc'),
+        |(5, 'part~partsupp~4~0', '4_enc_partsupp~part~5', '4_enc', 'supplier~partsupp~3~1', '3_enc_partsupp~supplier~5', '3_enc', 'partsupp~ps_comment~psb~2', 'psb_enc'),
+        |(6, 'part~partsupp~3~1', '3_enc_partsupp~part~6', '3_enc', 'supplier~partsupp~3~2', '3_enc_partsupp~supplier~6', '3_enc', 'partsupp~ps_comment~psc~0', 'psc_enc')
       """.stripMargin)
 
     execute(connEnc,
@@ -121,6 +128,7 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |create table part_prf (
         |  rid bigint,
         |  p_partkey_prf varchar,
+        |
         |  val_part_p_name_prf varchar,
         |  p_name_prf varchar
         |)
@@ -139,6 +147,7 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |create table supplier_prf (
         |  rid bigint,
         |  s_suppkey_prf varchar,
+        |
         |  val_supplier_s_name_prf varchar,
         |  s_name_prf varchar
         |)

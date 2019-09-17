@@ -39,7 +39,7 @@ import org.apache.spark.sql.execution.datasources.{CatalogFileIndex, DataSource,
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.jdbc.JdbcDialects
-import org.apache.spark.sql.types.{DataType, IntegerType, StringType}
+import org.apache.spark.sql.types.{DataType, IntegerType, LongType, StringType}
 import org.apache.spark.sql.{Column, Dataset, Encoders, SparkSession, functions}
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.sql.functions.{col, collect_list, concat, lit, monotonically_increasing_id, posexplode, row_number, udf}
@@ -61,7 +61,7 @@ object DexSQLFunctions {
 
   def decryptCol(decKey: String, col: String): String =
   // todo: use SQL decrypt like s"decrypt($decKey, $col)"
-    s"substring($col, '(.+)_enc$$')"
+    s"substring($col, '(.+)_enc')"
 }
 
 class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) extends RuleExecutor[LogicalPlan] {
@@ -227,6 +227,16 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |CROSS JOIN
                |
                |($rightSubquery) AS ${generateSubqueryName()}
+              """.stripMargin
+          case x if x == Inner && j.condition.isDefined =>
+            s"""
+               |($leftSubquery) AS ${generateSubqueryName()}
+               |
+               |INNER JOIN
+               |
+               |($rightSubquery) AS ${generateSubqueryName()}
+               |
+               |ON (${j.condition.get.dialectSql(dialect.quoteIdentifier)})
               """.stripMargin
           case x if x == Inner =>
             s"""
@@ -972,8 +982,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         childView match {
           case Some(w) =>
             // rhs of join
-            val includeTableEnc = w.outputSet ++ tableEnc.outputSet
-            w.select(includeTableEnc.toSeq: _*)
+            w
           case None =>
             tableEnc
         }
@@ -1005,7 +1014,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           val predicate = s"${taF.table}~${taP.table}"
           val mapColumnDecKey = Concat(Seq(predicate, "~", leftRidOrder))
           val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
-          childView.join(tablePrimaryKey).where(DexDecrypt(mapColumnDecKey, mapColumn) === taP.attr)
+          childView.join(tablePrimaryKey, condition = Some(DexDecrypt(mapColumnDecKey, mapColumn).cast(LongType) === rightRidOrder))
 
         case x => ??? // todo: handle nonkey join using t_domain
       }
@@ -1030,7 +1039,7 @@ case class DexDecrypt(key: Expression, value: Expression) extends BinaryExpressi
   protected override def nullSafeEval(input1: Any, input2: Any): Any = {
     //val fromCharset = input2.asInstanceOf[UTF8String].toString
     //UTF8String.fromString(new String(input1.asInstanceOf[Array[Byte]], fromCharset))
-     UTF8String.fromString("""(.+)_enc$""".r.findFirstMatchIn(input2.asInstanceOf[UTF8String].toString).get.group(1))
+     UTF8String.fromString("""(.+)_enc""".r.findFirstMatchIn(input2.asInstanceOf[UTF8String].toString).get.group(1))
   }
 
   /*override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
