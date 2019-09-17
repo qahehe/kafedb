@@ -85,3 +85,20 @@ case class DexDomainJoin(leftPredicate: String, rightPredicate: String, intersec
     case x: Attribute if x.name == "value" => x.withName("value_right")
   }
 }
+
+case class DexPseudoPrimaryKeyFilter(predicate: String, labelColumn: Attribute, childView: LogicalPlan) extends UnaryNode {
+  override def child: LogicalPlan = childView
+
+  override def output: Seq[Attribute] = childView.output
+
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
+}
+
+// output: childView's schema plus
+case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: Attribute, childView: LogicalPlan, childViewRid: Attribute, rightRid: Attribute) extends UnaryNode {
+  override def child: LogicalPlan = childView
+
+  override def output: Seq[Attribute] = childView.output
+
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
+}

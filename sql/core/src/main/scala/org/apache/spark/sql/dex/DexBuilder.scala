@@ -21,18 +21,14 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.dex.DexBuilder.{JoinableAttrs, TableAttribute, TableName, createTreeIndex}
+import org.apache.spark.sql.dex.DexBuilder.createTreeIndex
+import org.apache.spark.sql.dex.DexConstants.{JoinableAttrs, TableAttribute, TableName}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.{col, lit, collect_list, row_number, monotonically_increasing_id, posexplode, udf}
+import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, row_number, udf}
 import org.apache.spark.util.Utils
 
 object DexBuilder {
-  type TableName = String
-  type AttrName = String
-  case class TableAttribute(table: TableName, attr: AttrName)
-  type JoinableAttrs = (TableAttribute, TableAttribute)
-
   def createHashIndex(conn: Connection, tableName: String, df: DataFrame, col: String): Unit = {
     conn.prepareStatement(
       s"""

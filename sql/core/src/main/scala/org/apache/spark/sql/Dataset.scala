@@ -1501,7 +1501,20 @@ class Dataset[T] private[sql](
 
 
   def dex: Dataset[T] = withTypedPlan {
-    DexPlan(logicalPlan)
+    // todo: refactor to not rely on sql context?
+    sparkSession.sqlContext.conf.dexTranslationMode match {
+      case "Spx" =>
+        SpxPlan(logicalPlan)
+      case "DexCorrelation" =>
+        DexCorrelationPlan(logicalPlan)
+      case "DexDomain" =>
+        DexDomainPlan(logicalPlan)
+    }
+  }
+
+  def dexPkFk(primaryKeys: Set[String],
+              foreignKeys: Set[String]): Dataset[T] = withTypedPlan {
+    DexPkFkPlan(logicalPlan, primaryKeys, foreignKeys)
   }
 
 

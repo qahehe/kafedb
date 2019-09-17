@@ -53,7 +53,18 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
  * Opertaions above this node will be treated as plaintext operations.
  * Operations below this node will be transformed into encrypted oeprations.
  */
-case class DexPlan(child: LogicalPlan) extends OrderPreservingUnaryNode {
+abstract class DexPlan(child: LogicalPlan) extends OrderPreservingUnaryNode {
+  override def output: Seq[Attribute] = child.output
+}
+
+case class SpxPlan(child: LogicalPlan) extends DexPlan(child)
+case class DexCorrelationPlan(child: LogicalPlan) extends DexPlan(child)
+case class DexDomainPlan(child: LogicalPlan) extends DexPlan(child)
+
+case class DexPkFkPlan(child: LogicalPlan,
+                       primaryKeys: Set[String],
+                       foreignKeys: Set[String])
+  extends DexPlan(child) {
   override def output: Seq[Attribute] = child.output
 }
 

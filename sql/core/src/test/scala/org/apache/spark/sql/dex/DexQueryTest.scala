@@ -26,15 +26,7 @@ import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.util.Utils
 import org.scalatest.{BeforeAndAfter, PrivateMethodTester}
 
-trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter with PrivateMethodTester {
-  val urlEnc = "jdbc:postgresql://localhost:8433/test_edb"
-  val url = "jdbc:postgresql://localhost:7433/test_db"
-  // val urlWithUserAndPass = "jdbc:h2:mem:testdb0;user=testUser;password=testPass"
-  var conn: java.sql.Connection = null
-  var connEnc: java.sql.Connection = null
-  val properties = new Properties()
-  properties.setProperty("Driver", "org.postgresql.Driver")
-
+trait DexQueryTest extends DexTest {
   lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
   lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
   lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
@@ -46,27 +38,11 @@ trait DexQueryTest extends QueryTest with SharedSQLContext with BeforeAndAfter w
 
   lazy val fks = Map()*/
 
-  protected override def sparkConf = super.sparkConf
-    .set(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL, urlEnc)
-    .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
-
-  protected override def afterAll(): Unit = {
-    conn.close()
-    connEnc.close()
-  }
-
   // Whether to materialize all encrypted test data before the first test is run
   protected def provideEncryptedData: Boolean
 
   protected override def beforeAll(): Unit = {
     super.beforeAll()
-
-    Utils.classForName("org.postgresql.Driver")
-
-    conn = DriverManager.getConnection(url, properties)
-    connEnc = DriverManager.getConnection(urlEnc, properties)
-    conn.setAutoCommit(false)
-    connEnc.setAutoCommit(false)
 
     conn.prepareStatement("drop table if exists testdata2").executeUpdate()
     conn.prepareStatement("drop table if exists testdata3").executeUpdate()

@@ -17,7 +17,7 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import org.apache.spark.sql.dex.DexBuilder.TableAttribute
+import org.apache.spark.sql.dex.DexConstants.TableAttribute
 import org.apache.spark.sql.test.SharedSQLContext
 import org.scalatest.BeforeAndAfter
 

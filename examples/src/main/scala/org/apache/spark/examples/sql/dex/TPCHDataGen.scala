@@ -22,7 +22,8 @@ import java.sql.DriverManager
 import java.util.Properties
 
 import org.apache.spark.deploy.SparkHadoopUtil
-import org.apache.spark.sql.dex.DexBuilder.{TableAttribute, createTreeIndex}
+import org.apache.spark.sql.dex.DexBuilder.createTreeIndex
+import org.apache.spark.sql.dex.DexConstants.TableAttribute
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.util.Utils
 // For datagens

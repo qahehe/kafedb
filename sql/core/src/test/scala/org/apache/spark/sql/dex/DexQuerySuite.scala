@@ -26,22 +26,9 @@ class DexQuerySuite extends DexQueryTest {
 
   override protected def provideEncryptedData: Boolean = true
 
-  private def checkDexFor(query: DataFrame): Unit = {
-    //query.explain(extended = true)
-    //val result = query.collect()
-    //println("query: " ++ result.mkString)
-
-    val queryDex = query.dex
-    queryDex.explain(extended = true)
-    //val resultDex = queryDex.collect()
-    //println("dex: " ++ resultDex.mkString)
-
-    checkAnswer(queryDex, query)
-  }
-
   test("one filter") {
     val query = data2.select("b").where("a == 2")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("mix dex and non-dex query") {
@@ -52,148 +39,148 @@ class DexQuerySuite extends DexQueryTest {
 
   test("one filter one join") {
     val query = data2.join(data3).where("a == 2 and b == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("one filter one join: transitive attributes, join fully concides with filters") {
     val query = data2.join(data3).where("a == 1 and a == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("conjunctive filters") {
     val query = data2.where("a == 2 and b == 1")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("disjunctive filters") {
     val query = data2.where("a == 2 or b == 1")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("IN filter") {
     val query = data2.where("a in (1, 2)")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("NOT filter") {
     val query = data2.where("a != 2")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("one join") {
     val query = data2.join(data3).where("b == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("one join one filter, nonoverlap") {
     val query = data2.join(data3).where("b == d and a == 1")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("one join one filter, nonoverlap, post-join filter") {
     val query = data2.join(data3).where("b == d and c == 1")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("one join one filter, nonoverlap, reverse join pair order") {
     val query = data2.join(data3).where("d == b and a == 1")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("table alias") {
     val query = data2.join(data3.as("d3")).where("b == d3.c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("self join") {
     val query = data3.as("d3a").join(data3.as("d3b")).where("d3a.c == d3b.c").select("d3a.c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("cross join") {
     val query = data2.crossJoin(data3)
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("disjunctive joins: same tables") {
     val query = data2.join(data3).where("a == c or b == d")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("disjunctive joins: same tables, transitive attrs") {
     val query = data2.join(data3).where("a == c or b == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("two joins: same tables") {
     val query = data2.join(data3).where("a == c and b == d")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("two joins: same tables, transitive attributes") {
     // inferred a == b same-table filter (not a join!)
     val query = data2.join(data3).where("a == c and b == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("join partially coincides with filters") {
     val query = data2.join(data3).where("a == c and b == d and a = 1")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("two joins: three tables star schema") {
     val query = data2.join(data4).join(data3).where("a == e and b == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("two joins: three tables star schema transitive attributes") {
     val query = data2.join(data4).join(data3).where("a == e and a == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("two joins: nested order") {
     val query = data2.join(
       data3.join(data4).where("c == e")
     ).where("a == c")
-    checkDexFor(query)
+    checkDexFor(query, query.dex)
   }
 
   test("spx") {
     spark.conf.set(SQLConf.get.dexTranslationMode, "Spx")
     val query1 = data2.join(data4).where("a == e")
-    checkDexFor(query1)
+    checkDexFor(query1, query1.dex)
 
     val query2 = data2.join(data3).where("a == 2 and b == c")
-    checkDexFor(query2)
+    checkDexFor(query2, query2.dex)
 
 
     val query3 = data2.join(data3).where("a == c and b == d")
-    checkDexFor(query3)
+    checkDexFor(query3, query3.dex)
 
 
     val query4 = data2.join(data3).where("a == c and b == c")
-    checkDexFor(query4)
+    checkDexFor(query4, query4.dex)
 
 
     val query5 = data2.join(data3).where("a == c and b == d and a = 1")
-    checkDexFor(query5)
+    checkDexFor(query5, query5.dex)
 
 
     val query6 = data2.join(data4).join(data3).where("a == e and b == c")
-    checkDexFor(query6)
+    checkDexFor(query6, query6.dex)
 
 
     val query7 = data2.join(data4).join(data3).where("a == e and a == c")
-    checkDexFor(query7)
+    checkDexFor(query7, query7.dex)
   }
 
   test("dex domain") {
     spark.conf.set(SQLConf.get.dexTranslationMode, "DexDomain")
     val query1 = data2.join(data3).where("a == c and b == 2")
-    checkDexFor(query1)
+    checkDexFor(query1, query1.dex)
 
     val query2 = data2.where("b == 2").join(data3).where("a == c")
-    checkDexFor(query2)
+    checkDexFor(query2, query2.dex)
   }
 
   test("jdbc rdd internal rows are unmaterialized cursors") {
