@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 package org.apache.spark.sql.dex
-
-import org.apache.spark.sql.catalyst.dsl.expressions._
-import org.apache.spark.sql.catalyst.dsl.plans._
 // scalastyle:off
 
 class DexTPCHSuite extends DexTPCHTest {
@@ -33,4 +30,8 @@ class DexTPCHSuite extends DexTPCHTest {
     checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
   }
 
+  test("one join: primary key to foreign key") {
+    val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
 }

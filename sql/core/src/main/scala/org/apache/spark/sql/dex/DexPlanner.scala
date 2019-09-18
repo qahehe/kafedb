@@ -449,17 +449,60 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val labelPrfKey = emmKeyForPrimaryKeyFilter(f.predicate)
         val labelCol = f.labelColumn.dialectSql(dialect.quoteIdentifier)
         val outputCols = f.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        /*s"""
+           |(
+           |  WITH RECURSIVE child_view AS (
+           |    ${convertToSQL(f.child)}
+           |  ),
+           |  t(counter, label) AS (
+           |    SELECT ${DexConstants.cashCounterStart}, ${nextLabel(labelPrfKey, DexConstants.cashCounterStart.toString)} WHERE EXISTS (SELECT 1 FROM child_view WHERE ${nextLabel(labelPrfKey, DexConstants.cashCounterStart.toString)} = $labelCol)
+           |    UNION ALL
+           |    SELECT counter + 1, ${nextLabel(labelPrfKey, "counter + 1")} FROM t WHERE EXISTS (SELECT 1 FROM child_view WHERE label = $labelCol)
+           |  )
+           |  SELECT $outputCols FROM t INNER JOIN child_view ON label = $labelCol
+           |)
+         """.stripMargin*/
         s"""
            |(
            |  WITH RECURSIVE child_view AS (
            |    ${convertToSQL(f.child)}
            |  ),
            |  dex_ppk_filter AS (
-           |    SELECT *, ${DexConstants.cashCounterStart} AS counter FROM child_view WHERE $labelCol = ${nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")}
+           |    SELECT child_view.*, ${DexConstants.cashCounterStart} AS counter FROM child_view WHERE $labelCol = ${nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")}
            |    UNION ALL
            |    SELECT child_view.*, dex_ppk_filter.counter + 1 AS counter FROM child_view, dex_ppk_filter WHERE child_view.$labelCol = ${nextLabel(labelPrfKey, "dex_ppk_filter.counter + 1")}
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
+           |)
+         """.stripMargin
+
+      case j: DexPseudoPrimaryKeyJoin =>
+        val labelCol = j.labelColumn.dialectSql(dialect.quoteIdentifier)
+        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val leftChildViewOutputCols = j.leftChildView.output.map(x => s"dex_ppk_join.${x.dialectSql(dialect.quoteIdentifier)}").mkString(", ")
+        // first generate labelPrfKeys for each primary key
+        // Question 1: join left child view and right child view each recursion or join right child view after all recursions?
+        // Question 2: join left child view or join from left table? Left child view might have been joined with other tables already
+        s"""
+           |(
+           |  WITH RECURSIVE left_child_view AS (
+           |    ${convertToSQL(j.leftChildView)}
+           |  ),
+           |  right_child_view AS (
+           |    ${convertToSQL(j.rightChildView)}
+           |  ),
+           |  dex_ppk_join AS (
+           |    SELECT left_child_view.*, right_child_view.*, ${DexConstants.cashCounterStart} AS counter
+           |    FROM left_child_view, right_child_view
+           |    WHERE ${nextLabel(emmKeyColOfPrimaryKeyJoin(prfKey, j.leftChildViewRid, j.predicate), s"${DexConstants.cashCounterStart}")} = right_child_view.$labelCol
+           |
+           |    UNION ALL
+           |
+           |    SELECT $leftChildViewOutputCols, right_child_view.*, counter + 1 AS counter
+           |    FROM dex_ppk_join, right_child_view
+           |    WHERE ${nextLabel(emmKeyColOfPrimaryKeyJoin(prfKey, j.leftChildViewRid, j.predicate), "counter + 1")} = right_child_view.$labelCol
+           |  )
+           |  SELECT $outputCols FROM dex_ppk_join
            |)
          """.stripMargin
 
@@ -489,6 +532,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       // todo: append 1 and 2 to form two keys
       (dialect.compileValue(predicate).asInstanceOf[String],
         dialect.compileValue(predicate).asInstanceOf[String])
+
+    private def emmKeyColOfPrimaryKeyJoin(prfKey: String, primaryKeyCol: Attribute, predicate: String): String = {
+      //Concat(Seq(predicate, "~", primaryKeyCol)).dialectSql(dialect.quoteIdentifier)
+      s"'$predicate' || '~' || ${primaryKeyCol.dialectSql(dialect.quoteIdentifier)}"
+    }
 
     private def emmKeyForPrimaryKeyFilter(predicate: String): String =
       dialect.compileValue(predicate).asInstanceOf[String]
@@ -704,7 +752,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         case f: Filter =>
           val source = translatePlan(f.child, childView)
-          translateFormula(FilterFormula, f.condition, source, isNegated = false)
+          translateFormula(FilterFormula, f.condition, Seq(source), isNegated = false)
 
         case j: Join if j.joinType == Cross =>
           translatePlan(j.left, childView).join(translatePlan(j.right, childView), Cross)
@@ -724,7 +772,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           } else {
             // e.g.  T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1
             val leftView = translatePlan(j.left, childView)
-            val joinView = translateFormula(JoinFormula, j.condition.get, leftView, isNegated = false)
+            val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView), isNegated = false)
             translatePlan(j.right, Some(joinView))
           }
 
@@ -755,26 +803,28 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       }).reduceOption(_ ++ _).getOrElse(AttributeSet.empty)
     }
 
-    private def translateFormula(formulaType: FormulaType, condition: Expression, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
+    protected def translateFormula(formulaType: FormulaType, condition: Expression, childViews: Seq[LogicalPlan], isNegated: Boolean): LogicalPlan = {
       condition match {
         case p: EqualTo => formulaType match {
           case FilterFormula =>
-            translateFilterPredicate(p, childView, isNegated)
+            require(childViews.size == 1)
+            translateFilterPredicate(p, childViews.headOption.get, isNegated)
           case JoinFormula =>
-            translateJoinPredicate(p, childView)
+            translateJoinPredicate(p, childViews)
         }
 
         case And(left, right) if !isNegated =>
-          translateFormula(formulaType, right, translateFormula(formulaType, left, childView, isNegated), isNegated)
+          translateFormula(formulaType, right, Seq(translateFormula(formulaType, left, childViews, isNegated)), isNegated)
 
         case Or(left, right) if !isNegated =>
-          val lt = translateFormula(formulaType, left, childView, isNegated)
-          val rt = translateFormula(formulaType, right, childView, isNegated)
+          val lt = translateFormula(formulaType, left, childViews, isNegated)
+          val rt = translateFormula(formulaType, right, childViews, isNegated)
           //rt.flatMap(r => lt.map(l => l unionDistinct r)).orElse(lt)
           lt unionDistinct rt
 
         case IsNotNull(attr: Attribute) =>
-          childView
+          require(childViews.size == 1)
+          childViews.headOption.get
 
         case In(attr: Attribute, list: Seq[Expression]) if formulaType == FilterFormula =>
           val pred = if (isNegated) {
@@ -782,10 +832,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           } else {
             list.map(expr => EqualTo(attr, expr)).reduce[Predicate]((p1, p2) => Or(p1, p2))
           }
-          translateFormula(formulaType, pred, childView, isNegated = false)
+          translateFormula(formulaType, pred, childViews, isNegated = false)
 
         case Not(p: Predicate) if formulaType == FilterFormula =>
-          translateFormula(formulaType, p, childView, isNegated = true)
+          translateFormula(formulaType, p, childViews, isNegated = true)
 
         case x => throw DexException("unsupported: " + x.toString)
       }
@@ -836,13 +886,13 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         (childView.output.find(_.name == leftRidOrder), childView.output.find(_.name == rightRidOrder))
     }
 
-    private def translateJoinPredicate(p: Predicate, childView: LogicalPlan): LogicalPlan = p match {
+    private def translateJoinPredicate(p: Predicate, childViews: Seq[LogicalPlan]): LogicalPlan = p match {
       case EqualTo(left: Attribute, right: Attribute) =>
-        translateEquiJoin(JoinAttrs(left, right), childView: LogicalPlan)
+        translateEquiJoin(JoinAttrs(left, right), childViews)
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
-    protected def translateEquiJoin(joinAttrs: JoinAttrs, chidlView: LogicalPlan): LogicalPlan
+    protected def translateEquiJoin(joinAttrs: JoinAttrs, chidlViews: Seq[LogicalPlan]): LogicalPlan
 
     protected def tableEncNameOf(tableName: String): String = s"${tableName}_prf"
 
@@ -886,7 +936,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   case class SpxTranslator(dexPlan: DexPlan) extends RidFilterBasedTranslator(dexPlan) {
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childView: LogicalPlan): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+      require(childViews.size == 1)
+      val childView = childViews.headOption.get
       val predicate = s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
       val ridJoin = SpxRidUncorrelatedJoin(predicate, tUncorrelatedJoin)
           .select(DexDecrypt($"value_dec_key", $"value_left").as(joinAttrs.leftRidOrder), DexDecrypt($"value_dec_key", $"value_right").as(joinAttrs.rightRidOrder))
@@ -896,7 +948,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   case class DexCorrelationTranslator(dexPlan: DexPlan) extends RidFilterBasedTranslator(dexPlan) {
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childView: LogicalPlan): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+      require(childViews.size == 1)
+      val childView = childViews.headOption.get
       val predicate = s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
       def newRidJoinOf(l: Attribute, rightRidOrder: String) = {
         // "right" relation is a new relation to join
@@ -945,7 +999,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   case class DexDomainTranslator(dexPlan: DexPlan) extends RidFilterBasedTranslator(dexPlan) {
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childView: LogicalPlan): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+      require(childViews.size == 1)
+      val childView = childViews.headOption.get
       val (leftPredicate, rightPredicate) = (s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}",s"${joinAttrs.rightTableName}~${joinAttrs.rightColName}")
       val (leftDomainValues, rightDomainValues) = (
         DexDomainValues(leftPredicate, tDomain).select(DexDecrypt($"value_dec_key", $"value").as(s"value_dom")),
@@ -986,6 +1042,13 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           case None =>
             tableEnc
         }
+
+      case j: Join if j.condition.isDefined =>
+        val leftView = translatePlan(j.left, childView)
+        val rightView = translatePlan(j.right, childView)
+        val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView, rightView), isNegated = false)
+        translatePlan(j.right, Some(joinView))
+
       case _ => super.translatePlan(plan, childView)
     }
 
@@ -1000,30 +1063,32 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       DexPseudoPrimaryKeyFilter(predicate, labelCol, childView)
     }
 
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childView: LogicalPlan): LogicalPlan = {
-      def newPkFkJoinOf(leftRidOrder: Attribute, rightRidOrder: Attribute, leftTableAttr: TableAttribute, rightTableAttr: TableAttribute): LogicalPlan = (leftTableAttr, rightTableAttr) match {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+      require(childViews.size == 2)
+      // Always join from left child view to right child view, post-orderly (subtree-first)
+      // todo: think about fk-pk and pk-fk join order difference
+      val (leftChildView, rightChildView) = (childViews.head, childViews(1))
+      val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
+      val (leftTableAttr, rightTableAttr) = (
+        TableAttribute(joinAttrs.leftTableName, joinAttrs.left.name),
+        TableAttribute(joinAttrs.rightTableName, joinAttrs.right.name)
+      )
+      (leftTableAttr, rightTableAttr) match {
         case (taP, taF) if primaryKeys.contains(taP.attr) && foreignKeys.contains(taF.attr) =>
           // primary to foreign key join, e.g. supplier.s_suppkey = partsupp.ps_suppkey
           val labelColumn = $"pfk_${taP.table}_${taF.table}_prf"
           val predicate = s"${taP.table}~${taF.table}"
-          DexPseudoPrimaryKeyJoin(predicate, labelColumn, childView, leftRidOrder, rightRidOrder)
+          DexPseudoPrimaryKeyJoin(predicate, labelColumn, leftChildView, leftRidOrder, rightChildView)
 
         case (taF, taP) if foreignKeys.contains(taF.attr) && primaryKeys.contains(taP.attr) =>
           // foreign to primary key join, e.g. partsupp.ps_suppkey = supplier.s_suppkey
           val mapColumn = $"fpk_${taF.table}_${taP.table}_prf"
           val predicate = s"${taF.table}~${taP.table}"
           val mapColumnDecKey = Concat(Seq(predicate, "~", leftRidOrder))
-          val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
-          childView.join(tablePrimaryKey, condition = Some(DexDecrypt(mapColumnDecKey, mapColumn).cast(LongType) === rightRidOrder))
+          //val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
+          leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumn).cast(LongType) === rightRidOrder))
 
         case x => ??? // todo: handle nonkey join using t_domain
-      }
-
-      joinAttrs.ridOrderAttrsGiven(childView) match {
-        case (Some(l), None) =>
-          newPkFkJoinOf(l, $"${joinAttrs.rightRidOrder}", TableAttribute(joinAttrs.leftTableName, joinAttrs.left.name), TableAttribute(joinAttrs.rightTableName, joinAttrs.right.name))
-
-        case x => throw DexException("unsupported: (None, None)")
       }
     }
   }
