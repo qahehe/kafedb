@@ -81,13 +81,13 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |(4, 'pb')
       """.stripMargin)
 
-    execute(conn, "create table supplier (s_suppkey int, s_name varchar)")
+    execute(conn, "create table supplier (s_suppkey int, s_name varchar, s_address varchar)")
     execute(conn,
       """
         |insert into supplier values
-        |(1, 'sa'),
-        |(2, 'sb'),
-        |(3, 'sb')
+        |(1, 'sa', 'sa1'),
+        |(2, 'sb', 'sa1'),
+        |(3, 'sb', 'sa2')
       """.stripMargin)
 
     // todo: in case primary key is meaningful and needs to conceal, one can easily create pseudo primary key
@@ -149,15 +149,18 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |  s_suppkey_prf varchar,
         |
         |  val_supplier_s_name_prf varchar,
-        |  s_name_prf varchar
+        |  s_name_prf varchar,
+        |
+        |  val_supplier_s_address_prf varchar,
+        |  s_address_prf varchar
         |)
       """.stripMargin)
     execute(connEnc,
       """
         |insert into supplier_prf values
-        |(1, '1_enc', 'supplier~s_name~sa~0', 'sa_enc'),
-        |(2, '2_enc', 'supplier~s_name~sb~0', 'sb_enc'),
-        |(3, '3_enc', 'supplier~s_name~sb~1', 'sb_enc')
+        |(1, '1_enc', 'supplier~s_name~sa~0', 'sa_enc', 'supplier~s_address~sa1~0', 'sa1_enc'),
+        |(2, '2_enc', 'supplier~s_name~sb~0', 'sb_enc', 'supplier~s_address~sa1~1', 'sa1_enc'),
+        |(3, '3_enc', 'supplier~s_name~sb~1', 'sb_enc', 'supplier~s_address~sa2~0', 'sa2_enc')
       """.stripMargin)
 
     conn.commit()

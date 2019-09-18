@@ -1047,7 +1047,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val leftView = translatePlan(j.left, childView)
         val rightView = translatePlan(j.right, childView)
         val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView, rightView), isNegated = false)
-        translatePlan(j.right, Some(joinView))
+        joinView
 
       case _ => super.translatePlan(plan, childView)
     }

@@ -25,6 +25,11 @@ class DexTPCHSuite extends DexTPCHTest {
     checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
   }
 
+  test("two conjunctive filters") {
+    val query = supplier.where("s_name == 'sb' and s_address == 'sa1'")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
   test("one join: foreign key to primary key") {
     val query = partsupp.join(supplier).where("ps_suppkey == s_suppkey")
     checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
@@ -35,13 +40,43 @@ class DexTPCHSuite extends DexTPCHTest {
     checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
   }
 
-  test("one pk-fk join one filter") {
+  test("one pk-fk join one filter on pk table") {
     val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey and s_name == 'sa'")
     checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
   }
 
-  test("one fk-pk join one filter") {
+  test("one pk-fk join one filter on fk table") {
+    val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey and ps_comment == 'psb'")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
+  test("one fk-pk join one filter on pk table") {
     val query = partsupp.join(supplier).where("ps_suppkey == s_suppkey and s_name == 'sa'")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
+  test("one fk-pk join one filter on fk table") {
+    val query = partsupp.join(supplier).where("ps_suppkey == s_suppkey and ps_comment == 'psb'")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
+  test("two joins: fk-pk and fk-pk") {
+    val query = partsupp.join(supplier).where("ps_suppkey == s_suppkey").join(part).where("ps_partkey == p_partkey")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
+  test("two joins: pk-fk and pk-fk") {
+    val query = supplier.join(part.join(partsupp).where("p_partkey == ps_partkey")).where("s_suppkey == ps_suppkey")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
+  test("two joins: fk-pk and pk-fk") {
+    val query = part.join(partsupp.join(supplier).where("ps_suppkey == s_suppkey")).where("p_partkey == ps_partkey")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
+  test("two joins: pk-fk and fk-pk") {
+    val query = part.join(partsupp).where("p_partkey == ps_partkey").join(supplier).where("ps_suppkey == s_suppkey")
     checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
   }
 }
