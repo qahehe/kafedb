@@ -1087,6 +1087,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           val mapColumnDecKey = Concat(Seq(predicate, "~", leftRidOrder))
           //val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
           leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumn).cast(LongType) === rightRidOrder))
+            .select(star())
 
         case x => ??? // todo: handle nonkey join using t_domain
       }

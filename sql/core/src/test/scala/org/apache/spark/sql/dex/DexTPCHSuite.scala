@@ -34,4 +34,14 @@ class DexTPCHSuite extends DexTPCHTest {
     val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey")
     checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
   }
+
+  test("one pk-fk join one filter") {
+    val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey and s_name == 'sa'")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
+
+  test("one fk-pk join one filter") {
+    val query = partsupp.join(supplier).where("ps_suppkey == s_suppkey and s_name == 'sa'")
+    checkDexFor(query, query.dexPkFk(primaryKeys, foreignKeys))
+  }
 }
