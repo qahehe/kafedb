@@ -47,6 +47,9 @@ object TPCHBench {
       t -> spark.table(t)
     }.toMap
 
+    val pks = TPCHDataGen.primaryKeys.map(_.attr.attr)
+    val fks = TPCHDataGen.foreignKeys.map(_.attr.attr)
+
     val part = nameToDfForDex("part")
     val partsupp = nameToDfForDex("partsupp")
     val supplier = nameToDfForDex("supplier")
@@ -60,11 +63,11 @@ object TPCHBench {
     // TPCH Query 2
     val q2a = "select r_comment from region where r_name = 'EUROPE'"
     val q2aDf = region.where("r_name == 'EUROPE'")
-    benchQuery(spark, q2a, q2aDf, q2aDf.dex)
+    benchQuery(spark, q2a, q2aDf, q2aDf.dexPkFk(pks, fks))
 
     val q2b = "select n_name from region, nation where r_regionkey = n_regionkey"
     val q2bDf = region.join(nation).where("r_regionkey = n_regionkey").select("n_name")
-    benchQuery(spark, q2b, q2bDf, q2bDf.dex)
+    benchQuery(spark, q2b, q2bDf, q2bDf.dexPkFk(pks, fks))
 
     val q2c =
       """
@@ -91,12 +94,12 @@ object TPCHBench {
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
 
     val q2cDf = q2cMain
-    val q2cDex = q2cMain.dex
+    val q2cDex = q2cMain.dexPkFk(pks, fks)
     benchQuery(spark, q2c, q2cDf, q2cDex)
 
     val q2d = "select * from part where p_size = 15"
     val q2dDf = part.where("p_size == 15")
-    benchQuery(spark, q2d, q2dDf, q2dDf.dex)
+    benchQuery(spark, q2d, q2dDf, q2dDf.dexPkFk(pks, fks))
 
     val q2e =
       """
@@ -114,7 +117,7 @@ object TPCHBench {
         .where("p_size == 15")
         .select("ps_supplycost")
     val q2eDf = q2eMain
-    val q2eDex = q2eMain.dex
+    val q2eDex = q2eMain.dexPkFk(pks, fks)
     benchQuery(spark, q2e, q2eDf, q2eDex)
 
     /*println("\n Q3")
@@ -155,7 +158,7 @@ object TPCHBench {
         .join(nation).where("r_nationkey == n_nationkey")
         .join(customer).where("n_nationkey == c_nationkey")
         .join(supplier).where("n_nationkey == s_nationkey")
-    val q5aDex = q5aDf.dex
+    val q5aDex = q5aDf.dexPkFk(pks, fks)
     benchQuery(spark, q5a, q5aDf, q5aDex)
 
     /*val q5a = "select * from customer, supplier, nation where c_nationkey = n_nationkey and s_nationkey = n_nationkey"
