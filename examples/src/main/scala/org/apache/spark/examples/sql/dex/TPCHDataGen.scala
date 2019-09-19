@@ -194,7 +194,7 @@ object TPCHDataGen {
     if (neededModes.contains("dex")) {
       time {
         println(s"\nBuilding DEX for $benchmark into Postgres from $location")
-        buildDex(spark, tables)
+        buildDexPkFk(spark, tables)
       }
     }
 
