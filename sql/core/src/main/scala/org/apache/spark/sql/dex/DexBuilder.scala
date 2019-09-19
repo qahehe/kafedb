@@ -21,15 +21,16 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.dex.DexBuilder.createTreeIndex
-import org.apache.spark.sql.dex.DexConstants.{JoinableAttrs, TableAttribute, TableName}
+import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex, createHashIndex}
+import org.apache.spark.sql.dex.DexConstants.{AttrName, JoinableAttrs, TableAttribute, TableAttributeAtom, TableAttributeCompound, TableName}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, row_number, udf}
 import org.apache.spark.util.Utils
+import org.apache.spark.sql.functions.{col, concat, lit}
 
 object DexBuilder {
-  def createHashIndex(conn: Connection, tableName: String, df: DataFrame, col: String): Unit = {
+  def createHashIndex(conn: Connection, tableName: String, col: String): Unit = {
     conn.prepareStatement(
       s"""
          |CREATE INDEX IF NOT EXISTS "${tableName}_${col}_hash"
@@ -38,7 +39,7 @@ object DexBuilder {
       """.stripMargin).executeUpdate()
   }
 
-  def createTreeIndex(conn: Connection, tableName: String, df: DataFrame, col: String): Unit = {
+  def createTreeIndex(conn: Connection, tableName: String, col: String): Unit = {
     conn.prepareStatement(
       s"""
          |CREATE INDEX IF NOT EXISTS "${tableName}_${col}_tree"
@@ -46,6 +47,9 @@ object DexBuilder {
          |($col)
       """.stripMargin).executeUpdate()
   }
+
+  case class PrimaryKey(attr: TableAttribute)
+  case class ForeignKey(attr: TableAttribute, ref: TableAttribute)
 }
 
 class DexBuilder(session: SparkSession) extends Serializable with Logging {
@@ -74,6 +78,118 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   private val udfRandPred = udf(randomPredicate(prfKey) _)
 
   private val udfRid = udf((rid: Number) => s"$rid")
+
+  private def pibasCounterOn(c: Column): Column = row_number().over(Window.partitionBy(c).orderBy(c)) - 1
+
+  def buildPkFkSchemeFromData(nameToDf: Map[TableName, DataFrame],
+                              primaryKeys: Set[PrimaryKey],
+                              foreignKeys: Set[ForeignKey]): Unit = {
+
+    nameToDf.foreach {
+      case (t, d) =>
+        val pk = {
+          val pks = primaryKeys.filter(_.attr.table == t)
+          require(pks.size == 1, "every table should have a primary key, atom or compound")
+          pks.headOption.get
+        }
+        val fks = foreignKeys.filter(_.attr.table == t)
+
+        def pkColName(pk: PrimaryKey): String = "rid"
+        def pfkColName(fk: ForeignKey): String = s"pfk_${fk.ref.table}_${fk.attr.table}_prf"
+        def fpkColName(fk: ForeignKey): String = s"fpk_${fk.attr.table}_${fk.ref.table}_prf"
+        def valColName(t: TableName, c: AttrName): String = s"val_${t}_${c}_prf"
+        def encColName(t: TableName, c: AttrName): String = s"${c}_prf"
+
+        /*def outputCols(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.flatMap {
+          case c if c == pk.attr.attr =>
+            Seq(pkColName(pk))
+          case c if fks.map(_.attr.attr).contains(c) =>
+            val fk = fks.find(_.attr.attr == c).get
+            Seq(pfkColName(fk), fpkColName(fk))
+          case c =>
+            Seq(valColName(t, c), encColName(t, c))
+        }*/
+
+        def encIndexColNamesOf(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.flatMap {
+          case c if c == pk.attr.attr =>
+            Seq(pkColName(pk))
+          case c if fks.map(_.attr.attr).contains(c) =>
+            val fk = fks.find(_.attr.attr == c).get
+            Seq(pfkColName(fk), fpkColName(fk))
+          case c =>
+            Seq(valColName(t, c))
+        }
+
+        def encDataColNamesOf(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
+          case c if c != pk.attr.attr && !fks.map(_.attr.attr).contains(c) =>
+            encColName(t, c)
+        }
+
+        def pkCol(pk: PrimaryKey): Column = pk.attr match {
+          case a: TableAttributeAtom => col(a.attr)
+          case c: TableAttributeCompound => concat(c.attrs.map(col): _*)
+        }
+        def pfkCol(fk: ForeignKey): Column = {
+          def labelOf(c: Column): Column = concat(
+            lit(fk.ref.table), lit("~"), lit(fk.attr.table), lit("~"), c, lit("~"),
+            pibasCounterOn(c)
+          )
+          fk.attr match {
+            case a: TableAttributeAtom => labelOf(col(a.attr))
+            case c: TableAttributeCompound => labelOf(concat(c.attrs.map(col):_*))
+          }
+        }
+        def fpkCol(fk: ForeignKey, pk: PrimaryKey): Column = {
+          def labelOf(c: Column): Column = concat(
+            c, lit("_enc_"),
+            lit(fk.attr.table), lit("~"), lit(fk.ref.table), lit("~"),
+            col(pkColName(pk))
+          )
+          fk.attr match {
+            case a: TableAttributeAtom => labelOf(col(a.attr))
+            case c: TableAttributeCompound => labelOf(concat(c.attrs.map(col):_*))
+          }
+        }
+        def valCol(t: TableName, c: AttrName): Column = concat(
+          lit(t), lit("~"), lit(c), lit("~"), col(c), lit("~"),
+          pibasCounterOn(col(c))
+        )
+        def encCol(t: TableName, c: AttrName): Column = concat(col(c), lit("_enc"))
+
+        val pkDf = d.withColumn(pkColName(pk), pkCol(pk))
+        val pkfkDf = fks.foldLeft(pkDf) { case (pd, fk) =>
+          pd.withColumn(pfkColName(fk), pfkCol(fk))
+            .withColumn(fpkColName(fk), fpkCol(fk, pk))
+        }
+
+        val pkfkEncDf = d.columns.filterNot(
+          c => c == pk.attr.attr || fks.map(_.attr.attr).contains(c)
+        ).foldLeft(pkfkDf) {
+          case (pd, c) =>
+            pd.withColumn(valColName(t, c), valCol(t, c))
+            .withColumn(encColName(t, c), encCol(t, c))
+        }
+
+        def encTableNameOf(t: TableName): String = s"${t}_enc"
+
+        val encTableName = encTableNameOf(t)
+        val encIndexColNames = encIndexColNamesOf(d, pk, fks)
+        val encDataColNames = encDataColNamesOf(d, pk, fks)
+        pkfkEncDf.selectExpr(encIndexColNames ++ encDataColNames:_*)
+          .write.mode(SaveMode.Overwrite).jdbc(encDbUrl, encTableName, encDbProps)
+
+        Utils.classForName("org.postgresql.Driver")
+        val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
+        try {
+          encIndexColNames.foreach { c =>
+            createHashIndex(encConn, encTableName, c)
+          }
+          encConn.prepareStatement("analyze").execute()
+        } finally {
+          encConn.close()
+        }
+    }
+  }
 
   def buildFromData(nameToDf: Map[TableName, DataFrame], joins: Seq[JoinableAttrs]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
@@ -153,12 +269,12 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
     try {
       encNameToEncDf.foreach { case (n, e) =>
-        createTreeIndex(encConn, n, e, "rid")
+        createTreeIndex(encConn, n, "rid")
       }
-      createTreeIndex(encConn, DexConstants.tFilterName, tFilterDf, "label")
-      createTreeIndex(encConn, DexConstants.tDomainName, tDomainDf, "label")
-      createTreeIndex(encConn, DexConstants.tUncorrJoinName, tUncorrJoinDf, "label")
-      createTreeIndex(encConn, DexConstants.tCorrJoinName, tCorrJoinDf, "label")
+      createTreeIndex(encConn, DexConstants.tFilterName, "label")
+      createTreeIndex(encConn, DexConstants.tDomainName, "label")
+      createTreeIndex(encConn, DexConstants.tUncorrJoinName, "label")
+      createTreeIndex(encConn, DexConstants.tCorrJoinName, "label")
 
       encConn.prepareStatement("analyze").execute()
     } finally {

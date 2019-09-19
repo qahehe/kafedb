@@ -17,12 +17,10 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import org.apache.spark.sql.dex.DexConstants.TableAttribute
-import org.apache.spark.sql.test.SharedSQLContext
-import org.scalatest.BeforeAndAfter
+import org.apache.spark.sql.dex.DexConstants.TableAttributeAtom
 
 
-class DexBuilderTest extends DexQueryTest with SharedSQLContext with BeforeAndAfter {
+class DexBuilderTest extends DexQueryTest {
   override protected def provideEncryptedData: Boolean = false
 
   test("dex builder") {
@@ -35,7 +33,7 @@ class DexBuilderTest extends DexQueryTest with SharedSQLContext with BeforeAndAf
     )
 
     val joins = Seq(
-      (TableAttribute("testdata2", "a"), TableAttribute("testdata3", "c"))
+      (TableAttributeAtom("testdata2", "a"), TableAttributeAtom("testdata3", "c"))
     )
 
     dexBuilder.buildFromData(nameToDf, joins)

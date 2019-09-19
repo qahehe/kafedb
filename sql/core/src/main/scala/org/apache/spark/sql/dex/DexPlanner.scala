@@ -33,7 +33,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Distribution, IdentityBroadcastMode, UnspecifiedDistribution}
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
-import org.apache.spark.sql.dex.DexConstants.TableAttribute
+import org.apache.spark.sql.dex.DexConstants.{TableAttribute, TableAttributeAtom}
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD, JDBCRelation, JdbcRelationProvider}
 import org.apache.spark.sql.execution.datasources.{CatalogFileIndex, DataSource, HadoopFsRelation, InMemoryFileIndex, LogicalRelation}
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
@@ -54,7 +54,15 @@ object DexConstants {
   type TableName = String
   type AttrName = String
   type JoinableAttrs = (TableAttribute, TableAttribute)
-  case class TableAttribute(table: TableName, attr: AttrName)
+
+  sealed trait TableAttribute {
+    def table: TableName
+    def attr: AttrName
+  }
+  case class TableAttributeAtom(table: TableName, attr: AttrName) extends TableAttribute
+  case class TableAttributeCompound(table: TableName, attrs: Seq[AttrName]) extends TableAttribute {
+    override def attr: AttrName = attrs.mkString("")
+  }
 }
 
 object DexSQLFunctions {
@@ -1043,13 +1051,54 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             tableEnc
         }
 
+      case j: Join if j.condition.isDefined && isPkFkJoinWithFkFilter(j) =>
+        // PK join Filter(FK) has a subtle issue if execute in post-order:
+        // For pk-rows with pk-fk-pibas-counter having any prefix sequence not satisify their fk-rows' filter,
+        // then pk-rows with ALL sequence would not be included in join (due to counter increment).
+        // E.g.
+        // supplier join partsupp filtered on ps_comment = psb
+        // -------------------
+        // supp_key | ps_comment
+        // ----------------------
+        // pk10~0   | psa
+        // pk10~1   | psa
+        // pk10~2   | psb
+        // -------------------
+        // Because first row doesn't match filter, pibas-counter 0,1 would not be included, so by induction 2 would
+        // not be included in the join too.  But 2 should be in the join.
+        // The fix is just to reverse this type of join and filter to fk-pk join with filter on fk.
+        translateJoinView(j.right, j.left, reverseJoinCondition(j.condition.get), childView)
+
       case j: Join if j.condition.isDefined =>
-        val leftView = translatePlan(j.left, childView)
-        val rightView = translatePlan(j.right, childView)
-        val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView, rightView), isNegated = false)
-        joinView
+        translateJoinView(j.left, j.right, j.condition.get, childView)
 
       case _ => super.translatePlan(plan, childView)
+    }
+
+    private def translateJoinView(left: LogicalPlan, right: LogicalPlan, joinCond: Expression, childView: Option[LogicalPlan]) = {
+      val leftView = translatePlan(left, childView)
+      val rightView = translatePlan(right, childView)
+      val joinView = translateFormula(JoinFormula, joinCond, Seq(leftView, rightView), isNegated = false)
+      joinView
+    }
+
+    private def reverseJoinCondition(expr: Expression): Expression = expr match {
+      case EqualTo(left: Attribute, right: Attribute) => EqualTo(right, left)
+      case _ => throw DexException("unsupported")
+    }
+
+    private def isPkFkJoinWithFkFilter(j: Join): Boolean =
+      isPkFkJoin(j) && j.right.isInstanceOf[Filter] && isFkFilter(j.right.asInstanceOf[Filter])
+
+    private def isPkFkJoin(j: Join): Boolean = j.condition.get match {
+      case EqualTo(left: Attribute, right: Attribute) =>
+        primaryKeys.contains(left.name) && foreignKeys.contains(right.name)
+      case _ => throw DexException("unsupported")
+    }
+
+    private def isFkFilter(f: Filter): Boolean = f.condition.collectLeaves().exists {
+      case x: Attribute => foreignKeys.contains(x.name)
+      case _ => false
     }
 
     override protected def dexFilterOf(predicateTableName: String, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
@@ -1075,8 +1124,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val (leftChildView, rightChildView) = (childViews.head, childViews(1))
       val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
       val (leftTableAttr, rightTableAttr) = (
-        TableAttribute(joinAttrs.leftTableName, joinAttrs.left.name),
-        TableAttribute(joinAttrs.rightTableName, joinAttrs.right.name)
+        TableAttributeAtom(joinAttrs.leftTableName, joinAttrs.left.name),
+        TableAttributeAtom(joinAttrs.rightTableName, joinAttrs.right.name)
       )
       (leftTableAttr, rightTableAttr) match {
         case (taP, taF) if primaryKeys.contains(taP.attr) && foreignKeys.contains(taF.attr) =>
