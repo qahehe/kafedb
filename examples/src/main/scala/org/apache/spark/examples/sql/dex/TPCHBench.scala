@@ -58,7 +58,7 @@ object TPCHBench {
 
     println(s"\n Q2")
     // TPCH Query 2
-    val q2a = "select * from region where r_name = 'EUROPE'"
+    val q2a = "select r_comment from region where r_name = 'EUROPE'"
     val q2aDf = region.where("r_name == 'EUROPE'")
     benchQuery(spark, q2a, q2aDf, q2aDf.dex)
 
@@ -88,7 +88,7 @@ object TPCHBench {
       .join(partsupp).where("p_partkey == ps_partkey")
       .join(supplier).where("ps_suppkey == s_suppkey")
       .join(nation).where("s_nationkey == n_nationkey")
-      .join(region).where("n_regionkey == r_regionkey")
+      .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
 
     val q2cDf = q2cMain
     val q2cDex = q2cMain.dex
@@ -109,14 +109,15 @@ object TPCHBench {
         |  p_partkey = ps_partkey
         |  and p_size = 15
       """.stripMargin
-    val q2eMain = part.join(partsupp).where("p_partkey == ps_partkey")
+    //val q2eMain = part.join(partsupp).where("p_partkey == ps_partkey")
+    val q2eMain = partsupp.join(part).where("ps_partkey == p_partkey")
         .where("p_size == 15")
         .select("ps_supplycost")
     val q2eDf = q2eMain
     val q2eDex = q2eMain.dex
     benchQuery(spark, q2e, q2eDf, q2eDex)
 
-    println("\n Q3")
+    /*println("\n Q3")
     val q3a =
       """
         |select
@@ -135,10 +136,21 @@ object TPCHBench {
       .join(lineitem).where("l_orderkey == o_orderkey")
       .select("l_orderkey", "l_extendedprice", "l_discount", "o_orderdate", "o_shippriority")
     val q3aDex = q3aDf.dex
-    benchQuery(spark, q3a, q3aDf, q3aDex)
+    benchQuery(spark, q3a, q3aDf, q3aDex)*/
 
     println("\n Q5")
-    val q5a = "select * from customer, supplier, nation, region where r_name = 'ASIA' and r_nationkey = n_nationkey and n_nationkey = c_nationkey and n_nationkey = s_nationkey"
+    val q5a =
+      """
+        |select
+        |  n_name
+        |from
+        |  customer, supplier, nation, region
+        |where
+        |  r_name = 'ASIA'
+        |  and r_nationkey = n_nationkey
+        |  and n_nationkey = c_nationkey
+        |  and n_nationkey = s_nationkey
+      """.stripMargin
     val q5aDf = region.where("r_name == 'ASIA'")
         .join(nation).where("r_nationkey == n_nationkey")
         .join(customer).where("n_nationkey == c_nationkey")
@@ -187,7 +199,7 @@ object TPCHBench {
         .join(region).where("n_regionkey == r_regionkey and r_name == 'ASIA'")
         .select("n_name", "l_extendedprice", "l_discount")
     val q5cDex = q5cDf.dex
-    benchQuery(spark, q5c, q5cDf, q5cDex)*/
+    benchQuery(spark, q5c, q5cDf, q5cDex)
 
     println("\n Q7")
     val q7a =
@@ -223,7 +235,7 @@ object TPCHBench {
         .where("n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY') or (n1.n_name = 'GERMANY' and n2.n_name = 'FRANCE'")
         .selectExpr("n1.n_name as supp_nation", "n2.n_name as cust_nation", "l_shipdate", "l_extendedprice", "l_discount")
     val q7aDex = q7aDf.dex
-    benchQuery(spark, q7a, q7aDf, q7aDex)
+    benchQuery(spark, q7a, q7aDf, q7aDex)*/
 
 
     spark.stop()

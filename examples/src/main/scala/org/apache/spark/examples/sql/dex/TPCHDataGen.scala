@@ -22,8 +22,8 @@ import java.sql.DriverManager
 import java.util.Properties
 
 import org.apache.spark.deploy.SparkHadoopUtil
-import org.apache.spark.sql.dex.DexBuilder.createTreeIndex
-import org.apache.spark.sql.dex.DexConstants.TableAttribute
+import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
+import org.apache.spark.sql.dex.DexConstants.{TableAttribute, TableAttributeAtom, TableAttributeCompound}
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.util.Utils
 // For datagens
@@ -66,38 +66,53 @@ object TPCHDataGen {
   val dbSuffix = ""
 
   val tableNamesToDex = Seq("customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier")
-  // p_partkey = ps_partkey
-  // and s_suppkey = ps_suppkey
-  //	and p_size = 15
-  //	and p_type like '%BRASS'
-  //	and s_nationkey = n_nationkey
-  //	and n_regionkey = r_regionkey
-  //	and r_name = 'EUROPE'
+
+  val primaryKeys = Set(
+    PrimaryKey(TableAttributeAtom("customer", "c_custkey")),
+    PrimaryKey(TableAttributeCompound("lineitem", Seq("l_orderkey", "l_linenumber"))),
+    PrimaryKey(TableAttributeAtom("nation", "n_nationkey")),
+    PrimaryKey(TableAttributeAtom("orders", "o_orderkey")),
+    PrimaryKey(TableAttributeAtom("part", "p_partkey")),
+    PrimaryKey(TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey"))),
+    PrimaryKey(TableAttributeAtom("region", "r_regionkey")),
+    PrimaryKey(TableAttributeAtom("supplier", "s_suppkey"))
+  )
+  val foreignKeys = Set(
+    ForeignKey(TableAttributeAtom("nation", "r_regionkey"), TableAttributeAtom("region", "r_regionkey")),
+    ForeignKey(TableAttributeAtom("supplier", "s_nationkey"), TableAttributeAtom("nation", "n_nationkey")),
+    ForeignKey(TableAttributeAtom("customer", "c_nationkey"), TableAttributeAtom("nation", "n_nationkey")),
+    ForeignKey(TableAttributeAtom("partsupp", "ps_partkey"), TableAttributeAtom("part", "p_partkey")),
+    ForeignKey(TableAttributeAtom("partsupp", "ps_suppkey"), TableAttributeAtom("supplier", "s_suppkey")),
+    ForeignKey(TableAttributeCompound("lineitem", Seq("l_partkey", "l_suppkey")), TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey"))),
+    ForeignKey(TableAttributeAtom("orders", "o_custkey"), TableAttributeAtom("customer", "c_custkey")),
+    ForeignKey(TableAttributeAtom("lineitem", "l_orderkey"), TableAttributeAtom("orders", "o_orderkey"))
+  )
+
   val joinableAttrsToDex = Seq(
-    (TableAttribute("part", "p_partkey"), TableAttribute("partsupp", "ps_partkey")),
-    (TableAttribute("partsupp", "ps_suppkey"), TableAttribute("supplier", "s_suppkey")),
-    (TableAttribute("nation", "n_nationkey"), TableAttribute("supplier", "s_nationkey")),
-    (TableAttribute("nation", "n_regionkey"), TableAttribute("region", "r_regionkey")),
-    //(TableAttribute("customer", "c_nationkey"), TableAttribute("supplier", "s_nationkey")),
-    (TableAttribute("customer", "c_nationkey"), TableAttribute("nation", "n_nationkey")),
-    (TableAttribute("customer", "c_custkey"), TableAttribute("orders", "o_custkey")),
-    (TableAttribute("lineitem", "l_partkey"), TableAttribute("partsupp", "ps_partkey")),
-    (TableAttribute("lineitem", "l_suppkey"), TableAttribute("partsupp", "ps_suppkey")),
-    (TableAttribute("lineitem", "l_orderkey"), TableAttribute("orders", "o_orderkey"))
+    (TableAttributeAtom("part", "p_partkey"), TableAttributeAtom("partsupp", "ps_partkey")),
+    (TableAttributeAtom("partsupp", "ps_suppkey"), TableAttributeAtom("supplier", "s_suppkey")),
+    (TableAttributeAtom("nation", "n_nationkey"), TableAttributeAtom("supplier", "s_nationkey")),
+    (TableAttributeAtom("nation", "n_regionkey"), TableAttributeAtom("region", "r_regionkey")),
+    //(TableAttributeAtom("customer", "c_nationkey"), TableAttributeAtom("supplier", "s_nationkey")),
+    (TableAttributeAtom("customer", "c_nationkey"), TableAttributeAtom("nation", "n_nationkey")),
+    (TableAttributeAtom("customer", "c_custkey"), TableAttributeAtom("orders", "o_custkey")),
+    (TableAttributeAtom("lineitem", "l_partkey"), TableAttributeAtom("partsupp", "ps_partkey")),
+    (TableAttributeAtom("lineitem", "l_suppkey"), TableAttributeAtom("partsupp", "ps_suppkey")),
+    (TableAttributeAtom("lineitem", "l_orderkey"), TableAttributeAtom("orders", "o_orderkey"))
   )
   val filterAttrsToDex = Seq(
-    TableAttribute("customer", "c_mktsegment"),
-    TableAttribute("lineitem", "l_returnflag"),
-    TableAttribute("lineitem", "l_shipmode"),
-    TableAttribute("lineitem", "l_shipinstruct"),
-    TableAttribute("nation", "n_name"),
-    TableAttribute("orders", "o_orderpriority"),
-    TableAttribute("orders", "o_orderstatus"),
-    TableAttribute("part", "p_size"),
-    TableAttribute("part", "p_type"),
-    TableAttribute("part", "p_brand"),
-    TableAttribute("part", "p_container"),
-    TableAttribute("region", "r_name")
+    TableAttributeAtom("customer", "c_mktsegment"),
+    TableAttributeAtom("lineitem", "l_returnflag"),
+    TableAttributeAtom("lineitem", "l_shipmode"),
+    TableAttributeAtom("lineitem", "l_shipinstruct"),
+    TableAttributeAtom("nation", "n_name"),
+    TableAttributeAtom("orders", "o_orderpriority"),
+    TableAttributeAtom("orders", "o_orderstatus"),
+    TableAttributeAtom("part", "p_size"),
+    TableAttributeAtom("part", "p_type"),
+    TableAttributeAtom("part", "p_brand"),
+    TableAttributeAtom("part", "p_container"),
+    TableAttributeAtom("region", "r_name")
   )
 
   def newSparkSession(name: String): SparkSession = SparkSession
@@ -200,6 +215,17 @@ object TPCHDataGen {
 
     spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex)
   }
+  
+  private def buildDexPkFk(spark: SparkSession, tables: TPCHTables): Unit = {
+    val allTableNames = tables.tables.map(_.name).toSet
+    assert(tableNamesToDex.forall(allTableNames.contains))
+
+    val nameToDfForDex = tableNamesToDex.map { t =>
+      t -> spark.table(t)
+    }.toMap
+
+    spark.sessionState.dexBuilder.buildPkFkSchemeFromData(nameToDfForDex, primaryKeys, foreignKeys)
+  }
 
   private def loadPlaintext(spark: SparkSession, tables: TPCHTables, overwrite: Boolean): Unit = {
     tables.tables.map(_.name).foreach { t =>
@@ -211,11 +237,11 @@ object TPCHDataGen {
     val conn = DriverManager.getConnection(dbUrl, dbProps)
     try {
       filterAttrsToDex.foreach { f =>
-        createTreeIndex(conn, f.table, spark.table(f.table), f.attr)
+        createTreeIndex(conn, f.table, f.attr)
       }
       joinableAttrsToDex.foreach { case (j1, j2) =>
-        createTreeIndex(conn, j1.table, spark.table(j1.table), j1.attr)
-        createTreeIndex(conn, j2.table, spark.table(j2.table), j2.attr)
+        createTreeIndex(conn, j1.table, j1.attr)
+        createTreeIndex(conn, j2.table, j2.attr)
       }
 
       if (overwrite) {

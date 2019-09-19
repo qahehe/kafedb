@@ -110,18 +110,16 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             Seq(valColName(t, c), encColName(t, c))
         }*/
 
-        def encIndexColNamesOf(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.flatMap {
-          case c if c == pk.attr.attr =>
-            Seq(pkColName(pk))
-          case c if fks.map(_.attr.attr).contains(c) =>
-            val fk = fks.find(_.attr.attr == c).get
-            Seq(pfkColName(fk), fpkColName(fk))
-          case c =>
-            Seq(valColName(t, c))
+        def encIndexColNamesOf(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = {
+          Seq(pkColName(pk)) ++
+            fks.flatMap(fk => Seq(pfkColName(fk), fpkColName(fk))) ++
+            d.columns.collect {
+              case c if nonKey(pk, fks, c) => valColName(t, c)
+            }
         }
 
         def encDataColNamesOf(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
-          case c if c != pk.attr.attr && !fks.map(_.attr.attr).contains(c) =>
+          case c if nonKey(pk, fks, c) =>
             encColName(t, c)
         }
 
@@ -170,7 +168,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             .withColumn(encColName(t, c), encCol(t, c))
         }
 
-        def encTableNameOf(t: TableName): String = s"${t}_enc"
+        def encTableNameOf(t: TableName): String = s"${t}_prf"
 
         val encTableName = encTableNameOf(t)
         val encIndexColNames = encIndexColNamesOf(d, pk, fks)
@@ -182,13 +180,17 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
         try {
           encIndexColNames.foreach { c =>
-            createHashIndex(encConn, encTableName, c)
+            createTreeIndex(encConn, encTableName, c)
           }
           encConn.prepareStatement("analyze").execute()
         } finally {
           encConn.close()
         }
     }
+  }
+
+  private def nonKey(pk: PrimaryKey, fks: Set[ForeignKey], c: String) = {
+    c != pk.attr.attr && !fks.map(_.attr.attr).contains(c)
   }
 
   def buildFromData(nameToDf: Map[TableName, DataFrame], joins: Seq[JoinableAttrs]): Unit = {

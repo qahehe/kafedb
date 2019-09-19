@@ -68,7 +68,7 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |(1, 2, 'psb'),
         |(3, 3, 'psb'),
         |(4, 3, 'psb'),
-        |(3, 3, 'psc')
+        |(2, 3, 'psc')
       """.stripMargin)
 
     execute(conn, "create table part (p_partkey int, p_name varchar)")
@@ -117,10 +117,10 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |insert into partsupp_prf values
         |('11', 'part~partsupp~1~0', '1_enc_partsupp~part~11', '1_enc', 'supplier~partsupp~1~0', '1_enc_partsupp~supplier~11', '1_enc', 'partsupp~ps_comment~psa~0', 'psa_enc'),
         |('22', 'part~partsupp~2~0', '2_enc_partsupp~part~22', '2_enc', 'supplier~partsupp~2~0', '2_enc_partsupp~supplier~22', '2_enc', 'partsupp~ps_comment~psa~1', 'psa_enc'),
-        |('31', 'part~partsupp~1~1', '1_enc_partsupp~part~31', '1_enc', 'supplier~partsupp~2~1', '2_enc_partsupp~supplier~31', '2_enc', 'partsupp~ps_comment~psb~0', 'psb_enc'),
-        |('43', 'part~partsupp~3~0', '3_enc_partsupp~part~43', '3_enc', 'supplier~partsupp~3~0', '3_enc_partsupp~supplier~43', '3_enc', 'partsupp~ps_comment~psb~1', 'psb_enc'),
-        |('54', 'part~partsupp~4~0', '4_enc_partsupp~part~54', '4_enc', 'supplier~partsupp~3~1', '3_enc_partsupp~supplier~54', '3_enc', 'partsupp~ps_comment~psb~2', 'psb_enc'),
-        |('63', 'part~partsupp~3~1', '3_enc_partsupp~part~63', '3_enc', 'supplier~partsupp~3~2', '3_enc_partsupp~supplier~63', '3_enc', 'partsupp~ps_comment~psc~0', 'psc_enc')
+        |('12', 'part~partsupp~1~1', '1_enc_partsupp~part~12', '1_enc', 'supplier~partsupp~2~1', '2_enc_partsupp~supplier~12', '2_enc', 'partsupp~ps_comment~psb~0', 'psb_enc'),
+        |('33', 'part~partsupp~3~0', '3_enc_partsupp~part~33', '3_enc', 'supplier~partsupp~3~0', '3_enc_partsupp~supplier~33', '3_enc', 'partsupp~ps_comment~psb~1', 'psb_enc'),
+        |('43', 'part~partsupp~4~0', '4_enc_partsupp~part~43', '4_enc', 'supplier~partsupp~3~1', '3_enc_partsupp~supplier~43', '3_enc', 'partsupp~ps_comment~psb~2', 'psb_enc'),
+        |('23', 'part~partsupp~2~1', '2_enc_partsupp~part~23', '3_enc', 'supplier~partsupp~3~2', '3_enc_partsupp~supplier~23', '3_enc', 'partsupp~ps_comment~psc~0', 'psc_enc')
       """.stripMargin)
 
     execute(connEnc,
