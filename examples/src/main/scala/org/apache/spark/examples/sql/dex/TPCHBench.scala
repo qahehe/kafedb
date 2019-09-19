@@ -69,7 +69,7 @@ object TPCHBench {
     val q2bDf = region.join(nation).where("r_regionkey = n_regionkey").select("n_name")
     benchQuery(spark, q2b, q2bDf, q2bDf.dexPkFk(pks, fks))
 
-    val q2c =
+    /*val q2c =
       """
         |select
         |  ps_supplycost
@@ -92,6 +92,11 @@ object TPCHBench {
       .join(supplier).where("ps_suppkey == s_suppkey")
       .join(nation).where("s_nationkey == n_nationkey")
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
+    val q2cMain = region.where("r_name == 'EUROPE'")
+      .join(nation).where("r_regionkey == n_regionkey")
+      .join(supplier).where("n_nationkey == s_nationkey")
+      .join(partsupp).where("s_suppkey == ps_suppkey")
+      .join(part).where("ps_partkey == p_partkey and p_size == 15")
 
     val q2cDf = q2cMain
     val q2cDex = q2cMain.dexPkFk(pks, fks)
@@ -99,7 +104,7 @@ object TPCHBench {
 
     val q2d = "select * from part where p_size = 15"
     val q2dDf = part.where("p_size == 15")
-    benchQuery(spark, q2d, q2dDf, q2dDf.dexPkFk(pks, fks))
+    benchQuery(spark, q2d, q2dDf, q2dDf.dexPkFk(pks, fks))*/
 
     val q2e =
       """
@@ -110,11 +115,10 @@ object TPCHBench {
         |  partsupp
         |where
         |  p_partkey = ps_partkey
-        |  and p_size = 15
       """.stripMargin
     //val q2eMain = part.join(partsupp).where("p_partkey == ps_partkey")
     val q2eMain = partsupp.join(part).where("ps_partkey == p_partkey")
-        .where("p_size == 15")
+        //.where("p_size == 15")
         .select("ps_supplycost")
     val q2eDf = q2eMain
     val q2eDex = q2eMain.dexPkFk(pks, fks)
@@ -160,6 +164,25 @@ object TPCHBench {
         .join(supplier).where("n_nationkey == s_nationkey")
     val q5aDex = q5aDf.dexPkFk(pks, fks)
     benchQuery(spark, q5a, q5aDf, q5aDex)
+
+    val q5b =
+      """
+        |select
+        |  n_name
+        |from
+        |  customer, supplier, nation, region
+        |where
+        |  r_nationkey = n_nationkey
+        |  and n_nationkey = c_nationkey
+        |  and n_nationkey = s_nationkey
+      """.stripMargin
+    val q5bDf = region
+      .join(nation).where("r_nationkey == n_nationkey")
+      .join(customer).where("n_nationkey == c_nationkey")
+      .join(supplier).where("n_nationkey == s_nationkey")
+    val q5bDex = q5bDf.dexPkFk(pks, fks)
+    benchQuery(spark, q5b, q5bDf, q5bDex)
+
 
     /*val q5a = "select * from customer, supplier, nation where c_nationkey = n_nationkey and s_nationkey = n_nationkey"
     val q5aDf = customer.join(nation).join(supplier).where("c_nationkey == s_nationkey and n_nationkey == s_nationkey")
