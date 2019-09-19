@@ -78,7 +78,7 @@ object TPCHDataGen {
     PrimaryKey(TableAttributeAtom("supplier", "s_suppkey"))
   )
   val foreignKeys = Set(
-    ForeignKey(TableAttributeAtom("nation", "r_regionkey"), TableAttributeAtom("region", "r_regionkey")),
+    ForeignKey(TableAttributeAtom("nation", "n_regionkey"), TableAttributeAtom("region", "r_regionkey")),
     ForeignKey(TableAttributeAtom("supplier", "s_nationkey"), TableAttributeAtom("nation", "n_nationkey")),
     ForeignKey(TableAttributeAtom("customer", "c_nationkey"), TableAttributeAtom("nation", "n_nationkey")),
     ForeignKey(TableAttributeAtom("partsupp", "ps_partkey"), TableAttributeAtom("part", "p_partkey")),
