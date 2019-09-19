@@ -1060,7 +1060,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       // where output is just (value_dec_key, value) and to be joined with source table.
       // output schema: childView's schema
       // todo: projection pushdown
-      DexPseudoPrimaryKeyFilter(predicate, labelCol, childView)
+      // todo: add t_e column?  Can eliminnate this left semi join
+      val encPredicateTable = tableEncWithRidOrderOf(predicateTableName)
+      childView.join(
+        DexPseudoPrimaryKeyFilter(predicate, labelCol, encPredicateTable),
+        UsingJoin(LeftSemi, Seq(ridOrder))
+      )
     }
 
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
