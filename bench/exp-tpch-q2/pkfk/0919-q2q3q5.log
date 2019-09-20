@@ -1,0 +1,461 @@
+19/09/20 05:48:07 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+baseLocation=/data/encrypted-spark/bench/data
+baseDatagenFolder=/data/encrypted-spark/bench/datagen
+translationMode=DexCorrelation
+spark.sql.dex.translationMode=DexCorrelation
+Creating external tables at /data/encrypted-spark/bench/data/tpch/sf1_parquet
+Creating external table part in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/part.
+Discovering partitions for table part.
+Creating external table supplier in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier.
+Creating external table partsupp in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp.
+Creating external table customer in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/customer.
+Discovering partitions for table customer.
+Creating external table orders in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/orders.
+Discovering partitions for table orders.
+Creating external table lineitem in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem.
+Discovering partitions for table lineitem.
+Creating external table nation in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/nation.
+Creating external table region in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/region.
+The current database has been set to tpch_sf1_parquet.
+Elapsed time: 11058ms
+Table part has 25 partitions
+Cannot VACUUM part
++----------------------------+-------------------------------------------------------------+-------+
+|col_name                    |data_type                                                    |comment|
++----------------------------+-------------------------------------------------------------+-------+
+|p_partkey                   |bigint                                                       |null   |
+|p_name                      |string                                                       |null   |
+|p_mfgr                      |string                                                       |null   |
+|p_type                      |string                                                       |null   |
+|p_size                      |int                                                          |null   |
+|p_container                 |string                                                       |null   |
+|p_retailprice               |decimal(12,2)                                                |null   |
+|p_comment                   |string                                                       |null   |
+|p_brand                     |string                                                       |null   |
+|# Partition Information     |                                                             |       |
+|# col_name                  |data_type                                                    |comment|
+|p_brand                     |string                                                       |null   |
+|                            |                                                             |       |
+|# Detailed Table Information|                                                             |       |
+|Database                    |tpch_sf1_parquet                                             |       |
+|Table                       |part                                                         |       |
+|Created Time                |Fri Sep 20 05:48:10 UTC 2019                                 |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                 |       |
+|Created By                  |Spark 2.4.0                                                  |       |
+|Type                        |EXTERNAL                                                     |       |
+|Provider                    |parquet                                                      |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/part|       |
+|Partition Provider          |Catalog                                                      |       |
++----------------------------+-------------------------------------------------------------+-------+
+
+
+Table supplier has no partitions
+Cannot VACUUM supplier
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|s_suppkey                   |bigint                                                           |null   |
+|s_name                      |string                                                           |null   |
+|s_address                   |string                                                           |null   |
+|s_nationkey                 |bigint                                                           |null   |
+|s_phone                     |string                                                           |null   |
+|s_acctbal                   |decimal(12,2)                                                    |null   |
+|s_comment                   |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |supplier                                                         |       |
+|Created Time                |Fri Sep 20 05:48:11 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table partsupp has no partitions
+Cannot VACUUM partsupp
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|ps_partkey                  |bigint                                                           |null   |
+|ps_suppkey                  |bigint                                                           |null   |
+|ps_availqty                 |int                                                              |null   |
+|ps_supplycost               |decimal(12,2)                                                    |null   |
+|ps_comment                  |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |partsupp                                                         |       |
+|Created Time                |Fri Sep 20 05:48:11 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table customer has 5 partitions
+Cannot VACUUM customer
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|c_custkey                   |bigint                                                           |null   |
+|c_name                      |string                                                           |null   |
+|c_address                   |string                                                           |null   |
+|c_nationkey                 |bigint                                                           |null   |
+|c_phone                     |string                                                           |null   |
+|c_acctbal                   |decimal(12,2)                                                    |null   |
+|c_comment                   |string                                                           |null   |
+|c_mktsegment                |string                                                           |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|c_mktsegment                |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |customer                                                         |       |
+|Created Time                |Fri Sep 20 05:48:11 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/customer|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table orders has 2406 partitions
+Cannot VACUUM orders
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|o_orderkey                  |bigint                                                         |null   |
+|o_custkey                   |bigint                                                         |null   |
+|o_orderstatus               |string                                                         |null   |
+|o_totalprice                |decimal(12,2)                                                  |null   |
+|o_orderpriority             |string                                                         |null   |
+|o_clerk                     |string                                                         |null   |
+|o_shippriority              |int                                                            |null   |
+|o_comment                   |string                                                         |null   |
+|o_orderdate                 |date                                                           |null   |
+|# Partition Information     |                                                               |       |
+|# col_name                  |data_type                                                      |comment|
+|o_orderdate                 |date                                                           |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |orders                                                         |       |
+|Created Time                |Fri Sep 20 05:48:11 UTC 2019                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/orders|       |
+|Partition Provider          |Catalog                                                        |       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table lineitem has 2526 partitions
+Cannot VACUUM lineitem
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|l_orderkey                  |bigint                                                           |null   |
+|l_partkey                   |bigint                                                           |null   |
+|l_suppkey                   |bigint                                                           |null   |
+|l_linenumber                |int                                                              |null   |
+|l_quantity                  |decimal(12,2)                                                    |null   |
+|l_extendedprice             |decimal(12,2)                                                    |null   |
+|l_discount                  |decimal(12,2)                                                    |null   |
+|l_tax                       |decimal(12,2)                                                    |null   |
+|l_returnflag                |string                                                           |null   |
+|l_linestatus                |string                                                           |null   |
+|l_commitdate                |string                                                           |null   |
+|l_receiptdate               |string                                                           |null   |
+|l_shipinstruct              |string                                                           |null   |
+|l_shipmode                  |string                                                           |null   |
+|l_comment                   |string                                                           |null   |
+|l_shipdate                  |date                                                             |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|l_shipdate                  |date                                                             |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |lineitem                                                         |       |
+|Created Time                |Fri Sep 20 05:48:16 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table nation has no partitions
+Cannot VACUUM nation
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|n_nationkey                 |bigint                                                         |null   |
+|n_name                      |string                                                         |null   |
+|n_regionkey                 |bigint                                                         |null   |
+|n_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |nation                                                         |       |
+|Created Time                |Fri Sep 20 05:48:19 UTC 2019                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/nation|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table region has no partitions
+Cannot VACUUM region
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|r_regionkey                 |bigint                                                         |null   |
+|r_name                      |string                                                         |null   |
+|r_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |region                                                         |       |
+|Created Time                |Fri Sep 20 05:48:19 UTC 2019                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/region|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+
+ Q2
+
+Bench query=
+select r_comment from region where r_name = 'EUROPE'
+Elapsed time: 0ms
+postgres result size=1
+Elapsed time: 207ms
+19/09/20 05:48:21 WARN DexPlanner: dexPlan=DexPkFkPlan
+19/09/20 05:48:21 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#405L]
++- 'Project
+   +- 'DexPkFkPlan {ps_partkeyps_suppkey, n_nationkey, r_regionkey, l_orderkeyl_linenumber, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkeyl_suppkey, ps_partkey, l_orderkey, ps_suppkey}
+      +- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :- Project [rid#407L AS rid_0#412L, val_region_r_name_prf#408, val_region_r_comment_prf#409, r_name_prf#410, r_comment_prf#411]
+         :  +- Relation[rid#407L,val_region_r_name_prf#408,val_region_r_comment_prf#409,r_name_prf#410,r_comment_prf#411] JDBCRelation(region_prf) [numPartitions=1]
+         +- 'DexPseudoPrimaryKeyFilter region~r_name~EUROPE, 'val_region_r_name_prf
+            +- Project [rid#413L AS rid_0#418L, val_region_r_name_prf#414, val_region_r_comment_prf#415, r_name_prf#416, r_comment_prf#417]
+               +- Relation[rid#413L,val_region_r_name_prf#414,val_region_r_comment_prf#415,r_name_prf#416,r_comment_prf#417] JDBCRelation(region_prf) [numPartitions=1]
+
+dex result size=1
+Elapsed time: 142ms
+
+Bench query=
+select n_name from region, nation where r_regionkey = n_regionkey
+Elapsed time: 0ms
+postgres result size=25
+Elapsed time: 48ms
+19/09/20 05:48:21 WARN DexPlanner: dexPlan=DexPkFkPlan
+19/09/20 05:48:21 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#444L]
++- 'Project
+   +- 'DexPkFkPlan {ps_partkeyps_suppkey, n_nationkey, r_regionkey, l_orderkeyl_linenumber, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkeyl_suppkey, ps_partkey, l_orderkey, ps_suppkey}
+      +- 'DexPseudoPrimaryKeyJoin region~nation, 'pfk_region_nation_prf, 'rid_0
+         :- Project [rid#446L AS rid_0#451L, val_region_r_name_prf#447, val_region_r_comment_prf#448, r_name_prf#449, r_comment_prf#450]
+         :  +- Relation[rid#446L,val_region_r_name_prf#447,val_region_r_comment_prf#448,r_name_prf#449,r_comment_prf#450] JDBCRelation(region_prf) [numPartitions=1]
+         +- Project [rid#452L AS rid_1#459L, pfk_region_nation_prf#453, fpk_nation_region_prf#454, val_nation_n_name_prf#455, val_nation_n_comment_prf#456, n_name_prf#457, n_comment_prf#458]
+            +- Relation[rid#452L,pfk_region_nation_prf#453,fpk_nation_region_prf#454,val_nation_n_name_prf#455,val_nation_n_comment_prf#456,n_name_prf#457,n_comment_prf#458] JDBCRelation(nation_prf) [numPartitions=1]
+
+dex result size=25
+Elapsed time: 114ms
+
+Bench query=
+
+select
+  ps_supplycost
+from
+  part,
+  partsupp,
+  supplier,
+  nation,
+  region
+where
+  p_partkey = ps_partkey
+  and ps_suppkey = s_suppkey
+  and s_nationkey = n_nationkey
+  and n_regionkey = r_regionkey
+  and r_name = 'EUROPE'
+  and p_size = 15
+      
+Elapsed time: 0ms
+postgres result size=3162
+Elapsed time: 175ms
+19/09/20 05:48:22 WARN DexPlanner: dexPlan=DexPkFkPlan
+19/09/20 05:48:22 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#599L]
++- 'Project
+   +- 'DexPkFkPlan {ps_partkeyps_suppkey, n_nationkey, r_regionkey, l_orderkeyl_linenumber, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkeyl_suppkey, ps_partkey, l_orderkey, ps_suppkey}
+      +- 'Project [*]
+         +- 'Join Inner, (cast(dexdecrypt(concat(nation~region, ~, 'rid_3), 'fpk_nation_region_prf) as bigint) = 'rid_4)
+            :- 'Project [*]
+            :  +- 'Join Inner, (cast(dexdecrypt(concat(supplier~nation, ~, 'rid_2), 'fpk_supplier_nation_prf) as bigint) = 'rid_3)
+            :     :- 'Project [*]
+            :     :  +- 'Join Inner, (cast(dexdecrypt(concat(partsupp~supplier, ~, 'rid_1), 'fpk_partsupp_supplier_prf) as bigint) = 'rid_2)
+            :     :     :- 'DexPseudoPrimaryKeyJoin part~partsupp, 'pfk_part_partsupp_prf, 'rid_0
+            :     :     :  :- 'Join UsingJoin(LeftSemi,List(rid_0))
+            :     :     :  :  :- Project [rid#601L AS rid_0#618L, val_part_p_name_prf#602, val_part_p_mfgr_prf#603, val_part_p_type_prf#604, val_part_p_size_prf#605, val_part_p_container_prf#606, val_part_p_retailprice_prf#607, val_part_p_comment_prf#608, val_part_p_brand_prf#609, p_name_prf#610, p_mfgr_prf#611, p_type_prf#612, p_size_prf#613, p_container_prf#614, p_retailprice_prf#615, p_comment_prf#616, p_brand_prf#617]
+            :     :     :  :  :  +- Relation[rid#601L,val_part_p_name_prf#602,val_part_p_mfgr_prf#603,val_part_p_type_prf#604,val_part_p_size_prf#605,val_part_p_container_prf#606,val_part_p_retailprice_prf#607,val_part_p_comment_prf#608,val_part_p_brand_prf#609,p_name_prf#610,p_mfgr_prf#611,p_type_prf#612,p_size_prf#613,p_container_prf#614,p_retailprice_prf#615,p_comment_prf#616,p_brand_prf#617] JDBCRelation(part_prf) [numPartitions=1]
+            :     :     :  :  +- 'DexPseudoPrimaryKeyFilter part~p_size~15, 'val_part_p_size_prf
+            :     :     :  :     +- Project [rid#619L AS rid_0#636L, val_part_p_name_prf#620, val_part_p_mfgr_prf#621, val_part_p_type_prf#622, val_part_p_size_prf#623, val_part_p_container_prf#624, val_part_p_retailprice_prf#625, val_part_p_comment_prf#626, val_part_p_brand_prf#627, p_name_prf#628, p_mfgr_prf#629, p_type_prf#630, p_size_prf#631, p_container_prf#632, p_retailprice_prf#633, p_comment_prf#634, p_brand_prf#635]
+            :     :     :  :        +- Relation[rid#619L,val_part_p_name_prf#620,val_part_p_mfgr_prf#621,val_part_p_type_prf#622,val_part_p_size_prf#623,val_part_p_container_prf#624,val_part_p_retailprice_prf#625,val_part_p_comment_prf#626,val_part_p_brand_prf#627,p_name_prf#628,p_mfgr_prf#629,p_type_prf#630,p_size_prf#631,p_container_prf#632,p_retailprice_prf#633,p_comment_prf#634,p_brand_prf#635] JDBCRelation(part_prf) [numPartitions=1]
+            :     :     :  +- Project [rid#637 AS rid_1#648, pfk_part_partsupp_prf#638, fpk_partsupp_part_prf#639, pfk_supplier_partsupp_prf#640, fpk_partsupp_supplier_prf#641, val_partsupp_ps_availqty_prf#642, val_partsupp_ps_supplycost_prf#643, val_partsupp_ps_comment_prf#644, ps_availqty_prf#645, ps_supplycost_prf#646, ps_comment_prf#647]
+            :     :     :     +- Relation[rid#637,pfk_part_partsupp_prf#638,fpk_partsupp_part_prf#639,pfk_supplier_partsupp_prf#640,fpk_partsupp_supplier_prf#641,val_partsupp_ps_availqty_prf#642,val_partsupp_ps_supplycost_prf#643,val_partsupp_ps_comment_prf#644,ps_availqty_prf#645,ps_supplycost_prf#646,ps_comment_prf#647] JDBCRelation(partsupp_prf) [numPartitions=1]
+            :     :     +- Project [rid#649L AS rid_2#662L, pfk_nation_supplier_prf#650, fpk_supplier_nation_prf#651, val_supplier_s_name_prf#652, val_supplier_s_address_prf#653, val_supplier_s_phone_prf#654, val_supplier_s_acctbal_prf#655, val_supplier_s_comment_prf#656, s_name_prf#657, s_address_prf#658, s_phone_prf#659, s_acctbal_prf#660, s_comment_prf#661]
+            :     :        +- Relation[rid#649L,pfk_nation_supplier_prf#650,fpk_supplier_nation_prf#651,val_supplier_s_name_prf#652,val_supplier_s_address_prf#653,val_supplier_s_phone_prf#654,val_supplier_s_acctbal_prf#655,val_supplier_s_comment_prf#656,s_name_prf#657,s_address_prf#658,s_phone_prf#659,s_acctbal_prf#660,s_comment_prf#661] JDBCRelation(supplier_prf) [numPartitions=1]
+            :     +- Project [rid#663L AS rid_3#670L, pfk_region_nation_prf#664, fpk_nation_region_prf#665, val_nation_n_name_prf#666, val_nation_n_comment_prf#667, n_name_prf#668, n_comment_prf#669]
+            :        +- Relation[rid#663L,pfk_region_nation_prf#664,fpk_nation_region_prf#665,val_nation_n_name_prf#666,val_nation_n_comment_prf#667,n_name_prf#668,n_comment_prf#669] JDBCRelation(nation_prf) [numPartitions=1]
+            +- 'Join UsingJoin(LeftSemi,List(rid_4))
+               :- Project [rid#671L AS rid_4#676L, val_region_r_name_prf#672, val_region_r_comment_prf#673, r_name_prf#674, r_comment_prf#675]
+               :  +- Relation[rid#671L,val_region_r_name_prf#672,val_region_r_comment_prf#673,r_name_prf#674,r_comment_prf#675] JDBCRelation(region_prf) [numPartitions=1]
+               +- 'DexPseudoPrimaryKeyFilter region~r_name~EUROPE, 'val_region_r_name_prf
+                  +- Project [rid#677L AS rid_4#682L, val_region_r_name_prf#678, val_region_r_comment_prf#679, r_name_prf#680, r_comment_prf#681]
+                     +- Relation[rid#677L,val_region_r_name_prf#678,val_region_r_comment_prf#679,r_name_prf#680,r_comment_prf#681] JDBCRelation(region_prf) [numPartitions=1]
+
+19/09/20 05:48:22 WARN Utils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.debug.maxToStringFields' in SparkEnv.conf.
+dex result size=3162
+Elapsed time: 26279ms
+
+Bench query=
+select * from part where p_size = 15
+Elapsed time: 0ms
+postgres result size=3907
+Elapsed time: 56ms
+19/09/20 05:48:48 WARN DexPlanner: dexPlan=DexPkFkPlan
+19/09/20 05:48:48 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#780L]
++- 'Project
+   +- 'DexPkFkPlan {ps_partkeyps_suppkey, n_nationkey, r_regionkey, l_orderkeyl_linenumber, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkeyl_suppkey, ps_partkey, l_orderkey, ps_suppkey}
+      +- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :- Project [rid#782L AS rid_0#799L, val_part_p_name_prf#783, val_part_p_mfgr_prf#784, val_part_p_type_prf#785, val_part_p_size_prf#786, val_part_p_container_prf#787, val_part_p_retailprice_prf#788, val_part_p_comment_prf#789, val_part_p_brand_prf#790, p_name_prf#791, p_mfgr_prf#792, p_type_prf#793, p_size_prf#794, p_container_prf#795, p_retailprice_prf#796, p_comment_prf#797, p_brand_prf#798]
+         :  +- Relation[rid#782L,val_part_p_name_prf#783,val_part_p_mfgr_prf#784,val_part_p_type_prf#785,val_part_p_size_prf#786,val_part_p_container_prf#787,val_part_p_retailprice_prf#788,val_part_p_comment_prf#789,val_part_p_brand_prf#790,p_name_prf#791,p_mfgr_prf#792,p_type_prf#793,p_size_prf#794,p_container_prf#795,p_retailprice_prf#796,p_comment_prf#797,p_brand_prf#798] JDBCRelation(part_prf) [numPartitions=1]
+         +- 'DexPseudoPrimaryKeyFilter part~p_size~15, 'val_part_p_size_prf
+            +- Project [rid#800L AS rid_0#817L, val_part_p_name_prf#801, val_part_p_mfgr_prf#802, val_part_p_type_prf#803, val_part_p_size_prf#804, val_part_p_container_prf#805, val_part_p_retailprice_prf#806, val_part_p_comment_prf#807, val_part_p_brand_prf#808, p_name_prf#809, p_mfgr_prf#810, p_type_prf#811, p_size_prf#812, p_container_prf#813, p_retailprice_prf#814, p_comment_prf#815, p_brand_prf#816]
+               +- Relation[rid#800L,val_part_p_name_prf#801,val_part_p_mfgr_prf#802,val_part_p_type_prf#803,val_part_p_size_prf#804,val_part_p_container_prf#805,val_part_p_retailprice_prf#806,val_part_p_comment_prf#807,val_part_p_brand_prf#808,p_name_prf#809,p_mfgr_prf#810,p_type_prf#811,p_size_prf#812,p_container_prf#813,p_retailprice_prf#814,p_comment_prf#815,p_brand_prf#816] JDBCRelation(part_prf) [numPartitions=1]
+
+dex result size=3907
+Elapsed time: 19668ms
+
+Bench query=
+
+select
+  ps_supplycost
+from
+  part,
+  partsupp
+where
+  p_partkey = ps_partkey
+      
+Elapsed time: 0ms
+postgres result size=800000
+Elapsed time: 602ms
+19/09/20 05:49:08 WARN DexPlanner: dexPlan=DexPkFkPlan
+19/09/20 05:49:08 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#862L]
++- 'Project
+   +- 'DexPkFkPlan {ps_partkeyps_suppkey, n_nationkey, r_regionkey, l_orderkeyl_linenumber, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkeyl_suppkey, ps_partkey, l_orderkey, ps_suppkey}
+      +- 'Project [*]
+         +- 'Join Inner, (cast(dexdecrypt(concat(partsupp~part, ~, 'rid_0), 'fpk_partsupp_part_prf) as bigint) = 'rid_1)
+            :- Project [rid#864 AS rid_0#875, pfk_part_partsupp_prf#865, fpk_partsupp_part_prf#866, pfk_supplier_partsupp_prf#867, fpk_partsupp_supplier_prf#868, val_partsupp_ps_availqty_prf#869, val_partsupp_ps_supplycost_prf#870, val_partsupp_ps_comment_prf#871, ps_availqty_prf#872, ps_supplycost_prf#873, ps_comment_prf#874]
+            :  +- Relation[rid#864,pfk_part_partsupp_prf#865,fpk_partsupp_part_prf#866,pfk_supplier_partsupp_prf#867,fpk_partsupp_supplier_prf#868,val_partsupp_ps_availqty_prf#869,val_partsupp_ps_supplycost_prf#870,val_partsupp_ps_comment_prf#871,ps_availqty_prf#872,ps_supplycost_prf#873,ps_comment_prf#874] JDBCRelation(partsupp_prf) [numPartitions=1]
+            +- Project [rid#876L AS rid_1#893L, val_part_p_name_prf#877, val_part_p_mfgr_prf#878, val_part_p_type_prf#879, val_part_p_size_prf#880, val_part_p_container_prf#881, val_part_p_retailprice_prf#882, val_part_p_comment_prf#883, val_part_p_brand_prf#884, p_name_prf#885, p_mfgr_prf#886, p_type_prf#887, p_size_prf#888, p_container_prf#889, p_retailprice_prf#890, p_comment_prf#891, p_brand_prf#892]
+               +- Relation[rid#876L,val_part_p_name_prf#877,val_part_p_mfgr_prf#878,val_part_p_type_prf#879,val_part_p_size_prf#880,val_part_p_container_prf#881,val_part_p_retailprice_prf#882,val_part_p_comment_prf#883,val_part_p_brand_prf#884,p_name_prf#885,p_mfgr_prf#886,p_type_prf#887,p_size_prf#888,p_container_prf#889,p_retailprice_prf#890,p_comment_prf#891,p_brand_prf#892] JDBCRelation(part_prf) [numPartitions=1]
+
+dex result size=800000
+Elapsed time: 8020ms
+
+ Q5
+
+Bench query=
+
+select
+  n_name
+from
+  customer, supplier, nation, region
+where
+  r_name = 'ASIA'
+  and r_regionkey = n_regionkey
+  and n_nationkey = c_nationkey
+  and n_nationkey = s_nationkey
+      
+Elapsed time: 0ms
+postgres result size=12093991
+Elapsed time: 5900ms
+19/09/20 05:49:22 WARN DexPlanner: dexPlan=DexPkFkPlan
+19/09/20 05:49:22 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#999L]
++- 'Project
+   +- 'DexPkFkPlan {ps_partkeyps_suppkey, n_nationkey, r_regionkey, l_orderkeyl_linenumber, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkeyl_suppkey, ps_partkey, l_orderkey, ps_suppkey}
+      +- 'DexPseudoPrimaryKeyJoin nation~supplier, 'pfk_nation_supplier_prf, 'rid_1
+         :- 'DexPseudoPrimaryKeyJoin nation~customer, 'pfk_nation_customer_prf, 'rid_1
+         :  :- 'DexPseudoPrimaryKeyJoin region~nation, 'pfk_region_nation_prf, 'rid_0
+         :  :  :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :  :- Project [rid#1001L AS rid_0#1006L, val_region_r_name_prf#1002, val_region_r_comment_prf#1003, r_name_prf#1004, r_comment_prf#1005]
+         :  :  :  :  +- Relation[rid#1001L,val_region_r_name_prf#1002,val_region_r_comment_prf#1003,r_name_prf#1004,r_comment_prf#1005] JDBCRelation(region_prf) [numPartitions=1]
+         :  :  :  +- 'DexPseudoPrimaryKeyFilter region~r_name~ASIA, 'val_region_r_name_prf
+         :  :  :     +- Project [rid#1007L AS rid_0#1012L, val_region_r_name_prf#1008, val_region_r_comment_prf#1009, r_name_prf#1010, r_comment_prf#1011]
+         :  :  :        +- Relation[rid#1007L,val_region_r_name_prf#1008,val_region_r_comment_prf#1009,r_name_prf#1010,r_comment_prf#1011] JDBCRelation(region_prf) [numPartitions=1]
+         :  :  +- Project [rid#1013L AS rid_1#1020L, pfk_region_nation_prf#1014, fpk_nation_region_prf#1015, val_nation_n_name_prf#1016, val_nation_n_comment_prf#1017, n_name_prf#1018, n_comment_prf#1019]
+         :  :     +- Relation[rid#1013L,pfk_region_nation_prf#1014,fpk_nation_region_prf#1015,val_nation_n_name_prf#1016,val_nation_n_comment_prf#1017,n_name_prf#1018,n_comment_prf#1019] JDBCRelation(nation_prf) [numPartitions=1]
+         :  +- Project [rid#1021L AS rid_2#1036L, pfk_nation_customer_prf#1022, fpk_customer_nation_prf#1023, val_customer_c_name_prf#1024, val_customer_c_address_prf#1025, val_customer_c_phone_prf#1026, val_customer_c_acctbal_prf#1027, val_customer_c_comment_prf#1028, val_customer_c_mktsegment_prf#1029, c_name_prf#1030, c_address_prf#1031, c_phone_prf#1032, c_acctbal_prf#1033, c_comment_prf#1034, c_mktsegment_prf#1035]
+         :     +- Relation[rid#1021L,pfk_nation_customer_prf#1022,fpk_customer_nation_prf#1023,val_customer_c_name_prf#1024,val_customer_c_address_prf#1025,val_customer_c_phone_prf#1026,val_customer_c_acctbal_prf#1027,val_customer_c_comment_prf#1028,val_customer_c_mktsegment_prf#1029,c_name_prf#1030,c_address_prf#1031,c_phone_prf#1032,c_acctbal_prf#1033,c_comment_prf#1034,c_mktsegment_prf#1035] JDBCRelation(customer_prf) [numPartitions=1]
+         +- Project [rid#1037L AS rid_3#1050L, pfk_nation_supplier_prf#1038, fpk_supplier_nation_prf#1039, val_supplier_s_name_prf#1040, val_supplier_s_address_prf#1041, val_supplier_s_phone_prf#1042, val_supplier_s_acctbal_prf#1043, val_supplier_s_comment_prf#1044, s_name_prf#1045, s_address_prf#1046, s_phone_prf#1047, s_acctbal_prf#1048, s_comment_prf#1049]
+            +- Relation[rid#1037L,pfk_nation_supplier_prf#1038,fpk_supplier_nation_prf#1039,val_supplier_s_name_prf#1040,val_supplier_s_address_prf#1041,val_supplier_s_phone_prf#1042,val_supplier_s_acctbal_prf#1043,val_supplier_s_comment_prf#1044,s_name_prf#1045,s_address_prf#1046,s_phone_prf#1047,s_acctbal_prf#1048,s_comment_prf#1049] JDBCRelation(supplier_prf) [numPartitions=1]
+
+dex result size=12093991
+Elapsed time: 1459280ms
+
+Bench query=
+
+select
+  n_name
+from
+  customer, supplier, nation, region
+where
+  r_regionkey = n_regionkey
+  and n_nationkey = c_nationkey
+  and n_nationkey = s_nationkey
+      
+Elapsed time: 0ms
+postgres result size=60000414
+Elapsed time: 52896ms
+19/09/20 06:14:34 WARN DexPlanner: dexPlan=DexPkFkPlan
+19/09/20 06:14:34 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#1168L]
++- 'Project
+   +- 'DexPkFkPlan {ps_partkeyps_suppkey, n_nationkey, r_regionkey, l_orderkeyl_linenumber, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkeyl_suppkey, ps_partkey, l_orderkey, ps_suppkey}
+      +- 'DexPseudoPrimaryKeyJoin nation~supplier, 'pfk_nation_supplier_prf, 'rid_1
+         :- 'DexPseudoPrimaryKeyJoin nation~customer, 'pfk_nation_customer_prf, 'rid_1
+         :  :- 'DexPseudoPrimaryKeyJoin region~nation, 'pfk_region_nation_prf, 'rid_0
+         :  :  :- Project [rid#1170L AS rid_0#1175L, val_region_r_name_prf#1171, val_region_r_comment_prf#1172, r_name_prf#1173, r_comment_prf#1174]
+         :  :  :  +- Relation[rid#1170L,val_region_r_name_prf#1171,val_region_r_comment_prf#1172,r_name_prf#1173,r_comment_prf#1174] JDBCRelation(region_prf) [numPartitions=1]
+         :  :  +- Project [rid#1176L AS rid_1#1183L, pfk_region_nation_prf#1177, fpk_nation_region_prf#1178, val_nation_n_name_prf#1179, val_nation_n_comment_prf#1180, n_name_prf#1181, n_comment_prf#1182]
+         :  :     +- Relation[rid#1176L,pfk_region_nation_prf#1177,fpk_nation_region_prf#1178,val_nation_n_name_prf#1179,val_nation_n_comment_prf#1180,n_name_prf#1181,n_comment_prf#1182] JDBCRelation(nation_prf) [numPartitions=1]
+         :  +- Project [rid#1184L AS rid_2#1199L, pfk_nation_customer_prf#1185, fpk_customer_nation_prf#1186, val_customer_c_name_prf#1187, val_customer_c_address_prf#1188, val_customer_c_phone_prf#1189, val_customer_c_acctbal_prf#1190, val_customer_c_comment_prf#1191, val_customer_c_mktsegment_prf#1192, c_name_prf#1193, c_address_prf#1194, c_phone_prf#1195, c_acctbal_prf#1196, c_comment_prf#1197, c_mktsegment_prf#1198]
+         :     +- Relation[rid#1184L,pfk_nation_customer_prf#1185,fpk_customer_nation_prf#1186,val_customer_c_name_prf#1187,val_customer_c_address_prf#1188,val_customer_c_phone_prf#1189,val_customer_c_acctbal_prf#1190,val_customer_c_comment_prf#1191,val_customer_c_mktsegment_prf#1192,c_name_prf#1193,c_address_prf#1194,c_phone_prf#1195,c_acctbal_prf#1196,c_comment_prf#1197,c_mktsegment_prf#1198] JDBCRelation(customer_prf) [numPartitions=1]
+         +- Project [rid#1200L AS rid_3#1213L, pfk_nation_supplier_prf#1201, fpk_supplier_nation_prf#1202, val_supplier_s_name_prf#1203, val_supplier_s_address_prf#1204, val_supplier_s_phone_prf#1205, val_supplier_s_acctbal_prf#1206, val_supplier_s_comment_prf#1207, s_name_prf#1208, s_address_prf#1209, s_phone_prf#1210, s_acctbal_prf#1211, s_comment_prf#1212]
+            +- Relation[rid#1200L,pfk_nation_supplier_prf#1201,fpk_supplier_nation_prf#1202,val_supplier_s_name_prf#1203,val_supplier_s_address_prf#1204,val_supplier_s_phone_prf#1205,val_supplier_s_acctbal_prf#1206,val_supplier_s_comment_prf#1207,s_name_prf#1208,s_address_prf#1209,s_phone_prf#1210,s_acctbal_prf#1211,s_comment_prf#1212] JDBCRelation(supplier_prf) [numPartitions=1]
+
+dex result size=60000414
+Elapsed time: 2046685ms
