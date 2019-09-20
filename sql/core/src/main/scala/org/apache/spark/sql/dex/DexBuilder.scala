@@ -91,11 +91,6 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     (pk, fks)
   }
 
-  private def encDataColNamesOf(t: TableName, d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
-    case c if nonKey(pk, fks, c) =>
-      encColName(t, c)
-  }
-
   private def encColName(t: TableName, c: AttrName): String = s"${c}_prf"
 
   def buildPkFkSchemeFromData(nameToDf: Map[TableName, DataFrame],
@@ -128,6 +123,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
               case c if nonKey(pk, fks, c) => valColName(t, c)
             }
         }
+        def encDataColNamesOf(t: TableName, d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
+        case c if nonKey(pk, fks, c) =>
+          encColName(t, c)
+      }
 
         def pkCol(pk: PrimaryKey): Column = pk.attr match {
           case a: TableAttributeAtom => col(a.attr)
@@ -210,7 +209,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
     val tFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
       val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
-      encDataColNamesOf(n, r, pk, fks).map { c =>
+      r.columns.filter(nonKey(pk, fks, _)).map { c =>
       //r.columns.filterNot(_ == "rid").map { c =>
         val udfPredicate = udf(filterPredicateOf(n, c) _)
         r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
