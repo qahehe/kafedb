@@ -145,7 +145,7 @@ object TPCHBench {
     //val q2eDex = q2eMain.dexPkFk(pks, fks)
     benchQuery(spark, q2e, q2eDf)
 
-    println("\n Q3")
+    /*println("\n Q3")
     val q3a =
       """
         |select
@@ -164,7 +164,7 @@ object TPCHBench {
       .join(lineitem).where("l_orderkey == o_orderkey")
       .select("l_orderkey", "l_extendedprice", "l_discount", "o_orderdate", "o_shippriority")
     val q3aDex = q3aDf.dex
-    benchQuery(spark, q3a, q3aDf)
+    benchQuery(spark, q3a, q3aDf)*/
 
     println("\n Q5")
     val q5a =
