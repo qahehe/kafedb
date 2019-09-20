@@ -154,7 +154,7 @@ object TPCHBench {
         |  customer, supplier, nation, region
         |where
         |  r_name = 'ASIA'
-        |  and r_nationkey = n_nationkey
+        |  and r_regionkey = n_regionkey
         |  and n_nationkey = c_nationkey
         |  and n_nationkey = s_nationkey
       """.stripMargin
@@ -172,7 +172,7 @@ object TPCHBench {
         |from
         |  customer, supplier, nation, region
         |where
-        |  r_nationkey = n_nationkey
+        |  r_regionkey = n_regionkey
         |  and n_nationkey = c_nationkey
         |  and n_nationkey = s_nationkey
       """.stripMargin
@@ -182,7 +182,6 @@ object TPCHBench {
       .join(supplier).where("n_nationkey == s_nationkey")
     val q5bDex = q5bDf.dexPkFk(pks, fks)
     benchQuery(spark, q5b, q5bDf, q5bDex)
-
 
     /*val q5a = "select * from customer, supplier, nation where c_nationkey = n_nationkey and s_nationkey = n_nationkey"
     val q5aDf = customer.join(nation).join(supplier).where("c_nationkey == s_nationkey and n_nationkey == s_nationkey")
