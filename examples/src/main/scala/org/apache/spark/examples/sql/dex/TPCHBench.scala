@@ -177,7 +177,7 @@ object TPCHBench {
         |  and n_nationkey = s_nationkey
       """.stripMargin
     val q5bDf = region
-      .join(nation).where("r_regionkey == n_regionnkey")
+      .join(nation).where("r_regionkey == n_regionkey")
       .join(customer).where("n_nationkey == c_nationkey")
       .join(supplier).where("n_nationkey == s_nationkey")
     val q5bDex = q5bDf.dexPkFk(pks, fks)
