@@ -81,24 +81,35 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private def pibasCounterOn(c: Column): Column = row_number().over(Window.partitionBy(c).orderBy(c)) - 1
 
+  private def primaryKeyAndForeignKeysFor(t: TableName, primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): (PrimaryKey, Set[ForeignKey]) = {
+    val pk = {
+      val pks = primaryKeys.filter(_.attr.table == t)
+      require(pks.size == 1, "every table should have a primary key, atom or compound")
+      pks.headOption.get
+    }
+    val fks = foreignKeys.filter(_.attr.table == t)
+    (pk, fks)
+  }
+
+  private def encDataColNamesOf(t: TableName, d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
+    case c if nonKey(pk, fks, c) =>
+      encColName(t, c)
+  }
+
+  private def encColName(t: TableName, c: AttrName): String = s"${c}_prf"
+
   def buildPkFkSchemeFromData(nameToDf: Map[TableName, DataFrame],
                               primaryKeys: Set[PrimaryKey],
                               foreignKeys: Set[ForeignKey]): Unit = {
 
     nameToDf.foreach {
       case (t, d) =>
-        val pk = {
-          val pks = primaryKeys.filter(_.attr.table == t)
-          require(pks.size == 1, "every table should have a primary key, atom or compound")
-          pks.headOption.get
-        }
-        val fks = foreignKeys.filter(_.attr.table == t)
+        val (pk, fks) = primaryKeyAndForeignKeysFor(t, primaryKeys, foreignKeys)
 
         def pkColName(pk: PrimaryKey): String = "rid"
         def pfkColName(fk: ForeignKey): String = s"pfk_${fk.ref.table}_${fk.attr.table}_prf"
         def fpkColName(fk: ForeignKey): String = s"fpk_${fk.attr.table}_${fk.ref.table}_prf"
         def valColName(t: TableName, c: AttrName): String = s"val_${t}_${c}_prf"
-        def encColName(t: TableName, c: AttrName): String = s"${c}_prf"
 
         /*def outputCols(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.flatMap {
           case c if c == pk.attr.attr =>
@@ -116,11 +127,6 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             d.columns.collect {
               case c if nonKey(pk, fks, c) => valColName(t, c)
             }
-        }
-
-        def encDataColNamesOf(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
-          case c if nonKey(pk, fks, c) =>
-            encColName(t, c)
         }
 
         def pkCol(pk: PrimaryKey): Column = pk.attr match {
@@ -172,7 +178,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
         val encTableName = encTableNameOf(t)
         val encIndexColNames = encIndexColNamesOf(d, pk, fks)
-        val encDataColNames = encDataColNamesOf(d, pk, fks)
+        val encDataColNames = encDataColNamesOf(t, d, pk, fks)
         pkfkEncDf.selectExpr(encIndexColNames ++ encDataColNames:_*)
           .write.mode(SaveMode.Overwrite).jdbc(encDbUrl, encTableName, encDbProps)
 
@@ -193,7 +199,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     c != pk.attr.attr && !fks.map(_.attr.attr).contains(c)
   }
 
-  def buildFromData(nameToDf: Map[TableName, DataFrame], joins: Seq[JoinableAttrs]): Unit = {
+  def buildFromData(nameToDf: Map[TableName, DataFrame], joins: Seq[JoinableAttrs], primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
       n -> d.withColumn("rid", monotonically_increasing_id()).cache()
     }
@@ -203,7 +209,9 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
 
     val tFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
-      r.columns.filterNot(_ == "rid").map { c =>
+      val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
+      encDataColNamesOf(n, r, pk, fks).map { c =>
+      //r.columns.filterNot(_ == "rid").map { c =>
         val udfPredicate = udf(filterPredicateOf(n, c) _)
         r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
           //.groupBy(c).agg(collect_list($"rid").as("rids"))
@@ -216,7 +224,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
     val tFilterDf = tFilterDfParts.reduce((d1, d2) => d1 union d2)
 
-    val tDomainDfParts = nameToRidDf.flatMap { case (n, r) =>
+    /*val tDomainDfParts = nameToRidDf.flatMap { case (n, r) =>
       r.columns.filterNot(_ == "rid").map { c =>
         r.select(col(c)).distinct()
           .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition(col(c))
@@ -226,9 +234,11 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           .select("label", "value").repartition($"label")
       }
     }
-    val tDomainDf = tDomainDfParts.reduce((d1, d2) => d1 union d2)
+    val tDomainDf = tDomainDfParts.reduce((d1, d2) => d1 union d2)*/
 
-    val tUncorrJoinDfParts = for {
+
+
+    /*val tUncorrJoinDfParts = for {
       (attrLeft, attrRight) <- joins
     } yield {
       val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
@@ -241,10 +251,11 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         .withColumn("value_right", udfValue($"rid_right"))
         .select("label", "value_left", "value_right")
     }
-    val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)
+    val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)*/
 
+    val bothSideJoins = joins ++ joins.map(j => (j._2, j._1))
     val tCorrJoinDfParts = for {
-      (attrLeft, attrRight) <- joins
+      (attrLeft, attrRight) <- bothSideJoins
     } yield {
       val udfJoinPred = udf(joinPredicateOf(attrLeft, attrRight) _)
       val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
@@ -263,8 +274,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
     }
     tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tFilterName, encDbProps)
-    tDomainDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tDomainName, encDbProps)
-    tUncorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tUncorrJoinName, encDbProps)
+    //tDomainDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tDomainName, encDbProps)
+    //tUncorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tUncorrJoinName, encDbProps)
     tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tCorrJoinName, encDbProps)
 
     Utils.classForName("org.postgresql.Driver")

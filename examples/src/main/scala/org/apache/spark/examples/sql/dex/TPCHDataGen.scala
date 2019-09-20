@@ -89,18 +89,18 @@ object TPCHDataGen {
   )
 
   val joinableAttrsToDex = Seq(
-    (TableAttributeAtom("part", "p_partkey"), TableAttributeAtom("partsupp", "ps_partkey")),
-    (TableAttributeAtom("partsupp", "ps_suppkey"), TableAttributeAtom("supplier", "s_suppkey")),
-    (TableAttributeAtom("nation", "n_nationkey"), TableAttributeAtom("supplier", "s_nationkey")),
     (TableAttributeAtom("nation", "n_regionkey"), TableAttributeAtom("region", "r_regionkey")),
-    //(TableAttributeAtom("customer", "c_nationkey"), TableAttributeAtom("supplier", "s_nationkey")),
+    (TableAttributeAtom("supplier", "s_nationkey"), TableAttributeAtom("nation", "n_nationkey")),
     (TableAttributeAtom("customer", "c_nationkey"), TableAttributeAtom("nation", "n_nationkey")),
-    (TableAttributeAtom("customer", "c_custkey"), TableAttributeAtom("orders", "o_custkey")),
+    (TableAttributeAtom("partsupp", "ps_partkey"), TableAttributeAtom("part", "p_partkey")),
+    (TableAttributeAtom("partsupp", "ps_suppkey"), TableAttributeAtom("supplier", "s_suppkey")),
+    //(TableAttributeCompound("lineitem", Seq("l_partkey", "l_suppkey")), TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey"))),
     (TableAttributeAtom("lineitem", "l_partkey"), TableAttributeAtom("partsupp", "ps_partkey")),
     (TableAttributeAtom("lineitem", "l_suppkey"), TableAttributeAtom("partsupp", "ps_suppkey")),
+    (TableAttributeAtom("orders", "o_custkey"), TableAttributeAtom("customer", "c_custkey")),
     (TableAttributeAtom("lineitem", "l_orderkey"), TableAttributeAtom("orders", "o_orderkey"))
   )
-  val filterAttrsToDex = Seq(
+  /*val filterAttrsToDex = Seq(
     TableAttributeAtom("customer", "c_mktsegment"),
     TableAttributeAtom("lineitem", "l_returnflag"),
     TableAttributeAtom("lineitem", "l_shipmode"),
@@ -113,7 +113,7 @@ object TPCHDataGen {
     TableAttributeAtom("part", "p_brand"),
     TableAttributeAtom("part", "p_container"),
     TableAttributeAtom("region", "r_name")
-  )
+  )*/
 
   def newSparkSession(name: String): SparkSession = SparkSession
     .builder()
@@ -121,10 +121,13 @@ object TPCHDataGen {
     .getOrCreate()
 
   private val modes = Set("tpch", "postgres", "dex")
+  val emmModes = Set("standalone", "pkfk")
 
   def main(args: Array[String]): Unit = {
-    require(args.length >= 1)
-    val neededModes = args(0) match {
+    require(args.length >= 2)
+    val emmMode = args(0)
+    require(emmModes.contains(emmMode))
+    val neededModes = args(1) match {
       case "all" => modes
       case _ =>
         require(args.forall(modes.contains))
@@ -194,7 +197,13 @@ object TPCHDataGen {
     if (neededModes.contains("dex")) {
       time {
         println(s"\nBuilding DEX for $benchmark into Postgres from $location")
-        buildDexPkFk(spark, tables)
+        emmMode match {
+          case "standalone" =>
+            buildDexStandalone(spark, tables)
+          case "pkfk" =>
+            buildDexPkFk(spark, tables)
+        }
+
       }
     }
 
@@ -202,7 +211,7 @@ object TPCHDataGen {
     spark.stop()
   }
 
-  private def buildDex(spark: SparkSession, tables: TPCHTables): Unit = {
+  private def buildDexStandalone(spark: SparkSession, tables: TPCHTables): Unit = {
     // Encrypt data to Postgres
     val allTableNames = tables.tables.map(_.name).toSet
     assert(tableNamesToDex.forall(allTableNames.contains))
@@ -213,7 +222,7 @@ object TPCHDataGen {
       t -> spark.table(t)
     }.toMap
 
-    spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex)
+    spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, joinableAttrsToDex, primaryKeys, foreignKeys)
   }
   
   private def buildDexPkFk(spark: SparkSession, tables: TPCHTables): Unit = {
@@ -236,8 +245,13 @@ object TPCHDataGen {
     Utils.classForName("org.postgresql.Driver")
     val conn = DriverManager.getConnection(dbUrl, dbProps)
     try {
-      filterAttrsToDex.foreach { f =>
+      /*filterAttrsToDex.foreach { f =>
         createTreeIndex(conn, f.table, f.attr)
+      }*/
+      tables.tables.map(_.name).foreach { t =>
+        spark.table(t).columns.filterNot(_.contains("key")).foreach { c =>
+          createTreeIndex(conn, t, c)
+        }
       }
       joinableAttrsToDex.foreach { case (j1, j2) =>
         createTreeIndex(conn, j1.table, j1.attr)
