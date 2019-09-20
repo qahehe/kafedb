@@ -127,11 +127,11 @@ object TPCHDataGen {
     require(args.length >= 2)
     val emmMode = args(0)
     require(emmModes.contains(emmMode))
-    val neededModes = args(1) match {
-      case "all" => modes
-      case _ =>
-        require(args.forall(modes.contains))
-        args.toSet
+    val neededModes = args.drop(1) match {
+      case xs if xs.contains("all") => modes
+      case xs =>
+        require(xs.forall(modes.contains))
+        xs.toSet
     }
     println(s"neededModes=${neededModes.mkString(", ")}")
 
