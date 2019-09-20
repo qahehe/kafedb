@@ -41,7 +41,7 @@ object TPCHBench {
 
     val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(spark, TPCHDataGen.scaleFactor)
     TPCHDataGen.pointDataToSpark(spark, dbname, tables, location)
-    tables.analyzeTables(dbname, analyzeColumns = true)
+    //tables.analyzeTables(dbname, analyzeColumns = true)
 
     val nameToDfForDex = TPCHDataGen.tableNamesToDex.map { t =>
       t -> spark.table(t)
@@ -270,8 +270,8 @@ object TPCHBench {
   private def benchQuery(spark: SparkSession, query: String, queryDf: DataFrame, queryDex: DataFrame): Unit = {
     println(s"\nBench query=\n$query")
     time {
-      val sparkResult = queryDf.count()
-      println(s"spark result size=${sparkResult}")
+      //val sparkResult = queryDf.count()
+      //println(s"spark result size=${sparkResult}")
     }
     time {
       val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
