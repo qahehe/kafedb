@@ -236,6 +236,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |
                |($rightSubquery) AS ${generateSubqueryName()}
               """.stripMargin
+          case x if x == Inner && isNaturalInnerJoin(j) =>
+            s"""
+               |($leftSubquery) AS ${generateSubqueryName()}
+               |
+               |NATURAL INNER JOIN
+               |
+               |($rightSubquery) AS ${generateSubqueryName()}
+              """.stripMargin
           case x if x == Inner && j.condition.isDefined =>
             s"""
                |($leftSubquery) AS ${generateSubqueryName()}
@@ -245,14 +253,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |($rightSubquery) AS ${generateSubqueryName()}
                |
                |ON (${j.condition.get.dialectSql(dialect.quoteIdentifier)})
-              """.stripMargin
-          case x if x == Inner =>
-            s"""
-               |($leftSubquery) AS ${generateSubqueryName()}
-               |
-               |NATURAL INNER JOIN
-               |
-               |($rightSubquery) AS ${generateSubqueryName()}
               """.stripMargin
           case x if x == LeftSemi && j.condition.isDefined =>
             val (leftRid, rightRid) = ridOrdersFromJoin(j)
@@ -515,6 +515,25 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin
 
       case x => throw DexException("unsupported: " + x.getClass.toString)
+    }
+
+    private def isNaturalInnerJoin(join: Join) = {
+      join.condition.exists(isConjunctionOnly) &&
+        join.condition.exists(hasEquiJoinConditionOnly) &&
+        join.condition.collectFirst {
+          case eq @ EqualTo(left: Attribute, right: Attribute) if left.name != right.name => eq
+        }.isEmpty
+    }
+
+    private def isConjunctionOnly(condition: Expression) = {
+      condition.find(x => x.isInstanceOf[Or]).isEmpty
+    }
+
+    private def hasEquiJoinConditionOnly(condition: Expression) = {
+      condition.collectFirst {
+        case bc: BinaryComparison if !bc.isInstanceOf[EqualTo] => bc
+        case eq: EqualTo if !(eq.left.isInstanceOf[Attribute] && eq.right.isInstanceOf[Attribute]) => eq
+      }.isEmpty
     }
 
     private def ridOrdersFromJoin(j: Join): (String, String) = j.condition.get match {
