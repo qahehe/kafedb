@@ -120,7 +120,7 @@ trait DexTPCHTest extends QueryTest with DexTest {
     execute(connEnc,
       """
         |create table partsupp_prf (
-        |  rid                       varchar,
+        |  rid                       bigint,
         |
         |  pfk_part_partsupp_prf     varchar,
         |  fpk_partsupp_part_prf     varchar,
@@ -137,12 +137,12 @@ trait DexTPCHTest extends QueryTest with DexTest {
     execute(connEnc,
       """
         |insert into partsupp_prf values
-        |('1_and_1', 'part~partsupp~1~0', '1_enc_partsupp~part~1_and_1', '1_enc', 'supplier~partsupp~1~0', '1_enc_partsupp~supplier~1_and_1', '1_enc', 'partsupp~ps_comment~psa~0', 'psa_enc'),
-        |('2_and_2', 'part~partsupp~2~0', '2_enc_partsupp~part~2_and_2', '2_enc', 'supplier~partsupp~2~0', '2_enc_partsupp~supplier~2_and_2', '2_enc', 'partsupp~ps_comment~psa~1', 'psa_enc'),
-        |('1_and_2', 'part~partsupp~1~1', '1_enc_partsupp~part~1_and_2', '1_enc', 'supplier~partsupp~2~1', '2_enc_partsupp~supplier~1_and_2', '2_enc', 'partsupp~ps_comment~psb~0', 'psb_enc'),
-        |('3_and_3', 'part~partsupp~3~0', '3_enc_partsupp~part~3_and_3', '3_enc', 'supplier~partsupp~3~0', '3_enc_partsupp~supplier~3_and_3', '3_enc', 'partsupp~ps_comment~psb~1', 'psb_enc'),
-        |('4_and_3', 'part~partsupp~4~0', '4_enc_partsupp~part~4_and_3', '4_enc', 'supplier~partsupp~3~1', '3_enc_partsupp~supplier~4_and_3', '3_enc', 'partsupp~ps_comment~psb~2', 'psb_enc'),
-        |('2_and_3', 'part~partsupp~2~1', '2_enc_partsupp~part~2_and_3', '2_enc', 'supplier~partsupp~3~2', '3_enc_partsupp~supplier~2_and_3', '3_enc', 'partsupp~ps_comment~psc~0', 'psc_enc')
+        |(1 * 2 + 1 * 3, 'part~partsupp~1~0', '1_enc_partsupp~part~5',  '1_enc', 'supplier~partsupp~1~0', '1_enc_partsupp~supplier~5',  '1_enc', 'partsupp~ps_comment~psa~0', 'psa_enc'),
+        |(2 * 2 + 2 * 3, 'part~partsupp~2~0', '2_enc_partsupp~part~10', '2_enc', 'supplier~partsupp~2~0', '2_enc_partsupp~supplier~10', '2_enc', 'partsupp~ps_comment~psa~1', 'psa_enc'),
+        |(1 * 2 + 2 * 3, 'part~partsupp~1~1', '1_enc_partsupp~part~8',  '1_enc', 'supplier~partsupp~2~1', '2_enc_partsupp~supplier~8',  '2_enc', 'partsupp~ps_comment~psb~0', 'psb_enc'),
+        |(3 * 2 + 3 * 3, 'part~partsupp~3~0', '3_enc_partsupp~part~15', '3_enc', 'supplier~partsupp~3~0', '3_enc_partsupp~supplier~15', '3_enc', 'partsupp~ps_comment~psb~1', 'psb_enc'),
+        |(4 * 2 + 3 * 3, 'part~partsupp~4~0', '4_enc_partsupp~part~17', '4_enc', 'supplier~partsupp~3~1', '3_enc_partsupp~supplier~17', '3_enc', 'partsupp~ps_comment~psb~2', 'psb_enc'),
+        |(2 * 2 + 3 * 3, 'part~partsupp~2~1', '2_enc_partsupp~part~13', '2_enc', 'supplier~partsupp~3~2', '3_enc_partsupp~supplier~13', '3_enc', 'partsupp~ps_comment~psc~0', 'psc_enc')
       """.stripMargin)
 
     execute(connEnc,
@@ -188,7 +188,7 @@ trait DexTPCHTest extends QueryTest with DexTest {
     execute(connEnc,
       """
         |create table lineitem_prf (
-        |  rid varchar,
+        |  rid bigint,
         |
         |  pfk_partsupp_lineitem_prf varchar,
         |  fpk_lineitem_partsupp_prf varchar,
@@ -199,12 +199,11 @@ trait DexTPCHTest extends QueryTest with DexTest {
       """.stripMargin)
     execute(connEnc,
       """
-        |insert into lineitem_prf values (
-        |  ('1_and_1', 'partsupp~lineitem~1_and_1~0', '1_and_1_enc_lineitem~partsupp~1_and_1', 'lineitem~l_comment~la1~0', 'la1_enc'),
-        |  ('1_and_2', 'partsupp~lineitem~1_and_1~1', '1_and_1_enc_lineitem~partsupp~1_and_2', 'lineitem~l_comment~la2~0', 'la2_enc'),
-        |  ('2_and_1', 'partsupp~lineitem~2_and_2~0', '2_and_2_enc_lineitem~partsupp~2_and_1', 'lineitem~l_comment~la3~0', 'la3_enc'),
-        |  ('2_and_2', 'partsupp~lineitem~2_and_2~1', '2_and_2_enc_lineitem~partsupp~2_and_2', 'lineitem~l_comment~la3~1', 'la3_enc')
-        |)
+        |insert into lineitem_prf values
+        |(1 * 2 + 1 * 3, 'partsupp~lineitem~5~0',  '5_enc_lineitem~partsupp~5',   'lineitem~l_comment~la1~0', 'la1_enc'),
+        |(1 * 2 + 2 * 3, 'partsupp~lineitem~5~1',  '5_enc_lineitem~partsupp~8',   'lineitem~l_comment~la2~0', 'la2_enc'),
+        |(2 * 2 + 1 * 3, 'partsupp~lineitem~10~0', '10_enc_lineitem~partsupp~7',  'lineitem~l_comment~la3~0', 'la3_enc'),
+        |(2 * 2 + 2 * 3, 'partsupp~lineitem~10~1', '10_enc_lineitem~partsupp~10', 'lineitem~l_comment~la3~1', 'la3_enc')
       """.stripMargin)
 
     conn.commit()

@@ -80,9 +80,13 @@ class DexTPCHSuite extends DexTPCHTest {
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
-  ignore("compound key join") {
-    val query = partsupp.join(lineitem).where("ps_partkey = l_partkey and ps_suppkey = l_suppkey")
-    val queryDex = partsupp.join(lineitem).where("ps_partkey_and_ps_suppkey = l_partkey_and_l_suppkey").select("ps_comment", "l_comment").dexPkFk(pks, fks)
-    checkDexFor(query, queryDex)
+  test("compound key join: pk-fk") {
+    val query = partsupp.join(lineitem).where("ps_partkey = l_partkey and ps_suppkey = l_suppkey").select("ps_comment", "l_comment")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
+
+  test("compouind key join: fk-pk") {
+    val query = lineitem.join(partsupp).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey").select("ps_comment", "l_comment")
+    checkDexFor(query, query.dexPkFk(pks, fks))
   }
 }

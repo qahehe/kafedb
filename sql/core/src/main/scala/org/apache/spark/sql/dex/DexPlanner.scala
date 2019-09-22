@@ -33,7 +33,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.plans.physical.{BroadcastDistribution, Distribution, IdentityBroadcastMode, UnspecifiedDistribution}
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
-import org.apache.spark.sql.dex.DexConstants.{TableAttribute, TableAttributeAtom}
+import org.apache.spark.sql.dex.DexConstants.{TableAttribute, TableAttributeAtom, TableAttributeCompound}
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD, JDBCRelation, JdbcRelationProvider}
 import org.apache.spark.sql.execution.datasources.{CatalogFileIndex, DataSource, HadoopFsRelation, InMemoryFileIndex, LogicalRelation}
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
@@ -1070,6 +1070,24 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             tableEnc
         }
 
+      case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
+        val joinCompoundCond = {
+          val attrLefts = j.condition.get.collect {
+            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
+          }
+          val attrRights = j.condition.get.collect {
+            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
+          }
+          require(attrLefts.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
+          require(attrRights.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
+          val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
+          val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
+          // Hack: reuse the expr id for one of attrLefts and one of attrRights so that exprIdToTable works later
+          EqualTo(attrLefts.head.withName(attrCompoundLeft), attrRights.head.withName(attrCompoundRight))
+        }
+        val compoundJoinPlan = j.copy(condition = Some(joinCompoundCond))
+        translatePlan(compoundJoinPlan, childView)
+
       case j: Join if j.condition.isDefined && isPkFkJoinWithFkFilter(j) =>
         // PK join Filter(FK) has a subtle issue if execute in post-order:
         // For pk-rows with pk-fk-pibas-counter having any prefix sequence not satisify their fk-rows' filter,
@@ -1086,12 +1104,31 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // Because first row doesn't match filter, pibas-counter 0,1 would not be included, so by induction 2 would
         // not be included in the join too.  But 2 should be in the join.
         // The fix is just to reverse this type of join and filter to fk-pk join with filter on fk.
-        translateJoinView(j.right, j.left, reverseJoinCondition(j.condition.get), childView)
+        val reverseJoinPlan = j.copy(condition = Some(reverseJoinCondition(j.condition.get)))
+        translatePlan(reverseJoinPlan, childView)
 
       case j: Join if j.condition.isDefined =>
         translateJoinView(j.left, j.right, j.condition.get, childView)
 
       case _ => super.translatePlan(plan, childView)
+    }
+
+    private def isCompoundKeyJoin(condition: Expression): Boolean = {
+      val attrLefts = condition.collect {
+        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
+      }
+      val attrRights = condition.collect {
+        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
+      }
+
+      attrLefts.size > 1 && attrRights.size > 1 && {
+        val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
+        val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
+        (primaryKeys.contains(attrCompoundLeft) && foreignKeys.contains(attrCompoundRight)) ||
+          (primaryKeys.contains(attrCompoundRight) && foreignKeys.contains(attrCompoundLeft))
+      }
+
+
     }
 
     private def translateJoinView(left: LogicalPlan, right: LogicalPlan, joinCond: Expression, childView: Option[LogicalPlan]) = {

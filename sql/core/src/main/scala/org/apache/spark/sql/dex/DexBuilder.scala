@@ -21,13 +21,14 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex, createHashIndex}
+import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createHashIndex, createTreeIndex}
 import org.apache.spark.sql.dex.DexConstants.{AttrName, JoinableAttrs, TableAttribute, TableAttributeAtom, TableAttributeCompound, TableName}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, row_number, udf}
 import org.apache.spark.util.Utils
 import org.apache.spark.sql.functions.{col, concat, lit}
+import org.apache.spark.util.collection.BitSet
 
 object DexBuilder {
   def createHashIndex(conn: Connection, tableName: String, col: String): Unit = {
@@ -92,8 +93,14 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   }
 
   private def compoundKeyCol(c: TableAttributeCompound): Column = {
+    def sieve(s: Stream[Int]): Stream[Int] = {
+      s.head #:: sieve(s.tail.filter(_ % s.head != 0))
+    }
+    val primes = sieve(Stream.from(2))
+    val uniquePrimeFactorization = c.attrs.map(col).zip(primes).map(x => x._1 * x._2).reduce((x, y) => x + y)
+    uniquePrimeFactorization
     // Use '&' to distinguish 1 || 12 collision with 11 || 2
-    concat(c.attrs.flatMap(x => Seq(col(x), lit("_and_"))).dropRight(1): _*)
+    //concat(c.attrs.flatMap(x => Seq(col(x), lit("_and_"))).dropRight(1): _*)
   }
 
   private def pkCol(pk: PrimaryKey): Column = pk.attr match {
@@ -200,7 +207,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
   }
 
-  private def nonKey(pk: PrimaryKey, fks: Set[ForeignKey], c: String) = {
+  private def nonKey(pk: PrimaryKey, fks: Set[ForeignKey], c: String): Boolean = {
     val nonPk = pk match {
       case PrimaryKey(attr: TableAttributeAtom) => c != attr.attr
       case PrimaryKey(attr: TableAttributeCompound) => c != attr.attr && !attr.attrs.contains(c)
