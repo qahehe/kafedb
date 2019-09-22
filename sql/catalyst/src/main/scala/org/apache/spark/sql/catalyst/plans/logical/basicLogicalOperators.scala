@@ -58,7 +58,7 @@ abstract class DexPlan(child: LogicalPlan) extends OrderPreservingUnaryNode {
 }
 
 case class SpxPlan(child: LogicalPlan) extends DexPlan(child)
-case class DexCorrelationPlan(child: LogicalPlan) extends DexPlan(child)
+case class DexCorrelationPlan(child: LogicalPlan, compoundKeys: Set[String]) extends DexPlan(child)
 case class DexDomainPlan(child: LogicalPlan) extends DexPlan(child)
 
 case class DexPkFkPlan(child: LogicalPlan,

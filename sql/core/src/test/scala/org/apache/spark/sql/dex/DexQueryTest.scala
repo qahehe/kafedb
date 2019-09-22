@@ -21,6 +21,7 @@ import java.sql.DriverManager
 import java.util.Properties
 
 import org.apache.spark.sql.QueryTest
+import org.apache.spark.sql.dex.DexConstants.TableAttributeCompound
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.util.Utils
@@ -30,6 +31,11 @@ trait DexQueryTest extends DexTest {
   lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
   lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
   lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
+
+  lazy val compoundKeys = Set(
+    TableAttributeCompound("testdata4", Seq("e", "f")), TableAttributeCompound("testdata2", Seq("a", "b"))
+  )
+  lazy val cks = compoundKeys.map(_.attr)
 
   /*lazy val fact1 = spark.read.jdbc(url, "test_fact1", properties)
   lazy val dim1 = spark.read.jdbc(url, "test_dim1", properties)
@@ -146,6 +152,7 @@ trait DexQueryTest extends DexTest {
     conn.commit()*/
 
     if (provideEncryptedData) {
+      // todo: make rid start from 0, to be conssitent with DexBuilder
       connEnc.prepareStatement("create table testdata2_prf (rid varchar, a_prf varchar, b_prf varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
@@ -345,7 +352,12 @@ trait DexQueryTest extends DexTest {
           |
           |('testdata3~c~testdata4~e~3~0', '1_enc'),
           |('testdata3~c~testdata4~e~3~1', '2_enc'),
-          |('testdata3~c~testdata4~e~3~2', '3_enc')
+          |('testdata3~c~testdata4~e~3~2', '3_enc'),
+          |
+          |('testdata4~e_and_f~testdata2~a_and_b~1~0','3_enc'),
+          |('testdata4~e_and_f~testdata2~a_and_b~2~0','4_enc'),
+          |('testdata2~a_and_b~testdata4~e_and_f~4~0','2_enc'),
+          |('testdata2~a_and_b~testdata4~e_and_f~3~0','1_enc')
         """.stripMargin)
         .executeUpdate()
       connEnc.commit()

@@ -183,6 +183,11 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query2, query2.dex)
   }
 
+  test("dex compound key join") {
+    val query1 = data2.join(data4).where("a == e and b == f")
+    checkDexFor(query1, query1.dex(cks))
+  }
+
   test("jdbc rdd internal rows are unmaterialized cursors") {
     val expected = Seq((1, 1), (1, 2), (2, 3))
     val unsafeRowHeaderRepr = 0

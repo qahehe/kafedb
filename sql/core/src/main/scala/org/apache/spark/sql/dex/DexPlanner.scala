@@ -701,7 +701,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         SpxTranslator(p)
       case p: DexCorrelationPlan =>
         log.warn("dexPlan=DexCorrelationPlan")
-        DexCorrelationTranslator(p)
+        DexCorrelationTranslator(p, p.compoundKeys)
       case p: DexDomainPlan =>
         log.warn("dexPlan=DexDomainPlan")
         DexDomainTranslator(p)
@@ -740,7 +740,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         case p: SpxPlan =>
           SpxPlan(newChild)
         case p: DexCorrelationPlan =>
-          DexCorrelationPlan(newChild)
+          DexCorrelationPlan(newChild, p.compoundKeys)
         case p: DexDomainPlan =>
           DexDomainPlan(newChild)
         case p: DexPkFkPlan =>
@@ -807,7 +807,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       }
     }
 
-    protected def tableNameFromLogicalRelation(relation: LogicalRelation) = relation.relation match {
+    protected def tableNameFromLogicalRelation(relation: LogicalRelation): String = relation.relation match {
       case j: JDBCRelation =>
         j.jdbcOptions.tableOrQuery
       case h: HadoopFsRelation =>
@@ -974,7 +974,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  case class DexCorrelationTranslator(dexPlan: DexPlan) extends RidFilterBasedTranslator(dexPlan) {
+  case class DexCorrelationTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends RidFilterBasedTranslator(dexPlan) {
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
@@ -1022,6 +1022,41 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         case x => throw DexException("unsupported: (None, None)")
       }
+    }
+
+    override protected def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = plan match {
+      case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
+        val joinCompoundCond = {
+          val attrLefts = j.condition.get.collect {
+            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
+          }
+          val attrRights = j.condition.get.collect {
+            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
+          }
+          require(attrLefts.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
+          require(attrRights.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
+          val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
+          val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
+          // Hack: reuse the expr id for one of attrLefts and one of attrRights so that exprIdToTable works later
+          EqualTo(attrLefts.head.withName(attrCompoundLeft), attrRights.head.withName(attrCompoundRight))
+        }
+        val compoundJoinPlan = j.copy(condition = Some(joinCompoundCond))
+        translatePlan(compoundJoinPlan, childView)
+
+      case _ => super.translatePlan(plan, childView)
+    }
+
+    private def isCompoundKeyJoin(condition: Expression): Boolean = {
+      val attrLefts = condition.collect {
+        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
+      }
+      val attrRights = condition.collect {
+        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
+      }
+      val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
+      val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
+      attrLefts.size > 1 && attrRights.size > 1 &&
+        compoundKeys.contains(attrCompoundLeft) && compoundKeys.contains(attrCompoundRight)
     }
   }
 
