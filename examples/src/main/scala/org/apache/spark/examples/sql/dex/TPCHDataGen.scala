@@ -87,6 +87,11 @@ object TPCHDataGen {
     ForeignKey(TableAttributeAtom("orders", "o_custkey"), TableAttributeAtom("customer", "c_custkey")),
     ForeignKey(TableAttributeAtom("lineitem", "l_orderkey"), TableAttributeAtom("orders", "o_orderkey"))
   )
+  val compoundKeys = primaryKeys.collect {
+    case pk if pk.attr.isInstanceOf[TableAttributeCompound] => pk.attr
+  } union foreignKeys.collect {
+    case fk if fk.attr.isInstanceOf[TableAttributeCompound] => fk.attr
+  }
 
   def newSparkSession(name: String): SparkSession = SparkSession
     .builder()
@@ -172,8 +177,10 @@ object TPCHDataGen {
         println(s"\nBuilding DEX for $benchmark into Postgres from $location")
         emmMode match {
           case "standalone" =>
+            println("emmMode=standalone")
             buildDexStandalone(spark, tables)
           case "pkfk" =>
+            println("emmMode=pkfk")
             buildDexPkFk(spark, tables)
         }
 
