@@ -1557,7 +1557,7 @@ object SQLConf {
 
   val DEX_TRANSLATION_MODE =
     buildConf("spark.sql.dex.translationMode")
-    .doc("Spx, DexCorrelation")
+    .doc("Spx, DexCorrelation, DexDomain")
     .withAlternative("Spx")
     .withAlternative("DexCorrelation")
     .withAlternative("DexDomain")
