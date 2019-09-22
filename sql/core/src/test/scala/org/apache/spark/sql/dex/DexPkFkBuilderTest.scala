@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 package org.apache.spark.sql.dex
-
-import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey}
-import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
 // scalastyle:off
 
 class DexPkFkBuilderTest extends DexTPCHTest {
@@ -29,27 +26,18 @@ class DexPkFkBuilderTest extends DexTPCHTest {
     val nameToDf = Map(
       "partsupp" -> partsupp,
       "part" -> part,
-      "supplier" -> supplier
-    )
-
-    val primaryKeys = Set(
-      PrimaryKey(TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey"))),
-      PrimaryKey(TableAttributeAtom("part", "p_partkey")),
-      PrimaryKey(TableAttributeAtom("supplier", "s_suppkey"))
-    )
-    val foreignKeys = Set(
-      ForeignKey(TableAttributeAtom("partsupp", "ps_partkey"), TableAttributeAtom("part", "p_partkey")),
-      ForeignKey(TableAttributeAtom("partsupp", "ps_suppkey"), TableAttributeAtom("supplier", "s_suppkey"))
+      "supplier" -> supplier,
+      "lineitem" -> lineitem
     )
 
     dexPkfkBuilder.buildPkFkSchemeFromData(nameToDf, primaryKeys, foreignKeys)
 
-    val partsuppDex = spark.read.jdbc(urlEnc, "partsupp_prf", properties)
-    val partDex = spark.read.jdbc(urlEnc, "part_prf", properties)
-    val supplierDex = spark.read.jdbc(urlEnc, "supplier_prf", properties)
-
-    println("partsuppDex: \n" + partsuppDex.columns.mkString(",") + "\n" + partsuppDex.collect().mkString("\n"))
-    println("partDex: \n" + partDex.columns.mkString(",") + "\n" + partDex.collect().mkString("\n"))
-    println("supplierDex: \n" + supplierDex.columns.mkString(",") + "\n" + supplierDex.collect().mkString("\n"))
+    nameToDf.keys.foreach { t =>
+      val tEnc = s"${t}_prf"
+      val dfEnc = spark.read.jdbc(urlEnc, tEnc, properties)
+      println(tEnc + ": \n"
+        + dfEnc.columns.mkString(",") + "\n"
+        + dfEnc.collect().mkString("\n"))
+    }
   }
 }

@@ -61,7 +61,7 @@ object DexConstants {
   }
   case class TableAttributeAtom(table: TableName, attr: AttrName) extends TableAttribute
   case class TableAttributeCompound(table: TableName, attrs: Seq[AttrName]) extends TableAttribute {
-    override def attr: AttrName = attrs.mkString("")
+    override def attr: AttrName = attrs.mkString("_and_")
   }
 }
 

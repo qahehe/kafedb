@@ -91,6 +91,16 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     (pk, fks)
   }
 
+  private def compoundKeyCol(c: TableAttributeCompound): Column = {
+    // Use '&' to distinguish 1 || 12 collision with 11 || 2
+    concat(c.attrs.flatMap(x => Seq(col(x), lit("_and_"))).dropRight(1): _*)
+  }
+
+  private def pkCol(pk: PrimaryKey): Column = pk.attr match {
+    case a: TableAttributeAtom => col(a.attr)
+    case c: TableAttributeCompound => compoundKeyCol(c)
+  }
+
   private def encColName(t: TableName, c: AttrName): String = s"${c}_prf"
 
   def buildPkFkSchemeFromData(nameToDf: Map[TableName, DataFrame],
@@ -124,14 +134,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             }
         }
         def encDataColNamesOf(t: TableName, d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
-        case c if nonKey(pk, fks, c) =>
-          encColName(t, c)
-      }
-
-        def pkCol(pk: PrimaryKey): Column = pk.attr match {
-          case a: TableAttributeAtom => col(a.attr)
-          case c: TableAttributeCompound => concat(c.attrs.map(col): _*)
+          case c if nonKey(pk, fks, c) =>
+            encColName(t, c)
         }
+
         def pfkCol(fk: ForeignKey): Column = {
           def labelOf(c: Column): Column = concat(
             lit(fk.ref.table), lit("~"), lit(fk.attr.table), lit("~"), c, lit("~"),
@@ -139,7 +145,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           )
           fk.attr match {
             case a: TableAttributeAtom => labelOf(col(a.attr))
-            case c: TableAttributeCompound => labelOf(concat(c.attrs.map(col):_*))
+            case c: TableAttributeCompound => labelOf(compoundKeyCol(c))
           }
         }
         def fpkCol(fk: ForeignKey, pk: PrimaryKey): Column = {
@@ -150,7 +156,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           )
           fk.attr match {
             case a: TableAttributeAtom => labelOf(col(a.attr))
-            case c: TableAttributeCompound => labelOf(concat(c.attrs.map(col):_*))
+            case c: TableAttributeCompound => labelOf(compoundKeyCol(c))
           }
         }
         def valCol(t: TableName, c: AttrName): Column = concat(
@@ -195,12 +201,39 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   }
 
   private def nonKey(pk: PrimaryKey, fks: Set[ForeignKey], c: String) = {
-    c != pk.attr.attr && !fks.map(_.attr.attr).contains(c)
+    val nonPk = pk match {
+      case PrimaryKey(attr: TableAttributeAtom) => c != attr.attr
+      case PrimaryKey(attr: TableAttributeCompound) => c != attr.attr && !attr.attrs.contains(c)
+    }
+    val nonFk = fks.forall {
+      case ForeignKey(attr: TableAttributeAtom, attrRef: TableAttributeAtom) =>
+        c != attr.attr && c != attrRef.attr
+      case ForeignKey(attr: TableAttributeCompound, attrRef: TableAttributeCompound) =>
+        c != attr.attr && !attr.attrs.contains(c) && c != attrRef.attr && !attrRef.attrs.contains(c)
+      case _ => throw DexException("unsupported")
+    }
+    nonPk && nonFk
   }
 
-  def buildFromData(nameToDf: Map[TableName, DataFrame], joins: Seq[JoinableAttrs], primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Unit = {
+  def buildFromData(nameToDf: Map[TableName, DataFrame], primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
-      n -> d.withColumn("rid", monotonically_increasing_id()).cache()
+      val ridDf = d.withColumn("rid", monotonically_increasing_id()).cache()
+      val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
+      val ridPkDf = pk.attr match {
+        case c: TableAttributeCompound =>
+          ridDf.withColumn(c.attr, pkCol(pk))
+        case a: TableAttributeAtom =>
+          ridDf
+      }
+      val ridPkFkDf = fks.foldLeft(ridPkDf) {
+        case (df, fk) => fk.attr match {
+          case c: TableAttributeCompound =>
+            df.withColumn(c.attr, compoundKeyCol(c))
+          case a: TableAttributeAtom =>
+            df
+        }
+      }
+      n -> ridPkFkDf
     }
 
     val encNameToEncDf = nameToRidDf.map { case (n, r) =>
@@ -252,20 +285,23 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
     val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)*/
 
-    val bothSideJoins = joins ++ joins.map(j => (j._2, j._1))
     val tCorrJoinDfParts = for {
-      (attrLeft, attrRight) <- bothSideJoins
+      ForeignKey(attr, attrRef) <- foreignKeys
     } yield {
-      val udfJoinPred = udf(joinPredicateOf(attrLeft, attrRight) _)
-      val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
-      dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
-        //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
-        //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
-        .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
-        .withColumn("predicate", udfRandPred(udfJoinPred($"rid_left")))
-        .withColumn("label", udfLabel($"predicate", $"counter"))
-        .withColumn("value", udfValue($"rid_right"))
-        .select("label", "value")
+      def joinFor(attrLeft: TableAttribute, attrRight: TableAttribute): DataFrame = {
+        val udfJoinPred = udf(joinPredicateOf(attrLeft, attrRight) _)
+        val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
+        require(dfLeft.columns.contains(attrLeft.attr) && dfRight.columns.contains(attrRight.attr), s"${attrLeft.attr} and ${attrRight.attr}")
+        dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
+          //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
+          //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
+          .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
+          .withColumn("predicate", udfRandPred(udfJoinPred($"rid_left")))
+          .withColumn("label", udfLabel($"predicate", $"counter"))
+          .withColumn("value", udfValue($"rid_right"))
+          .select("label", "value")
+      }
+      joinFor(attr, attrRef) union joinFor(attrRef, attr)
     }
     val tCorrJoinDf = tCorrJoinDfParts.reduce((d1, d2) => d1 union d2)
 
@@ -284,8 +320,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         createTreeIndex(encConn, n, "rid")
       }
       createTreeIndex(encConn, DexConstants.tFilterName, "label")
-      createTreeIndex(encConn, DexConstants.tDomainName, "label")
-      createTreeIndex(encConn, DexConstants.tUncorrJoinName, "label")
+      //createTreeIndex(encConn, DexConstants.tDomainName, "label")
+      //createTreeIndex(encConn, DexConstants.tUncorrJoinName, "label")
       createTreeIndex(encConn, DexConstants.tCorrJoinName, "label")
 
       encConn.prepareStatement("analyze").execute()

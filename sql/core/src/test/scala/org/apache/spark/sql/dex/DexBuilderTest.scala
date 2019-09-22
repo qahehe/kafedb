@@ -17,7 +17,8 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import org.apache.spark.sql.dex.DexConstants.TableAttributeAtom
+import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey}
+import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
 
 
 class DexBuilderTest extends DexQueryTest {
@@ -32,22 +33,24 @@ class DexBuilderTest extends DexQueryTest {
       "testdata4" -> data4
     )
 
-    val joins = Seq(
-      (TableAttributeAtom("testdata2", "a"), TableAttributeAtom("testdata3", "c"))
+    val primaryKeys = Set(
+      PrimaryKey(TableAttributeCompound("testdata2", Seq("a", "b"))),
+      PrimaryKey(TableAttributeAtom("testdata3", "d")),
+      PrimaryKey(TableAttributeAtom("testdata4", "f"))
     )
 
-    dexBuilder.buildFromData(nameToDf, joins)
+    val foreignKeys = Set(
+      ForeignKey(TableAttributeAtom("testdata2", "a"), TableAttributeAtom("testdata3", "c")),
+      ForeignKey(TableAttributeCompound("testdata4", Seq("e", "f")), TableAttributeCompound("testdata2", Seq("a", "b")))
+    )
 
-    val testData2Enc = spark.read.jdbc(urlEnc, "testdata2_prf", properties)
-    val tFilter = spark.read.jdbc(urlEnc, "t_filter", properties)
-    val tDomain = spark.read.jdbc(urlEnc, "t_domain", properties)
-    val tUncorrJoin = spark.read.jdbc(urlEnc, "t_uncorrelated_join", properties)
-    val tCorrJoin = spark.read.jdbc(urlEnc, "t_correlated_join", properties)
+    dexBuilder.buildFromData(nameToDf, primaryKeys, foreignKeys)
 
-    println("testData2Enc: \n" + testData2Enc.collect().mkString("\n"))
-    println("t_filter: \n" + tFilter.collect().mkString("\n"))
-    println("t_domain: \n" + tDomain.collect().mkString("\n"))
-    println("t_uncorrelated_join: \n" + tUncorrJoin.collect().mkString("\n"))
-    println("t_correlated_join: \n" + tCorrJoin.collect().mkString("\n"))
+    Seq("testdata2_prf", "testdata3_prf", "testdata4_prf", "t_filter", "t_correlated_join").foreach { t =>
+      val df = spark.read.jdbc(urlEnc, t, properties)
+      println(t + ": \n"
+        + df.columns.mkString(",") + "\n"
+        + df.collect().mkString("\n"))
+    }
   }
 }
