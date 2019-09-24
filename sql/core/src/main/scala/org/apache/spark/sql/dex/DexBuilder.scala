@@ -200,10 +200,18 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           encIndexColNames.foreach { c =>
             createTreeIndex(encConn, encTableName, c)
           }
-          encConn.prepareStatement("analyze").execute()
+          //encConn.prepareStatement(s"analyze $encTableName").execute()
         } finally {
           encConn.close()
         }
+    }
+
+    Utils.classForName("org.postgresql.Driver")
+    val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
+    try {
+      encConn.prepareStatement(s"analyze").execute()
+    } finally {
+      encConn.close()
     }
   }
 

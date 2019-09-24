@@ -483,6 +483,19 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_ppk_filter
            |)
          """.stripMargin
+        /*s"""
+           |(
+           |  WITH RECURSIVE child_view AS (
+           |    ${convertToSQL(f.child)}
+           |  ),
+           |  dex_ppk_filter AS (
+           |    SELECT child_view.*, ${DexConstants.cashCounterStart} AS counter, 1 AS gap FROM child_view WHERE $labelCol = ${nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")}
+           |    UNION ALL
+           |    SELECT child_view.*, dex_ppk_filter.counter + gap AS counter, 2 * gap AS gap FROM child_view, dex_ppk_filter WHERE child_view.$labelCol = ${nextLabel(labelPrfKey, "dex_ppk_filter.counter + gap")}
+           |  )
+           |  SELECT $outputCols FROM dex_ppk_filter
+           |)
+         """.stripMargin*/
 
       case j: DexPseudoPrimaryKeyJoin =>
         val labelCol = j.labelColumn.dialectSql(dialect.quoteIdentifier)
@@ -1234,7 +1247,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumn).cast(LongType) === rightRidOrder))
             .select(star())
 
-        case x => ??? // todo: handle nonkey join using t_domain
+        case (taL, taR) => throw DexException("unsupported: " + taL.toString + ", " + taR.toString) // todo: handle nonkey join using t_domain
       }
     }
   }
