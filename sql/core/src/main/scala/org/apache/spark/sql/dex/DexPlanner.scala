@@ -457,6 +457,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val labelPrfKey = emmKeyForPrimaryKeyFilter(f.predicate)
         val labelCol = f.labelColumn.dialectSql(dialect.quoteIdentifier)
         val outputCols = f.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val ridOrder = f.filterTableRid.dialectSql(dialect.quoteIdentifier)
         /*s"""
            |(
            |  WITH RECURSIVE child_view AS (
@@ -470,7 +471,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM t INNER JOIN child_view ON label = $labelCol
            |)
          """.stripMargin*/
-        s"""
+        /*s"""
            |(
            |  WITH RECURSIVE child_view AS (
            |    ${convertToSQL(f.child)}
@@ -482,7 +483,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
            |)
-         """.stripMargin
+         """.stripMargin*/
         /*s"""
            |(
            |  WITH RECURSIVE child_view AS (
@@ -496,6 +497,16 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_ppk_filter
            |)
          """.stripMargin*/
+        s"""
+           |(
+           |  WITH RECURSIVE dex_ppk_filter($ridOrder, counter) AS (
+           |    SELECT ${f.filterTableName}.rid, ${DexConstants.cashCounterStart} AS counter FROM ${f.filterTableName} WHERE $labelCol = ${nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")}
+           |    UNION ALL
+           |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelCol = ${nextLabel(labelPrfKey, "dex_ppk_filter.counter + 1")}
+           |  )
+           |  SELECT $outputCols FROM dex_ppk_filter
+           |)
+         """.stripMargin
 
       case j: DexPseudoPrimaryKeyJoin =>
         val labelCol = j.labelColumn.dialectSql(dialect.quoteIdentifier)
@@ -1214,9 +1225,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       // output schema: childView's schema
       // todo: projection pushdown
       // todo: add t_e column?  Can eliminnate this left semi join
+      val encPredicateTableName = tableEncNameOf(predicateTableName)
       val encPredicateTable = tableEncWithRidOrderOf(predicateTableName)
       childView.join(
-        DexPseudoPrimaryKeyFilter(predicate, labelCol, encPredicateTable),
+        DexPseudoPrimaryKeyFilter(predicate, labelCol, encPredicateTableName, encPredicateTable, $"$ridOrder"),
         UsingJoin(LeftSemi, Seq(ridOrder))
       )
     }
