@@ -511,11 +511,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case j: DexPseudoPrimaryKeyJoin =>
         val labelCol = j.labelColumn.dialectSql(dialect.quoteIdentifier)
         val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
-        val leftChildViewOutputCols = j.leftChildView.output.map(x => s"dex_ppk_join.${x.dialectSql(dialect.quoteIdentifier)}").mkString(", ")
+        val (leftRid, rightRid) = (j.leftTableRid.dialectSql(dialect.quoteIdentifier), j.rightTableRid.dialectSql(dialect.quoteIdentifier))
         // first generate labelPrfKeys for each primary key
         // Question 1: join left child view and right child view each recursion or join right child view after all recursions?
         // Question 2: join left child view or join from left table? Left child view might have been joined with other tables already
-        s"""
+        /*s"""
            |(
            |  WITH RECURSIVE left_child_view AS (
            |    ${convertToSQL(j.leftChildView)}
@@ -533,6 +533,22 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    SELECT $leftChildViewOutputCols, right_child_view.*, counter + 1 AS counter
            |    FROM dex_ppk_join, right_child_view
            |    WHERE ${nextLabel(emmKeyColOfPrimaryKeyJoin(prfKey, j.leftChildViewRid, j.predicate), "counter + 1")} = right_child_view.$labelCol
+           |  )
+           |  SELECT $outputCols FROM dex_ppk_join
+           |)
+         """.stripMargin*/
+        s"""
+           |(
+           |  WITH RECURSIVE dex_ppk_join($leftRid, $rightRid, counter) AS (
+           |    SELECT ${j.leftTableName}.rid, ${j.rightTableName}.rid, ${DexConstants.cashCounterStart} AS counter
+           |    FROM ${j.leftTableName}, ${j.rightTableName}
+           |    WHERE ${nextLabel(emmKeyColOfPrimaryKeyJoin(prfKey, s"${j.leftTableName}.rid", j.predicate), s"${DexConstants.cashCounterStart}")} = $labelCol
+           |
+           |    UNION ALL
+           |
+           |    SELECT $leftRid, ${j.rightTableName}.rid, counter + 1 AS counter
+           |    FROM dex_ppk_join, ${j.rightTableName}
+           |    WHERE ${nextLabel(emmKeyColOfPrimaryKeyJoin(prfKey, leftRid, j.predicate), "counter + 1")} = $labelCol
            |  )
            |  SELECT $outputCols FROM dex_ppk_join
            |)
@@ -584,9 +600,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       (dialect.compileValue(predicate).asInstanceOf[String],
         dialect.compileValue(predicate).asInstanceOf[String])
 
-    private def emmKeyColOfPrimaryKeyJoin(prfKey: String, primaryKeyCol: Attribute, predicate: String): String = {
+    private def emmKeyColOfPrimaryKeyJoin(prfKey: String, primaryKeyCol: String, predicate: String): String = {
       //Concat(Seq(predicate, "~", primaryKeyCol)).dialectSql(dialect.quoteIdentifier)
-      s"'$predicate' || '~' || ${primaryKeyCol.dialectSql(dialect.quoteIdentifier)}"
+      s"'$predicate' || '~' || $primaryKeyCol"
     }
 
     private def emmKeyForPrimaryKeyFilter(predicate: String): String =
@@ -1248,7 +1264,13 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           // primary to foreign key join, e.g. supplier.s_suppkey = partsupp.ps_suppkey
           val labelColumn = $"pfk_${taP.table}_${taF.table}_prf"
           val predicate = s"${taP.table}~${taF.table}"
-          DexPseudoPrimaryKeyJoin(predicate, labelColumn, leftChildView, leftRidOrder, rightChildView)
+          //DexPseudoPrimaryKeyJoin(predicate, labelColumn, leftChildView, leftRidOrder, rightChildView)
+          val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(taP.table), tableEncWithRidOrderOf(taF.table))
+          val (taPEncName, taFEncName) = (tableEncNameOf(taP.table), tableEncNameOf(taF.table))
+          leftChildView.join(
+            DexPseudoPrimaryKeyJoin(predicate, labelColumn, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
+            NaturalJoin(Inner)
+          ).join(rightChildView, NaturalJoin(Inner))
 
         case (taF, taP) if foreignKeys.contains(taF.attr) && primaryKeys.contains(taP.attr) =>
           // foreign to primary key join, e.g. partsupp.ps_suppkey = supplier.s_suppkey
