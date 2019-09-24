@@ -62,8 +62,8 @@ object TPCHBench {
     val orders = nameToDfForDex("orders")
     val lineitem = nameToDfForDex("lineitem")
 
-    def benchQuery(spark: SparkSession, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
-      println(s"\nBench query=\n$query")
+    def benchQuery(title: String, spark: SparkSession, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
+      println(s"\n$title=\n$query")
       time {
         //val sparkResult = queryDf.count()
         //println(s"spark result size=${sparkResult}")
@@ -77,7 +77,7 @@ object TPCHBench {
           case "standalone" => queryDf.dex(cks)
           case "pkfk" => queryDf.dexPkFk(pks, fks)
         })
-        println(s"dex result size=${dexResult.count()}")
+        println(s"dex-$emmMode result size=${dexResult.count()}")
       }
     }
 
@@ -85,11 +85,11 @@ object TPCHBench {
     // TPCH Query 2
     val q2a = "select r_comment from region where r_name = 'EUROPE'"
     val q2aDf = region.where("r_name == 'EUROPE'")
-    benchQuery(spark, q2a, q2aDf)
+    benchQuery("q2a", spark, q2a, q2aDf)
 
     val q2b = "select n_name from region, nation where r_regionkey = n_regionkey"
     val q2bDf = region.join(nation).where("r_regionkey = n_regionkey").select("n_name")
-    benchQuery(spark, q2b, q2bDf)
+    benchQuery("q2b", spark, q2b, q2bDf)
 
     val q2c =
       """
@@ -115,17 +115,17 @@ object TPCHBench {
       .join(nation).where("s_nationkey == n_nationkey")
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
     val q2cDf = q2cMain
-    benchQuery(spark, q2c, q2cDf)
+    benchQuery("q2c", spark, q2c, q2cDf)
 
     val q2c2Df = partsupp.join(part).where("ps_partkey == p_partkey and p_size == 15")
       .join(supplier).where("ps_suppkey == s_suppkey")
       .join(nation).where("s_nationkey == n_nationkey")
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
-    benchQuery(spark, q2c, q2c2Df)
+    benchQuery("q2c2", spark, q2c, q2c2Df)
 
     val q2d = "select * from part where p_size = 15"
     val q2dDf = part.where("p_size == 15")
-    benchQuery(spark, q2d, q2dDf)
+    benchQuery("q2d", spark, q2d, q2dDf)
 
     val q2e =
       """
@@ -137,13 +137,15 @@ object TPCHBench {
         |where
         |  p_partkey = ps_partkey
       """.stripMargin
-    //val q2eMain = part.join(partsupp).where("p_partkey == ps_partkey")
     val q2eMain = partsupp.join(part).where("ps_partkey == p_partkey")
-        //.where("p_size == 15")
         .select("ps_supplycost")
     val q2eDf = q2eMain
     //val q2eDex = q2eMain.dexPkFk(pks, fks)
-    benchQuery(spark, q2e, q2eDf)
+    benchQuery("q2e", spark, q2e, q2eDf)
+
+    val q2e2Df = part.join(partsupp).where("p_partkey == ps_partkey")
+      .select("ps_supplycost")
+    benchQuery("q2e2", spark, q2e, q2e2Df)
 
     println("\n Q5")
     val q5a =
@@ -163,13 +165,13 @@ object TPCHBench {
         .join(customer).where("n_nationkey == c_nationkey")
         .join(supplier).where("n_nationkey == s_nationkey")
     //val q5aDex = q5aDf.dexPkFk(pks, fks)
-    benchQuery(spark, q5a, q5aDf)
+    benchQuery("q5a", spark, q5a, q5aDf)
 
     val q5a2Df = supplier.join(
       customer.join(nation).where("c_nationkey == n_nationkey")
         .join(region).where("n_regionkey == r_regionkey and r_name == 'ASIA'")
     ).where("s_nationkey == n_nationkey")
-    benchQuery(spark, q5a, q5a2Df)
+    benchQuery("q5a2", spark, q5a, q5a2Df)
 
     val q5b =
       """
@@ -187,14 +189,14 @@ object TPCHBench {
       .join(customer).where("n_nationkey == c_nationkey")
       .join(supplier).where("n_nationkey == s_nationkey")
     //val q5bDex = q5bDf.dexPkFk(pks, fks)
-    benchQuery(spark, q5b, q5bDf)
+    benchQuery("q5b", spark, q5b, q5bDf)
 
     val q5b2Df =
       supplier.join(
         customer.join(nation).where("c_nationkey == n_nationkey")
       ).where("s_nationkey == n_nationkey")
         .join(region).where("n_regionkey == r_regionkey")
-    benchQuery(spark, q5b, q5b2Df)
+    benchQuery("q5b2", spark, q5b, q5b2Df)
 
     spark.stop()
   }
