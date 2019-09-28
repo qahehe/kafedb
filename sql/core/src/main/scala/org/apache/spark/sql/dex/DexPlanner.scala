@@ -334,6 +334,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val (labelPrfKey, valueDecKey) = emmKeysOfRidCol(prfKey, leftRid, j.predicate)
         val emm = dialect.quoteIdentifier(tCorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         val outputCols = j.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val leftSubqueryOutputCols = j.left.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
 
         // Semantically what we want is that for each (unique) leftRid to join in leftSubquery, find out what are the
         // rightRid to join in t_correlated_join, and for the rows that are already associated with leftRid, copy
@@ -344,7 +345,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // join the result back with rows associated with leftRid in left_subquery_all_cols.
         // If we can do the row projection replacement, then we can also express the computation without the lastly natural
         // join with left_sbuquery_all_cols, but potentially with duplicate calls to t_correlated_join.
-        s"""
+        /*s"""
            |(
            |  WITH RECURSIVE left_subquery_all_cols AS (
            |   $leftSubquery
@@ -366,7 +367,30 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join NATURAL JOIN left_subquery_all_cols
            |) AS ${generateSubqueryName()}
+         """.stripMargin*/
+
+
+        s"""
+           |(
+           |  WITH RECURSIVE left_subquery AS (
+           |   SELECT $leftSubqueryOutputCols, $labelPrfKey as label_prf_key, $valueDecKey as value_dec_key FROM ($leftSubquery) AS ${generateSubqueryName()}
+           |  ),
+           |  dex_rid_correlated_join AS (
+           |    SELECT $leftSubqueryOutputCols, label_prf_key, value_dec_key, $emm.value AS value, ${DexConstants.cashCounterStart} AS counter
+           |    FROM left_subquery, $emm
+           |    WHERE $emm.label =
+           |      ${nextLabel("label_prf_key", s"${DexConstants.cashCounterStart}")}
+           |
+           |    UNION ALL
+           |
+           |    SELECT $leftSubqueryOutputCols, label_prf_key, value_dec_key, $emm.value AS value, counter + 1 AS counter
+           |    FROM dex_rid_correlated_join, $emm
+           |    WHERE $emm.label = ${nextLabel("label_prf_key", "counter + 1")}
+           |  )
+           |  SELECT $outputCols FROM dex_rid_correlated_join
+           |) AS ${generateSubqueryName()}
          """.stripMargin
+
       case v: DexDomainValues =>
         val (labelPrfKey, valueDecKey) = emmKeys(v.predicate)
         val firstLabel = nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")
@@ -987,7 +1011,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  abstract class RidFilterBasedTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
+  abstract class StandaloneTFilterBasedTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
     override protected def dexFilterOf(predicateTableName: String, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val predicate = s"$predicateTableName~$predicateColName~$predicateValue"
       val ridFilter = DexRidFilter(predicate, tFilter)
@@ -1002,7 +1026,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  case class SpxTranslator(dexPlan: DexPlan) extends RidFilterBasedTranslator(dexPlan) {
+  case class SpxTranslator(dexPlan: DexPlan) extends StandaloneTFilterBasedTranslator(dexPlan) {
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
@@ -1014,7 +1038,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  case class DexCorrelationTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends RidFilterBasedTranslator(dexPlan) {
+  case class DexCorrelationTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends StandaloneTFilterBasedTranslator(dexPlan) {
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
@@ -1100,7 +1124,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  case class DexDomainTranslator(dexPlan: DexPlan) extends RidFilterBasedTranslator(dexPlan) {
+  case class DexDomainTranslator(dexPlan: DexPlan) extends StandaloneTFilterBasedTranslator(dexPlan) {
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get

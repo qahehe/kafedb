@@ -210,6 +210,18 @@ trait DexQueryTest extends DexTest {
           .executeUpdate()
       connEnc.commit()
 
+      /*connEnc.prepareStatement("create table t_existence(label varchar)")
+          .executeUpdate()
+      connEnc.prepareStatement(
+        """
+          |insert into t_existence values
+          |('testdata2~1~a~1'), ('testdata2~1~b~1'),
+          |('testdata2~2~a~'), ('testdata2~2~b'),
+          |('testdata2~3~a~'), ('testdata2~3~b'),
+          |('testdata2~4~a~'), ('testdata2~4~b'),
+        """.stripMargin)
+          .executeUpdate()*/
+
       /*connEnc.prepareStatement("create table t_fk_pk(label varchar, value varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
