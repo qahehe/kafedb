@@ -23,7 +23,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 object TPCHBench {
 
   def main(args: Array[String]): Unit = {
-    require(args.length == 2)
+    require(args.length == 1)
     val emmMode = args(0)
     require(TPCHDataGen.emmModes.contains(emmMode))
 
