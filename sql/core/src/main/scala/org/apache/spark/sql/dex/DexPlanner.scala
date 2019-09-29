@@ -345,7 +345,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // join the result back with rows associated with leftRid in left_subquery_all_cols.
         // If we can do the row projection replacement, then we can also express the computation without the lastly natural
         // join with left_sbuquery_all_cols, but potentially with duplicate calls to t_correlated_join.
-        /*s"""
+        s"""
            |(
            |  WITH RECURSIVE left_subquery_all_cols AS (
            |   $leftSubquery
@@ -367,10 +367,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join NATURAL JOIN left_subquery_all_cols
            |) AS ${generateSubqueryName()}
-         """.stripMargin*/
+         """.stripMargin
 
 
-        s"""
+        /*s"""
            |(
            |  WITH RECURSIVE left_subquery AS (
            |   SELECT $leftSubqueryOutputCols, $labelPrfKey as label_prf_key, $valueDecKey as value_dec_key FROM ($leftSubquery) AS ${generateSubqueryName()}
@@ -389,7 +389,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join
            |) AS ${generateSubqueryName()}
-         """.stripMargin
+         """.stripMargin*/
 
       case v: DexDomainValues =>
         val (labelPrfKey, valueDecKey) = emmKeys(v.predicate)
@@ -1042,8 +1042,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
-      val predicate = s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
-      def newRidJoinOf(l: Attribute, rightRidOrder: String) = {
+
+      def predicateOf(joinAttrs: JoinAttrs, reverse: Boolean): String = {
+        if (reverse)
+          s"${joinAttrs.rightTableName}~${joinAttrs.rightColName}~${joinAttrs.leftTableName}~${joinAttrs.leftColName}"
+        else
+          s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
+      }
+
+      def newRidJoinOf(l: Attribute, rightRidOrder: String, predicate: String) = {
         // "right" relation is a new relation to join
         val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
         val ridJoinProject = ridJoin.output.collect {
@@ -1065,24 +1072,24 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       joinAttrs.ridOrderAttrsGiven(childView) match {
         case (Some(l), None) =>
-          newRidJoinOf(l, joinAttrs.rightRidOrder)
+          newRidJoinOf(l, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false))
 
         case (Some(l), Some(r)) if l == r =>
           // Self join: attr == attr
-          val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
+          val ridJoin = DexRidCorrelatedJoin(predicateOf(joinAttrs, reverse = false), childView, tCorrelatedJoin, l)
           val ridJoinProject = childView.output
           ridJoin.select(ridJoinProject: _*)
 
         case (Some(l), Some(r)) =>
           // "right" relation is a previously joined relation
           // don't have extra "value_dec_key" column
-          val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
+          val ridJoin = DexRidCorrelatedJoin(predicateOf(joinAttrs, reverse = false), childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
           val ridJoinProject = childView.output
           ridJoin.select(ridJoinProject: _*)
 
         case (None, Some(r)) =>
           // "left" relation is a new relation to join
-          newRidJoinOf(r, joinAttrs.leftRidOrder)
+          newRidJoinOf(r, joinAttrs.leftRidOrder, predicateOf(joinAttrs, reverse = true))
 
         case x => throw DexException("unsupported: (None, None)")
       }

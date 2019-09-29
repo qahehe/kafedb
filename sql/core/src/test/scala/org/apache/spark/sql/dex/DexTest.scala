@@ -57,7 +57,7 @@ trait DexTest extends QueryTest with SharedSQLContext with BeforeAndAfter with P
 
 
   protected def checkDexFor(query: DataFrame, queryDex: DataFrame): Unit = {
-    //query.explain(extended = true)
+    query.explain(extended = true)
     //val result = query.collect()
     //println("query: " ++ result.mkString)
 
