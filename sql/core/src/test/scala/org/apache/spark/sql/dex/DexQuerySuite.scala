@@ -144,6 +144,13 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query, query.dexCorr(cks))
   }
 
+  test("two joins: nested order, not joinning left most table") {
+    val query = data2.join(
+      data3.join(data4).where("c == e")
+    ).where("a == e")
+    checkDexFor(query, query.dexCorr(cks))
+  }
+
   test("spx") {
     val query1 = data2.join(data4).where("a == e")
     checkDexFor(query1, query1.dexSpx)

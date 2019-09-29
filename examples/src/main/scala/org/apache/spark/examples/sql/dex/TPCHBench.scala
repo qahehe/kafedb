@@ -26,18 +26,14 @@ object TPCHBench {
     require(args.length == 2)
     val emmMode = args(0)
     require(TPCHDataGen.emmModes.contains(emmMode))
-    val translationMode = args(1)
-    println(s"translationMode=$translationMode")
 
     SparkSession.cleanupAnyExistingSession()
     val spark = SparkSession
       .builder()
       .appName("TPCH Bench")
-      .config("spark.sql.dex.translationMode", translationMode)
       .getOrCreate()
     SparkSession.setActiveSession(spark)
     SparkSession.setDefaultSession(spark)
-    println(s"spark.sql.dex.translationMode=${spark.conf.get("spark.sql.dex.translationMode")}")
 
     TPCHDataGen.setScaleConfig(spark, TPCHDataGen.scaleFactor)
 

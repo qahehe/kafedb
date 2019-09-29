@@ -272,6 +272,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |  FROM ($rightSubquery) AS ${generateSubqueryName()}
                |)
              """.stripMargin
+          case x => throw DexException("unsupported: " + x.getClass.getName + " in join: " + j.toString)
         }
 
       case i: Intersect =>
@@ -864,7 +865,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             // e.g.  T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1
             val leftView = translatePlan(j.left, childView)
             val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView), isNegated = false)
-            translatePlan(j.right, Some(joinView))
+
+            // Cannot use joinView as childView for right subtree, because it might be the case that the join condition
+            // does not have its RHS table necessarily at the leftmost leave of the right subtree.
+            // E.g. Supplier join (customer join nation on nationkey) on nationkey.
+            // Note that supplier doesn't join with customer.
+            //translatePlan(j.right, Some(joinView))
+            // Right view seems never need childView.
+            val rightView = translatePlan(j.right, None)
+            joinView.join(rightView, NaturalJoin(Inner))
           }
 
         case x => throw DexException("unsupported: " + x.toString)
