@@ -800,7 +800,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       // to add back the DexPlan, because translatePlan() is recursive and it would have a hard time to differentiate
       // the root DexPlan to preserve and any subtree DexPlan (already translated, hence to ignore).
       // So we have to add back the root DexPlan here to avoid the ambiguity.
-      val newChild = translatePlan(dexPlan.child, None)
+      val newChild = translatePlan(dexPlan.child)
       val newPlan = dexPlan match {
         case p: SpxPlan =>
           SpxPlan(newChild)
@@ -821,7 +821,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     private def randomAttr(prfKey: String, attr: Attribute): Attribute = $"${attr.name}_${prfKey}"
 
-    protected def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = {
+    protected def translatePlan(plan: LogicalPlan): LogicalPlan = {
       plan match {
         case d: DexPlan =>
           // Because we're transforming up the tree, we may encounter subtree DexPlan that has already been translated.
@@ -829,25 +829,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           d
         case l: LogicalRelation =>
           val tableName = tableNameFromLogicalRelation(l)
-          val tableEnc = tableEncWithRidOrderOf(tableName)
-          childView match {
-            case Some(w) =>
-              w.join(tableEnc, NaturalJoin(Inner))
-            //w
-            case None =>
-              tableEnc
-          }
+          tableEncWithRidOrderOf(tableName)
 
         case p: Project =>
           // todo: projection push down
-          translatePlan(p.child, childView)
+          translatePlan(p.child)
 
         case f: Filter =>
-          val source = translatePlan(f.child, childView)
+          val source = translatePlan(f.child)
           translateFormula(FilterFormula, f.condition, Seq(source), isNegated = false)
 
         case j: Join if j.joinType == Cross =>
-          translatePlan(j.left, childView).join(translatePlan(j.right, childView), Cross)
+          translatePlan(j.left).join(translatePlan(j.right), Cross)
 
         case j: Join if j.condition.isDefined =>
           val joinAttrs = nonIsNotNullPredsIn(Seq(j.condition.get))
@@ -858,21 +851,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             // join completely coincides with filters
             // e.g. T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1 and b = d = 2
             // note: this cross join only works for equality filter and joins
-            val leftView = translatePlan(j.left, childView)
-            val rightView = translatePlan(j.right, childView)
+            val leftView = translatePlan(j.left)
+            val rightView = translatePlan(j.right)
             leftView.join(rightView, Cross)
           } else {
             // e.g.  T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1
-            val leftView = translatePlan(j.left, childView)
+            val leftView = translatePlan(j.left)
             val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView), isNegated = false)
-
-            // Cannot use joinView as childView for right subtree, because it might be the case that the join condition
-            // does not have its RHS table necessarily at the leftmost leave of the right subtree.
-            // E.g. Supplier join (customer join nation on nationkey) on nationkey.
-            // Note that supplier doesn't join with customer.
-            //translatePlan(j.right, Some(joinView))
-            // Right view seems never need childView.
-            val rightView = translatePlan(j.right, None)
+            val rightView = translatePlan(j.right)
             joinView.join(rightView, NaturalJoin(Inner))
           }
 
@@ -1104,7 +1090,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       }
     }
 
-    override protected def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = plan match {
+    override protected def translatePlan(plan: LogicalPlan): LogicalPlan = plan match {
       case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
         val joinCompoundCond = {
           val attrLefts = j.condition.get.collect {
@@ -1121,9 +1107,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           EqualTo(attrLefts.head.withName(attrCompoundLeft), attrRights.head.withName(attrCompoundRight))
         }
         val compoundJoinPlan = j.copy(condition = Some(joinCompoundCond))
-        translatePlan(compoundJoinPlan, childView)
+        translatePlan(compoundJoinPlan)
 
-      case _ => super.translatePlan(plan, childView)
+      case _ => super.translatePlan(plan)
     }
 
     private def isCompoundKeyJoin(condition: Expression): Boolean = {
@@ -1171,19 +1157,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   case class DexPkFkTranslator(dexPlan: DexPlan, primaryKeys: Set[String], foreignKeys: Set[String]) extends DexPlanTranslator(dexPlan) {
     require(primaryKeys.nonEmpty && foreignKeys.nonEmpty)
 
-    override protected def translatePlan(plan: LogicalPlan, childView: Option[LogicalPlan]): LogicalPlan = plan match {
+    override protected def translatePlan(plan: LogicalPlan): LogicalPlan = plan match {
       case l: LogicalRelation =>
         // Assume the filter operator will output childView schema
         // Assume the join operator will output childView schema
         val tableName = tableNameFromLogicalRelation(l)
-        val tableEnc = tableEncWithRidOrderOf(tableName)
-        childView match {
-          case Some(w) =>
-            // rhs of join
-            w
-          case None =>
-            tableEnc
-        }
+        tableEncWithRidOrderOf(tableName)
 
       case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
         val joinCompoundCond = {
@@ -1201,7 +1180,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           EqualTo(attrLefts.head.withName(attrCompoundLeft), attrRights.head.withName(attrCompoundRight))
         }
         val compoundJoinPlan = j.copy(condition = Some(joinCompoundCond))
-        translatePlan(compoundJoinPlan, childView)
+        translatePlan(compoundJoinPlan)
 
       case j: Join if j.condition.isDefined && isPkFkJoinWithFkFilter(j) =>
         // PK join Filter(FK) has a subtle issue if execute in post-order:
@@ -1220,12 +1199,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // not be included in the join too.  But 2 should be in the join.
         // The fix is just to reverse this type of join and filter to fk-pk join with filter on fk.
         val reverseJoinPlan = j.copy(condition = Some(reverseJoinCondition(j.condition.get)))
-        translatePlan(reverseJoinPlan, childView)
+        translatePlan(reverseJoinPlan)
 
       case j: Join if j.condition.isDefined =>
-        translateJoinView(j.left, j.right, j.condition.get, childView)
+        translateJoinView(j.left, j.right, j.condition.get)
 
-      case _ => super.translatePlan(plan, childView)
+      case _ => super.translatePlan(plan)
     }
 
     private def isCompoundKeyJoin(condition: Expression): Boolean = {
@@ -1246,9 +1225,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     }
 
-    private def translateJoinView(left: LogicalPlan, right: LogicalPlan, joinCond: Expression, childView: Option[LogicalPlan]) = {
-      val leftView = translatePlan(left, childView)
-      val rightView = translatePlan(right, childView)
+    private def translateJoinView(left: LogicalPlan, right: LogicalPlan, joinCond: Expression) = {
+      val leftView = translatePlan(left)
+      val rightView = translatePlan(right)
       val joinView = translateFormula(JoinFormula, joinCond, Seq(leftView, rightView), isNegated = false)
       joinView
     }
