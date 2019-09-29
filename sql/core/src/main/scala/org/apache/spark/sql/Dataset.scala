@@ -1499,18 +1499,16 @@ class Dataset[T] private[sql](
     filter(Column(sparkSession.sessionState.sqlParser.parseExpression(conditionExpr)))
   }
 
-  def dex: Dataset[T] = dex(Set.empty)
+  def dexSpx: Dataset[T] = withTypedPlan {
+    SpxPlan(logicalPlan)
+  }
 
-  def dex(compoundKeys: Set[String]): Dataset[T] = withTypedPlan {
-    // todo: refactor to not rely on sql context?
-    sparkSession.sqlContext.conf.dexTranslationMode match {
-      case "Spx" =>
-        SpxPlan(logicalPlan)
-      case "DexCorrelation" =>
-        DexCorrelationPlan(logicalPlan, compoundKeys)
-      case "DexDomain" =>
-        DexDomainPlan(logicalPlan)
-    }
+  def dexDom: Dataset[T] = withTypedPlan {
+    DexDomainPlan(logicalPlan)
+  }
+
+  def dexCorr(compoundKeys: Set[String]): Dataset[T] = withTypedPlan {
+    DexCorrelationPlan(logicalPlan, compoundKeys)
   }
 
   def dexPkFk(primaryKeys: Set[String],

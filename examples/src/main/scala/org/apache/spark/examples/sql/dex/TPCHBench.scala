@@ -74,7 +74,7 @@ object TPCHBench {
       }
       time {
         val dexResult = queryDex.getOrElse(emmMode match {
-          case "standalone" => queryDf.dex(cks)
+          case "standalone" => queryDf.dexCorr(cks)
           case "pkfk" => queryDf.dexPkFk(pks, fks)
         })
         println(s"dex-$emmMode result size=${dexResult.count()}")

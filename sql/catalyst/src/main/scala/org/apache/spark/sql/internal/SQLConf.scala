@@ -1554,15 +1554,6 @@ object SQLConf {
     .doc("Encrypted DataSource JDBC url of the form `jdbc:<vendor>://<host>:<port>/<db>")
     .stringConf
     .createWithDefault("jdbc:postgresql://localhost:8433/test_edb")
-
-  val DEX_TRANSLATION_MODE =
-    buildConf("spark.sql.dex.translationMode")
-    .doc("Spx, DexCorrelation, DexDomain")
-    .withAlternative("Spx")
-    .withAlternative("DexCorrelation")
-    .withAlternative("DexDomain")
-    .stringConf
-    .createWithDefault("DexCorrelation")
 }
 
 /**
@@ -1971,8 +1962,6 @@ class SQLConf extends Serializable with Logging {
   def setOpsPrecedenceEnforced: Boolean = getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
 
   def dexEncryptedDataSourceUrl: String = getConf(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL)
-
-  def dexTranslationMode: String = getConf(SQLConf.DEX_TRANSLATION_MODE)
 
   /** ********************** SQLConf functionality methods ************ */
 

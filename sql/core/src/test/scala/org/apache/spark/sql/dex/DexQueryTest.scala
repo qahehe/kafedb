@@ -17,15 +17,7 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import java.sql.DriverManager
-import java.util.Properties
-
-import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.dex.DexConstants.TableAttributeCompound
-import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.test.SharedSQLContext
-import org.apache.spark.util.Utils
-import org.scalatest.{BeforeAndAfter, PrivateMethodTester}
 
 trait DexQueryTest extends DexTest {
   lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
