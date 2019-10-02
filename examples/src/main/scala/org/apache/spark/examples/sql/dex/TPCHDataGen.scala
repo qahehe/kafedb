@@ -221,12 +221,7 @@ object TPCHDataGen {
     val conn = DriverManager.getConnection(dbUrl, dbProps)
     try {
       tables.tables.map(_.name).foreach { t =>
-        spark.table(t).columns.filterNot(_.contains("key")).foreach { c =>
-          createTreeIndex(conn, t, c)
-        }
-      }
-      tables.tables.map(_.name).foreach { t =>
-        spark.table(t).columns.filter(_.contains("key")).foreach { c =>
+        spark.table(t).columns.foreach { c =>
           createTreeIndex(conn, t, c)
         }
       }
