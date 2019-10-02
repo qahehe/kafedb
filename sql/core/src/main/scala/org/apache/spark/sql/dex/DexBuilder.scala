@@ -30,6 +30,19 @@ import org.apache.spark.util.Utils
 import org.apache.spark.sql.functions.{col, concat, lit}
 import org.apache.spark.util.collection.BitSet
 
+object DexVariant {
+  def from(str: String): DexVariant = str.toLowerCase match {
+    case "dexspx" => DexSpx
+    case "dexcorr" => DexCorr
+    case "dexpkfk" => DexPkFk
+  }
+}
+sealed trait DexVariant
+sealed trait DexStandalone
+case object DexSpx extends DexVariant with DexStandalone
+case object DexCorr extends DexVariant with DexStandalone
+case object DexPkFk extends DexVariant
+
 object DexBuilder {
   def createHashIndex(conn: Connection, tableName: String, col: String): Unit = {
     conn.prepareStatement(
@@ -85,7 +98,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   private def primaryKeyAndForeignKeysFor(t: TableName, primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): (PrimaryKey, Set[ForeignKey]) = {
     val pk = {
       val pks = primaryKeys.filter(_.attr.table == t)
-      require(pks.size == 1, "every table should have a primary key, atom or compound")
+      require(pks.size == 1, s"$t doesn't have a primary key: every table should have a primary key, atom or compound")
       pks.headOption.get
     }
     val fks = foreignKeys.filter(_.attr.table == t)
@@ -230,7 +243,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     nonPk && nonFk
   }
 
-  def buildFromData(nameToDf: Map[TableName, DataFrame], primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Unit = {
+  def buildFromData(dexStandaloneVariant: DexStandalone, nameToDf: Map[TableName, DataFrame], primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
       val ridDf = d.withColumn("rid", monotonically_increasing_id()).cache()
       val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
@@ -251,25 +264,35 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       n -> ridPkFkDf
     }
 
-    val encNameToEncDf = nameToRidDf.map { case (n, r) =>
-      encryptTable(n, r)
-    }
-
-    val tFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
-      val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
-      r.columns.filter(nonKey(pk, fks, _)).map { c =>
-      //r.columns.filterNot(_ == "rid").map { c =>
-        val udfPredicate = udf(filterPredicateOf(n, c) _)
-        r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
-          //.groupBy(c).agg(collect_list($"rid").as("rids"))
-          //.select(col(c), posexplode($"rids").as("counter" :: "rid" :: Nil))
-          .withColumn("predicate", udfRandPred(udfPredicate(col(c))))
-          .withColumn("label", udfLabel($"predicate", $"counter"))
-          .withColumn("value", udfValue($"rid"))
-          .select("label", "value")
+    def buildEncRidTables(): Unit = {
+      val encNameToEncDf = nameToRidDf.map { case (n, r) =>
+        encryptTable(n, r)
+      }
+      encNameToEncDf.foreach { case (n, e) =>
+        e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
+        buildIndexFor(n, DexConstants.ridCol)
       }
     }
-    val tFilterDf = tFilterDfParts.reduce((d1, d2) => d1 union d2)
+
+
+    def buildTFilter(): Unit = {
+      val tFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
+        val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
+        r.columns.filter(c => nonKey(pk, fks, c) && c != DexConstants.ridCol).map { c =>
+          val udfPredicate = udf(filterPredicateOf(n, c) _)
+          r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
+            //.groupBy(c).agg(collect_list($"rid").as("rids"))
+            //.select(col(c), posexplode($"rids").as("counter" :: "rid" :: Nil))
+            .withColumn("predicate", udfRandPred(udfPredicate(col(c))))
+            .withColumn("label", udfLabel($"predicate", $"counter"))
+            .withColumn("value", udfValue($"rid"))
+            .select("label", "value")
+        }
+      }
+      val tFilterDf = tFilterDfParts.reduce((d1, d2) => d1 union d2)
+      tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tFilterName, encDbProps)
+      buildIndexFor(DexConstants.tFilterName, DexConstants.emmLabelCol)
+    }
 
     /*val tDomainDfParts = nameToRidDf.flatMap { case (n, r) =>
       r.columns.filterNot(_ == "rid").map { c =>
@@ -281,67 +304,87 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           .select("label", "value").repartition($"label")
       }
     }
-    val tDomainDf = tDomainDfParts.reduce((d1, d2) => d1 union d2)*/
+    val tDomainDf = tDomainDfParts.reduce((d1, d2) => d1 union d2)
+    tDomainDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tDomainName, encDbProps)
+    buildIndexFor(Seq(DexConstants.tDomainName))
+    */
 
 
-
-    /*val tUncorrJoinDfParts = for {
-      (attrLeft, attrRight) <- joins
-    } yield {
-      val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
-      dfLeft.withColumnRenamed("rid", "rid_left")
-        .join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
-        .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition($"counter")
-        .withColumn("predicate", lit(uncorrJoinPredicateOf(attrLeft, attrRight)))
-        .withColumn("label", udfLabel($"predicate", $"counter"))
-        .withColumn("value_left", udfValue($"rid_left"))
-        .withColumn("value_right", udfValue($"rid_right"))
-        .select("label", "value_left", "value_right")
-    }
-    val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)*/
-
-    val tCorrJoinDfParts = for {
-      ForeignKey(attr, attrRef) <- foreignKeys
-    } yield {
-      def joinFor(attrLeft: TableAttribute, attrRight: TableAttribute): DataFrame = {
-        val udfJoinPred = udf(joinPredicateOf(attrLeft, attrRight) _)
+    def buildTUncorrelatedJoin(): Unit = {
+      val tUncorrJoinDfParts = for {
+        ForeignKey(attr, attrRef) <- foreignKeys
+        (attrLeft, attrRight) = if (attr.qualifiedName <= attrRef.qualifiedName) (attr, attrRef) else (attrRef, attr)
+      } yield {
         val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
-        require(dfLeft.columns.contains(attrLeft.attr) && dfRight.columns.contains(attrRight.attr), s"${attrLeft.attr} and ${attrRight.attr}")
-        dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
-          //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
-          //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
-          .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
-          .withColumn("predicate", udfRandPred(udfJoinPred($"rid_left")))
+        dfLeft.withColumnRenamed("rid", "rid_left")
+          .join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
+          .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition($"counter")
+          .withColumn("predicate", lit(uncorrJoinPredicateOf(attrLeft, attrRight)))
           .withColumn("label", udfLabel($"predicate", $"counter"))
-          .withColumn("value", udfValue($"rid_right"))
-          .select("label", "value")
+          .withColumn("value_left", udfValue($"rid_left"))
+          .withColumn("value_right", udfValue($"rid_right"))
+          .select("label", "value_left", "value_right")
       }
-      joinFor(attr, attrRef) union joinFor(attrRef, attr)
+      val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)
+      tUncorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tUncorrJoinName, encDbProps)
+      buildIndexFor(DexConstants.tUncorrJoinName, DexConstants.emmLabelCol)
     }
-    val tCorrJoinDf = tCorrJoinDfParts.reduce((d1, d2) => d1 union d2)
 
-    encNameToEncDf.foreach { case (n, e) =>
-      e.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, n, encDbProps)
-    }
-    tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tFilterName, encDbProps)
-    //tDomainDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tDomainName, encDbProps)
-    //tUncorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tUncorrJoinName, encDbProps)
-    tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tCorrJoinName, encDbProps)
-
-    Utils.classForName("org.postgresql.Driver")
-    val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
-    try {
-      encNameToEncDf.foreach { case (n, e) =>
-        createTreeIndex(encConn, n, "rid")
+    def buildTCorrelatedJoin(): Unit = {
+      val tCorrJoinDfParts = for {
+        ForeignKey(attr, attrRef) <- foreignKeys
+      } yield {
+        def joinFor(attrLeft: TableAttribute, attrRight: TableAttribute): DataFrame = {
+          val udfJoinPred = udf(joinPredicateOf(attrLeft, attrRight) _)
+          val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
+          require(dfLeft.columns.contains(attrLeft.attr) && dfRight.columns.contains(attrRight.attr), s"${attrLeft.attr} and ${attrRight.attr}")
+          dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
+            //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
+            //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
+            .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
+            .withColumn("predicate", udfRandPred(udfJoinPred($"rid_left")))
+            .withColumn("label", udfLabel($"predicate", $"counter"))
+            .withColumn("value", udfValue($"rid_right"))
+            .select("label", "value")
+        }
+        joinFor(attr, attrRef) union joinFor(attrRef, attr)
       }
-      createTreeIndex(encConn, DexConstants.tFilterName, "label")
-      //createTreeIndex(encConn, DexConstants.tDomainName, "label")
-      //createTreeIndex(encConn, DexConstants.tUncorrJoinName, "label")
-      createTreeIndex(encConn, DexConstants.tCorrJoinName, "label")
+      val tCorrJoinDf = tCorrJoinDfParts.reduce((d1, d2) => d1 union d2)
+      tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tCorrJoinName, encDbProps)
+      buildIndexFor(DexConstants.tCorrJoinName, DexConstants.emmLabelCol)
+    }
 
-      encConn.prepareStatement("analyze").execute()
-    } finally {
-      encConn.close()
+    def buildIndexFor(encName: String, col: String): Unit = {
+      Utils.classForName("org.postgresql.Driver")
+      val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
+      try {
+          createTreeIndex(encConn, encName, col)
+      } finally {
+        encConn.close()
+      }
+    }
+
+    def analyzeAll(): Unit = {
+      val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
+      try {
+        encConn.prepareStatement("analyze").execute()
+      } finally {
+        encConn.close()
+      }
+    }
+
+    dexStandaloneVariant match {
+      case DexSpx =>
+        buildEncRidTables()
+        buildTFilter()
+        buildTUncorrelatedJoin()
+        analyzeAll()
+      case DexCorr =>
+        buildEncRidTables()
+        buildTFilter()
+        buildTCorrelatedJoin()
+        analyzeAll()
+      case x => throw DexException("unsupported: " + x.getClass.toString)
     }
   }
 

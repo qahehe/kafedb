@@ -24,6 +24,7 @@ import java.util.Properties
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
 import org.apache.spark.sql.dex.DexConstants.{TableAttribute, TableAttributeAtom, TableAttributeCompound}
+import org.apache.spark.sql.dex.{DexCorr, DexPkFk, DexSpx, DexStandalone, DexVariant}
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.util.Utils
 // For datagens
@@ -100,20 +101,15 @@ object TPCHDataGen {
     .appName(name)
     .getOrCreate()
 
-  private val modes = Set("tpch", "postgres", "dex")
-  val emmModes = Set("standalone", "pkfk")
+  private val dataModeSet = Set("tpch", "postgres", "dex")
+  //val emmModeSet: Set[String] = Set("spx", "corr", "pkfk")
 
   def main(args: Array[String]): Unit = {
     require(args.length >= 2)
-    val emmMode = args(0)
-    require(emmModes.contains(emmMode))
-    val neededModes = args.drop(1) match {
-      case xs if xs.contains("all") => modes
-      case xs =>
-        require(xs.forall(modes.contains))
-        xs.toSet
-    }
-    println(s"neededModes=${neededModes.mkString(", ")}")
+    val (dexVariant, dataModes)= (DexVariant.from(args(0)), args.drop(1))
+    require(dataModes.forall(dataModeSet.contains))
+    println(s"dexVariant=${dexVariant.getClass.toString}")
+    println(s"dataModes=${dataModes.mkString(", ")}")
 
     val spark = newSparkSession("TPCH Data Generation")
 
@@ -146,7 +142,7 @@ object TPCHDataGen {
     val (dbname, tables, location) = getBenchmarkData(spark, scaleFactor)
 
     // Generate data
-    if (neededModes.contains("tpch")) {
+    if (dataModes.contains("tpch")) {
       time {
         println(s"Generating data for $benchmark SF $scaleFactor at $location")
         generateData(tables, location, scaleFactor, workers, cores)
@@ -167,25 +163,24 @@ object TPCHDataGen {
     // Validate data in Spark
     //validate(spark, scaleFactor, dbname)
 
-    if (neededModes.contains("postgres")) {
+    if (dataModes.contains("postgres")) {
       time {
         println(s"\nLoading plaintext Postgres for $benchmark into Postgres from $location, overwrite=$overwrite")
         loadPlaintext(spark, tables, overwrite)
       }
     }
 
-    if (neededModes.contains("dex")) {
+    if (dataModes.contains("dex")) {
       time {
         println(s"\nBuilding DEX for $benchmark into Postgres from $location")
-        emmMode match {
-          case "standalone" =>
-            println("emmMode=standalone")
-            buildDexStandalone(spark, tables)
-          case "pkfk" =>
-            println("emmMode=pkfk")
+        dexVariant match {
+          case v: DexStandalone =>
+            println("build dex standlone")
+            buildDexStandalone(spark, tables, v)
+          case DexPkFk =>
+            println("build dex pkfk")
             buildDexPkFk(spark, tables)
         }
-
       }
     }
 
@@ -193,7 +188,7 @@ object TPCHDataGen {
     spark.stop()
   }
 
-  private def buildDexStandalone(spark: SparkSession, tables: TPCHTables): Unit = {
+  private def buildDexStandalone(spark: SparkSession, tables: TPCHTables, dexVariant: DexStandalone): Unit = {
     // Encrypt data to Postgres
     val allTableNames = tables.tables.map(_.name).toSet
     assert(tableNamesToDex.forall(allTableNames.contains))
@@ -202,7 +197,7 @@ object TPCHDataGen {
       t -> spark.table(t)
     }.toMap
 
-    spark.sessionState.dexBuilder.buildFromData(nameToDfForDex, primaryKeys, foreignKeys)
+    spark.sessionState.dexBuilder.buildFromData(dexVariant, nameToDfForDex, primaryKeys, foreignKeys)
   }
   
   private def buildDexPkFk(spark: SparkSession, tables: TPCHTables): Unit = {

@@ -18,14 +18,14 @@ package org.apache.spark.examples.sql.dex
 // scalastyle:off
 
 import org.apache.spark.examples.sql.dex.TPCHDataGen.time
+import org.apache.spark.sql.dex.{DexCorr, DexPkFk, DexSpx, DexVariant}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object TPCHBench {
 
   def main(args: Array[String]): Unit = {
     require(args.length == 1)
-    val emmMode = args(0)
-    require(TPCHDataGen.emmModes.contains(emmMode))
+    val dexVariant = DexVariant.from(args(0))
 
     SparkSession.cleanupAnyExistingSession()
     val spark = SparkSession
@@ -60,20 +60,21 @@ object TPCHBench {
 
     def benchQuery(title: String, spark: SparkSession, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
       println(s"\n$title=\n$query")
-      time {
-        //val sparkResult = queryDf.count()
-        //println(s"spark result size=${sparkResult}")
-      }
+      /*time {
+        val sparkResult = queryDf.count()
+        println(s"spark result size=${sparkResult}")
+      }*/
       time {
         val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
         println(s"postgres result size=${postgresResult.count()}")
       }
       time {
-        val dexResult = queryDex.getOrElse(emmMode match {
-          case "standalone" => queryDf.dexCorr(cks)
-          case "pkfk" => queryDf.dexPkFk(pks, fks)
+        val dexResult = queryDex.getOrElse(dexVariant match {
+          case DexSpx => queryDf.dexSpx(cks)
+          case DexCorr => queryDf.dexCorr(cks)
+          case DexPkFk  => queryDf.dexPkFk(pks, fks)
         })
-        println(s"dex-$emmMode result size=${dexResult.count()}")
+        println(s"dex-${dexVariant.getClass.toString} result size=${dexResult.count()}")
       }
     }
 

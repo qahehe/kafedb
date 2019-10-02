@@ -82,16 +82,16 @@ trait DexQueryTest extends DexTest {
       .executeUpdate()
     conn.commit()
 
-    conn.prepareStatement("create table testdata4 (e int, f int)")
+    conn.prepareStatement("create table testdata4 (e int, f int, g int, h int)")
       .executeUpdate()
     conn.prepareStatement(
       """
         |insert into testdata4 values
-        |(2, 1),
-        |(2, 2),
-        |(2, 3),
-        |(3, 4),
-        |(3, 5)
+        |(2, 1, 10, 100),
+        |(2, 2, 10, 200),
+        |(2, 3, 20, 300),
+        |(3, 4, 20, 300),
+        |(3, 5, 30, 100)
       """.stripMargin)
       .executeUpdate()
     conn.commit()

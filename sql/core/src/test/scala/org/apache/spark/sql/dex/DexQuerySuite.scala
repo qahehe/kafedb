@@ -153,26 +153,38 @@ class DexQuerySuite extends DexQueryTest {
 
   test("spx") {
     val query1 = data2.join(data4).where("a == e")
-    checkDexFor(query1, query1.dexSpx)
+    checkDexFor(query1, query1.dexSpx(cks))
+
+    val query1_2 = data4.join(data2).where("e == a")
+    checkDexFor(query1_2, query1_2.dexSpx(cks))
+
+    val query1_3 = data4.join(data2).where("a == e")
+    checkDexFor(query1_3, query1_3.dexSpx(cks))
+
+    val query1_4 = data2.join(data4).where("e == a")
+    checkDexFor(query1_4, query1_4.dexSpx(cks))
 
     val query2 = data2.join(data3).where("a == 2 and b == c")
-    checkDexFor(query2, query2.dexSpx)
+    checkDexFor(query2, query2.dexSpx(cks))
 
 
     val query3 = data2.join(data3).where("a == c and b == d")
-    checkDexFor(query3, query3.dexSpx)
+    checkDexFor(query3, query3.dexSpx(cks))
+
+    val query3_1 = data3.join(data2).where("c == a and b == d")
+    checkDexFor(query3_1, query3_1.dexSpx(cks))
 
 
     val query4 = data2.join(data3).where("a == c and b == c")
-    checkDexFor(query4, query4.dexSpx)
+    checkDexFor(query4, query4.dexSpx(cks))
 
 
     val query5 = data2.join(data3).where("a == c and b == d and a = 1")
-    checkDexFor(query5, query5.dexSpx)
+    checkDexFor(query5, query5.dexSpx(cks))
 
 
     val query6 = data2.join(data4).join(data3).where("a == e and b == c")
-    checkDexFor(query6, query6.dexSpx)
+    checkDexFor(query6, query6.dexSpx(cks))
 
 
     val query7 = data2.join(data4).join(data3).where("a == e and a == c")

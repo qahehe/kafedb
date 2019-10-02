@@ -1499,8 +1499,8 @@ class Dataset[T] private[sql](
     filter(Column(sparkSession.sessionState.sqlParser.parseExpression(conditionExpr)))
   }
 
-  def dexSpx: Dataset[T] = withTypedPlan {
-    SpxPlan(logicalPlan)
+  def dexSpx(compoundKeys: Set[String]): Dataset[T] = withTypedPlan {
+    SpxPlan(logicalPlan, compoundKeys)
   }
 
   def dexDom: Dataset[T] = withTypedPlan {

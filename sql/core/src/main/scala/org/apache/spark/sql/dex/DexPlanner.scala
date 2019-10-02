@@ -50,6 +50,8 @@ object DexConstants {
   val tCorrJoinName = "t_correlated_join"
   val tUncorrJoinName = "t_uncorrelated_join"
   val tDomainName = "t_domain"
+  val emmLabelCol = "label"
+  val ridCol = "rid"
 
   type TableName = String
   type AttrName = String
@@ -58,6 +60,7 @@ object DexConstants {
   sealed trait TableAttribute {
     def table: TableName
     def attr: AttrName
+    def qualifiedName: String = table + "." + attr
   }
   case class TableAttributeAtom(table: TableName, attr: AttrName) extends TableAttribute
   case class TableAttributeCompound(table: TableName, attrs: Seq[AttrName]) extends TableAttribute {
@@ -763,7 +766,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     def ofPlan(dexPlan: DexPlan): DexPlanTranslator = dexPlan match {
       case p: SpxPlan =>
         log.warn("dexPlan=SpxPlan")
-        SpxTranslator(p)
+        SpxTranslator(p, p.compoundKeys)
       case p: DexCorrelationPlan =>
         log.warn("dexPlan=DexCorrelationPlan")
         DexCorrelationTranslator(p, p.compoundKeys)
@@ -776,7 +779,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  abstract class DexPlanTranslator(dexPlan: DexPlan) {
+  sealed trait DexPlanTranslator {
+
+    def dexPlan: DexPlan
 
     protected lazy val joinOrder: String => Int =
       dexPlan.collect {
@@ -803,7 +808,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val newChild = translatePlan(dexPlan.child)
       val newPlan = dexPlan match {
         case p: SpxPlan =>
-          SpxPlan(newChild)
+          SpxPlan(newChild, p.compoundKeys)
         case p: DexCorrelationPlan =>
           DexCorrelationPlan(newChild, p.compoundKeys)
         case p: DexDomainPlan =>
@@ -967,9 +972,16 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
       val (leftTableOrder, rightTableOrder) = (joinOrder(leftTableName), joinOrder(rightTableName))
       val (leftRidOrder, rightRidOrder) = (s"rid_${leftTableOrder}", s"rid_${rightTableOrder}")
+      val (leftQualifiedName, rightQualifiedName) = (s"$leftTableName.$leftColName", s"$rightTableName.$rightColName")
 
       def ridOrderAttrsGiven(childView: LogicalPlan): (Option[Attribute], Option[Attribute]) =
         (childView.output.find(_.name == leftRidOrder), childView.output.find(_.name == rightRidOrder))
+
+      def orderedAlphabetically(): JoinAttrs = if (leftQualifiedName <= rightQualifiedName) {
+        this
+      } else {
+        JoinAttrs(right, left)
+      }
     }
 
     private def translateJoinPredicate(p: Predicate, childViews: Seq[LogicalPlan]): LogicalPlan = p match {
@@ -1006,7 +1018,46 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  abstract class StandaloneTFilterBasedTranslator(dexPlan: DexPlan) extends DexPlanTranslator(dexPlan) {
+  sealed trait CompoundKeyAwareTranslator extends DexPlanTranslator {
+    def compoundKeys: Set[String]
+
+    private def isCompoundKeyJoin(condition: Expression): Boolean = {
+      val attrLefts = condition.collect {
+        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
+      }
+      val attrRights = condition.collect {
+        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
+      }
+      val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
+      val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
+      attrLefts.size > 1 && attrRights.size > 1 &&
+        compoundKeys.contains(attrCompoundLeft) && compoundKeys.contains(attrCompoundRight)
+    }
+
+    override protected def translatePlan(plan: LogicalPlan): LogicalPlan = plan match {
+      case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
+        val joinCompoundCond = {
+          val attrLefts = j.condition.get.collect {
+            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
+          }
+          val attrRights = j.condition.get.collect {
+            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
+          }
+          require(attrLefts.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
+          require(attrRights.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
+          val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
+          val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
+          // Hack: reuse the expr id for one of attrLefts and one of attrRights so that exprIdToTable works later
+          EqualTo(attrLefts.head.withName(attrCompoundLeft), attrRights.head.withName(attrCompoundRight))
+        }
+        val compoundJoinPlan = j.copy(condition = Some(joinCompoundCond))
+        super.translatePlan(compoundJoinPlan)
+
+      case _ => super.translatePlan(plan)
+    }
+  }
+
+  sealed trait StandaloneTranslator extends DexPlanTranslator {
     override protected def dexFilterOf(predicateTableName: String, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val predicate = s"$predicateTableName~$predicateColName~$predicateValue"
       val ridFilter = DexRidFilter(predicate, tFilter)
@@ -1021,10 +1072,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  case class SpxTranslator(dexPlan: DexPlan) extends StandaloneTFilterBasedTranslator(dexPlan) {
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+  case class SpxTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends StandaloneTranslator with CompoundKeyAwareTranslator {
+    override protected def translateEquiJoin(joinAttrsUnordered: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
+      val joinAttrs = joinAttrsUnordered.orderedAlphabetically()
       val predicate = s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
       val ridJoin = SpxRidUncorrelatedJoin(predicate, tUncorrelatedJoin)
           .select(DexDecrypt($"value_dec_key", $"value_left").as(joinAttrs.leftRidOrder), DexDecrypt($"value_dec_key", $"value_right").as(joinAttrs.rightRidOrder))
@@ -1033,7 +1085,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  case class DexCorrelationTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends StandaloneTFilterBasedTranslator(dexPlan) {
+  case class DexCorrelationTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends StandaloneTranslator with CompoundKeyAwareTranslator {
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
@@ -1089,44 +1141,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         case x => throw DexException("unsupported: (None, None)")
       }
     }
-
-    override protected def translatePlan(plan: LogicalPlan): LogicalPlan = plan match {
-      case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
-        val joinCompoundCond = {
-          val attrLefts = j.condition.get.collect {
-            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
-          }
-          val attrRights = j.condition.get.collect {
-            case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
-          }
-          require(attrLefts.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
-          require(attrRights.map(_.exprId).map(exprIdToTable).toSet.size == 1, "compound to same table")
-          val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
-          val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
-          // Hack: reuse the expr id for one of attrLefts and one of attrRights so that exprIdToTable works later
-          EqualTo(attrLefts.head.withName(attrCompoundLeft), attrRights.head.withName(attrCompoundRight))
-        }
-        val compoundJoinPlan = j.copy(condition = Some(joinCompoundCond))
-        translatePlan(compoundJoinPlan)
-
-      case _ => super.translatePlan(plan)
-    }
-
-    private def isCompoundKeyJoin(condition: Expression): Boolean = {
-      val attrLefts = condition.collect {
-        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
-      }
-      val attrRights = condition.collect {
-        case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
-      }
-      val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
-      val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
-      attrLefts.size > 1 && attrRights.size > 1 &&
-        compoundKeys.contains(attrCompoundLeft) && compoundKeys.contains(attrCompoundRight)
-    }
   }
 
-  case class DexDomainTranslator(dexPlan: DexPlan) extends StandaloneTFilterBasedTranslator(dexPlan) {
+  case class DexDomainTranslator(dexPlan: DexPlan) extends StandaloneTranslator {
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
@@ -1154,7 +1171,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
   }
 
-  case class DexPkFkTranslator(dexPlan: DexPlan, primaryKeys: Set[String], foreignKeys: Set[String]) extends DexPlanTranslator(dexPlan) {
+  case class DexPkFkTranslator(dexPlan: DexPlan, primaryKeys: Set[String], foreignKeys: Set[String]) extends DexPlanTranslator {
     require(primaryKeys.nonEmpty && foreignKeys.nonEmpty)
 
     override protected def translatePlan(plan: LogicalPlan): LogicalPlan = plan match {

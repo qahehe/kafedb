@@ -24,29 +24,38 @@ import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttribute
 class DexBuilderTest extends DexQueryTest {
   override protected def provideEncryptedData: Boolean = false
 
-  test("dex builder") {
-    val dexBuilder = spark.sessionState.dexBuilder
+  lazy val dexBuilder = spark.sessionState.dexBuilder
 
-    val nameToDf = Map(
-      "testdata2" -> data2,
-      "testdata3" -> data3,
-      "testdata4" -> data4
-    )
+  lazy val nameToDf = Map(
+    "testdata2" -> data2,
+    "testdata3" -> data3,
+    "testdata4" -> data4
+  )
 
-    val primaryKeys = Set(
-      PrimaryKey(TableAttributeCompound("testdata2", Seq("a", "b"))),
-      PrimaryKey(TableAttributeAtom("testdata3", "d")),
-      PrimaryKey(TableAttributeAtom("testdata4", "f"))
-    )
+  lazy val primaryKeys = Set(
+    PrimaryKey(TableAttributeCompound("testdata2", Seq("a", "b"))),
+    PrimaryKey(TableAttributeAtom("testdata3", "d")),
+    PrimaryKey(TableAttributeAtom("testdata4", "g"))
+  )
 
-    val foreignKeys = Set(
-      ForeignKey(TableAttributeAtom("testdata2", "a"), TableAttributeAtom("testdata3", "c")),
-      ForeignKey(TableAttributeCompound("testdata4", Seq("e", "f")), TableAttributeCompound("testdata2", Seq("a", "b")))
-    )
+  lazy val foreignKeys = Set(
+    ForeignKey(TableAttributeAtom("testdata4", "e"), TableAttributeAtom("testdata3", "d")),
+    ForeignKey(TableAttributeCompound("testdata4", Seq("e", "f")), TableAttributeCompound("testdata2", Seq("a", "b")))
+  )
 
-    dexBuilder.buildFromData(nameToDf, primaryKeys, foreignKeys)
+  test("dex builder: spx") {
+    dexBuilder.buildFromData(DexVariant.from("DexSpx").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
+    Seq("testdata2_prf", "testdata3_prf", "testdata4_prf", DexConstants.tFilterName, DexConstants.tUncorrJoinName).foreach { t =>
+      val df = spark.read.jdbc(urlEnc, t, properties)
+      println(t + ": \n"
+        + df.columns.mkString(",") + "\n"
+        + df.collect().mkString("\n"))
+    }
+  }
 
-    Seq("testdata2_prf", "testdata3_prf", "testdata4_prf", "t_filter", "t_correlated_join").foreach { t =>
+  test("dex builder: corr") {
+    dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
+    Seq("testdata2_prf", "testdata3_prf", "testdata4_prf", DexConstants.tFilterName, DexConstants.tCorrJoinName).foreach { t =>
       val df = spark.read.jdbc(urlEnc, t, properties)
       println(t + ": \n"
         + df.columns.mkString(",") + "\n"

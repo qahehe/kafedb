@@ -57,7 +57,7 @@ abstract class DexPlan(child: LogicalPlan) extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = child.output
 }
 
-case class SpxPlan(child: LogicalPlan) extends DexPlan(child)
+case class SpxPlan(child: LogicalPlan, compoundKeys: Set[String]) extends DexPlan(child)
 case class DexCorrelationPlan(child: LogicalPlan, compoundKeys: Set[String]) extends DexPlan(child)
 case class DexDomainPlan(child: LogicalPlan) extends DexPlan(child)
 
