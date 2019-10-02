@@ -43,7 +43,9 @@ trait DexTPCHTest extends QueryTest with DexTest {
     ForeignKey(TableAttributeAtom("partsupp", "ps_suppkey"), TableAttributeAtom("supplier", "s_suppkey")),
     ForeignKey(
       TableAttributeCompound("lineitem", Seq("l_partkey", "l_suppkey")),
-      TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey")))
+      TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey"))),
+    ForeignKey(TableAttributeAtom("lineitem", "l_partkey"), TableAttributeAtom("part", "p_partkey")),
+    ForeignKey(TableAttributeAtom("lineitem", "l_suppkey"), TableAttributeAtom("supplier", "s_suppkey"))
   )
   lazy val pks = primaryKeys.map(_.attr.attr)
   lazy val fks = foreignKeys.map(_.attr.attr)
@@ -193,6 +195,9 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |  pfk_partsupp_lineitem_prf varchar,
         |  fpk_lineitem_partsupp_prf varchar,
         |
+        |  pfk_part_lineitem_prf varchar,
+        |  fpk_lineitem_part_prf varchar,
+        |
         |  val_lineitem_l_comment_prf varchar,
         |  l_comment_prf varchar
         |)
@@ -200,10 +205,10 @@ trait DexTPCHTest extends QueryTest with DexTest {
     execute(connEnc,
       """
         |insert into lineitem_prf values
-        |(1 * 2 + 1 * 3, 'partsupp~lineitem~5~0',  '5_enc_lineitem~partsupp~5',   'lineitem~l_comment~la1~0', 'la1_enc'),
-        |(1 * 2 + 2 * 3, 'partsupp~lineitem~5~1',  '5_enc_lineitem~partsupp~8',   'lineitem~l_comment~la2~0', 'la2_enc'),
-        |(2 * 2 + 1 * 3, 'partsupp~lineitem~10~0', '10_enc_lineitem~partsupp~7',  'lineitem~l_comment~la3~0', 'la3_enc'),
-        |(2 * 2 + 2 * 3, 'partsupp~lineitem~10~1', '10_enc_lineitem~partsupp~10', 'lineitem~l_comment~la3~1', 'la3_enc')
+        |(1 * 2 + 1 * 3, 'partsupp~lineitem~5~0',  '5_enc_lineitem~partsupp~5',   'part~lineitem~1~0', '1_enc_lineitem~part~5',  'lineitem~l_comment~la1~0', 'la1_enc'),
+        |(1 * 2 + 2 * 3, 'partsupp~lineitem~5~1',  '5_enc_lineitem~partsupp~8',   'part~lineitem~1~1', '1_enc_lineitem~part~8',  'lineitem~l_comment~la2~0', 'la2_enc'),
+        |(2 * 2 + 1 * 3, 'partsupp~lineitem~10~0', '10_enc_lineitem~partsupp~7',  'part~lineitem~2~0', '2_enc_lineitem~part~7',  'lineitem~l_comment~la3~0', 'la3_enc'),
+        |(2 * 2 + 2 * 3, 'partsupp~lineitem~10~1', '10_enc_lineitem~partsupp~10', 'part~lineitem~2~1', '2_enc_lineitem~part~10', 'lineitem~l_comment~la3~1', 'la3_enc')
       """.stripMargin)
 
     conn.commit()

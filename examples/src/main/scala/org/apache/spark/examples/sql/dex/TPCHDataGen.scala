@@ -84,6 +84,8 @@ object TPCHDataGen {
     ForeignKey(TableAttributeAtom("partsupp", "ps_partkey"), TableAttributeAtom("part", "p_partkey")),
     ForeignKey(TableAttributeAtom("partsupp", "ps_suppkey"), TableAttributeAtom("supplier", "s_suppkey")),
     ForeignKey(TableAttributeCompound("lineitem", Seq("l_partkey", "l_suppkey")), TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey"))),
+    ForeignKey(TableAttributeAtom("lineitem", "l_partkey"), TableAttributeAtom("part", "p_partkey")),
+    ForeignKey(TableAttributeAtom("lineitem", "l_suppkey"), TableAttributeAtom("supplier", "s_suppkey")),
     ForeignKey(TableAttributeAtom("orders", "o_custkey"), TableAttributeAtom("customer", "c_custkey")),
     ForeignKey(TableAttributeAtom("lineitem", "l_orderkey"), TableAttributeAtom("orders", "o_orderkey"))
   )

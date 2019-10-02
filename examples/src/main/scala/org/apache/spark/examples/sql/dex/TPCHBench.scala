@@ -143,6 +143,28 @@ object TPCHBench {
       .select("ps_supplycost")
     benchQuery("q2e2", spark, q2e, q2e2Df)
 
+    println("\n Q3")
+    val q3 =
+      """
+        |select
+        |  l_extendedprice,
+        |  l_discount,
+        |  o_orderdate,
+        |  o_shippriority
+        |from
+        |  customer,
+        |  orders,
+        |  lineitem
+        |where
+        |  c_mktsegment = 'BUILDING'
+        |  and c_custkey = o_custkey
+        |  and l_orderkey = o_orderkey
+      """.stripMargin
+    val q3aDf = customer.where("c_mktsegment == 'BUILDING'")
+        .join(orders).where("c_custkey == o_custkey")
+        .join(lineitem).where("o_orderkey == l_orderkey")
+    benchQuery("q3a", spark, q3, q3aDf)
+
     println("\n Q5")
     val q5a =
       """
@@ -193,6 +215,137 @@ object TPCHBench {
       ).where("s_nationkey == n_nationkey")
         .join(region).where("n_regionkey == r_regionkey")
     benchQuery("q5b2", spark, q5b, q5b2Df)
+
+    // Q6 has only range queries, skip.
+
+    println("\nQ7")
+    val q7 =
+      """
+        |select
+        |  n1.n_name,
+        |  n2.n_name,
+        |  l_shipdate,
+        |  l_extendedprice,
+        |  l_discount
+        |from
+        |  supplier,
+        |  lineitem,
+        |  orders,
+        |  customer,
+        |  nation n1,
+        |  nation n2
+        |where
+        |  s_suppkey = l_suppkey
+        |  and o_orderkey = l_orderkey
+        |  and c_custkey = o_custkey
+        |  and s_nationkey = n1.n_nationkey
+        |  and c_nationkey = n2.n_nationkey
+        |  and (
+        |    (n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY')
+        |    or (n1.n_name = 'GERMANY' and n2.n_name = 'FRANCE')
+        |  )
+      """.stripMargin
+    val q7aDf = nation.as("n1").join(supplier).where("n1.n_nationkey == s_nationkey")
+        .join(
+          nation.as("n2").join(customer).where("n2.n_nationkey == c_nationkey")
+            .join(orders).where("c_custkey == o_custkey")
+            .join(lineitem).where("o_orderkey == l_orderkey")
+        )
+        .where("s_suppkey = l_suppkey")
+    benchQuery("q7a", spark, q7, q7aDf)
+
+
+    println("\nQ8")
+    val q8 =
+      """
+        |select
+        |  o_orderdate,
+        |  l_extendedprice,
+        |  l_discount,
+        |  n2.n_name
+        |from
+        |  part,
+        |  supplier,
+        |  lineitem,
+        |  orders,
+        |  customer,
+        |  nation n1,
+        |  nation n2,
+        |  region
+        |where
+        |  p_partkey = l_partkey
+        |  and s_suppkey = l_suppkey
+        |  and l_orderkey = o_orderkey
+        |  and o_custkey = c_custkey
+        |  and c_nationkey = n1.n_nationkey
+        |  and n1.n_regionkey = r_regionkey
+        |  and r_name = 'AMERICA'
+        |  and s_nationkey = n2.n_nationkey
+        |  and p_type = 'ECONOMY ANODIZED STEEL'
+      """.stripMargin
+    val q8aDf = region.where("r_name == 'AMERICA'")
+        .join(nation.as("n1")).where("r_regionkey == n1.n_regionkey")
+        .join(customer).where("n1.n_nationkey == c_nationkey")
+        .join(orders).where("c_custkey == o_custkey")
+        .join(
+          part.where("p_type == 'ECONOMY ANODIZED STEEL'")
+            .join(lineitem).where("p_partkey = l_partkey")
+        )
+    benchQuery("q8a", spark, q8, q8aDf)
+
+    println("\n Q9")
+    val q9 =
+      """
+        |select
+        |  n_name,
+        |  o_orderdate,
+        |  l_extendedprice,
+        |  l_discount,
+        |  ps_supplycost,
+        |  l_quantity
+        |from
+        |  part, supplier, lineitem, partsupp, orders, nation
+        |where
+        |  s_suppkey = l_suppkey
+        |  and ps_suppkey = l_suppkey and ps_partkey = l_partkey
+        |  and p_partkey = l_partkey
+        |  and o_orderkey = l_orderkey and s_nationkey = n_nationkey
+      """.stripMargin
+    // join on smaller tables
+    val q9aDf = lineitem.join(
+      partsupp.join(part).where("ps_partkey = p_partkey")
+        .join(supplier).where("ps_suppkey = s_suppkey")
+    ).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey")
+    benchQuery("q9a", spark, q9, q9aDf)
+
+    println("\n Q10")
+    val q10 =
+      """
+        |select
+        |  c_name,
+        |  l_extendedprice,
+        |  l_discount,
+        |  c_acctbal,
+        |  n_name,
+        |  c_address,
+        |  c_phone,
+        |  c_comment
+        |from
+        |  customer,
+        |  orders, lineitem, nation
+        |where
+        |  c_custkey = o_custkey
+        |  and l_orderkey = o_orderkey
+        |  and l_returnflag = 'R'
+        |  and c_nationkey = n_nationkey
+      """.stripMargin
+    // filter on fk for fk-pk join
+    val q10aDf = lineitem.where("l_returnflag = 'R'")
+        .join(orders).where("l_orderkey = o_orderkey")
+        .join(customer).where("o_custkey = c_custkey")
+        .join(nation).where("c_custkey = n_nationkey")
+    benchQuery("q10a", spark, q10, q10aDf)
+
 
     spark.stop()
   }
