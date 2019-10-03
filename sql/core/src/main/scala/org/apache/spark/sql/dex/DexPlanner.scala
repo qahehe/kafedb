@@ -757,6 +757,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       plan transformUp {
         case p: DexPlan =>
           val translator = DexPlanTranslator.ofPlan(p)
+          log.warn("== To be translated == \n" + plan.treeString(verbose = true))
           translator.translate
       }
     }
