@@ -248,12 +248,11 @@ object TPCHBench {
         |  and c_nationkey = n2.n_nationkey
         |  and (
         |    (n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY')
-        |    or (n1.n_name = 'GERMANY' and n2.n_name = 'FRANCE')
         |  )
       """.stripMargin
-    val q7aDf = nation.as("n1").join(supplier).where("n1.n_nationkey == s_nationkey")
+    val q7aDf = nation.as("n1").join(supplier).where("n1.n_name = 'FRANCE' and n1.n_nationkey = s_nationkey")
         .join(
-          nation.as("n2").join(customer).where("n2.n_nationkey == c_nationkey")
+          nation.as("n2").join(customer).where("n2.n_name = 'GERMANY' and n2.n_nationkey == c_nationkey")
             .join(orders).where("c_custkey == o_custkey")
             .join(lineitem).where("o_orderkey == l_orderkey")
         )
@@ -300,6 +299,7 @@ object TPCHBench {
             .join(supplier).where("s_suppkey = l_suppkey")
             .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
         )
+      .where("o_orderkey = l_orderkey")
         .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")
     benchQuery("q8a", spark, q8, q8aDf)
 
@@ -322,11 +322,21 @@ object TPCHBench {
         |  and o_orderkey = l_orderkey and s_nationkey = n_nationkey
       """.stripMargin
     // join on smaller tables
-    val q9aDf = lineitem.join(
+    /*val q9aDf = lineitem.join(
       partsupp.join(part).where("ps_partkey = p_partkey")
         .join(supplier).where("ps_suppkey = s_suppkey")
     ).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey")
-      .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
+      .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")*/
+    val q9aDf = orders.join(
+      part.join(
+        partsupp.join(
+          supplier
+            .join(lineitem).where("s_suppkey = l_suppkey")
+            .join(nation).where("s_nationkey = n_nationkey") // todo: optimization: join small table first
+        ).where("ps_suppkey = l_suppkey and ps_partkey = l_partkey")
+      ).where("p_partkey = l_partkey")
+    ).where("o_orderkey = l_orderkey")
+
     benchQuery("q9a", spark, q9, q9aDf)
 
     println("\n Q10")
