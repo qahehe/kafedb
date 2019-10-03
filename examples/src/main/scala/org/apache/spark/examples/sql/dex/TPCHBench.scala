@@ -220,6 +220,7 @@ object TPCHBench {
         customer.join(nation).where("c_nationkey == n_nationkey")
       ).where("s_nationkey == n_nationkey")
         .join(region).where("n_regionkey == r_regionkey")
+        .select("n_name")
     benchQuery("q5b2", spark, q5b, q5b2Df)
 
     // Q6 has only range queries, skip.
@@ -250,7 +251,7 @@ object TPCHBench {
         |    (n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY')
         |  )
       """.stripMargin
-    val q7aDf = nation.as("n1").join(supplier).where("n1.n_name = 'FRANCE' and n1.n_nationkey = s_nationkey")
+    /*val q7aDf = nation.as("n1").join(supplier).where("n1.n_name = 'FRANCE' and n1.n_nationkey = s_nationkey")
         .join(
           nation.as("n2").join(customer).where("n2.n_name = 'GERMANY' and n2.n_nationkey == c_nationkey")
             .join(orders).where("c_custkey == o_custkey")
@@ -258,6 +259,15 @@ object TPCHBench {
         )
         .where("s_suppkey = l_suppkey")
         .selectExpr("n1.n_name as n1_name", "n2.n_name as n2_name", "l_shipdate", "l_extendedprice", "l_discount")
+     */
+    val q7aDf = customer.join(
+      orders.join(
+        supplier.join(lineitem).where("s_suppkey = l_suppkey")
+          .join(nation.as("n1")).where("s_nationkey = n1.n_nationkey")
+      ).where("o_orderkey = l_orderkey")
+    ).where("c_custkey = o_custkey")
+      .join(nation.as("n2")).where("c_nationkey = n2.n_nationkey")
+      .selectExpr("n1.n_name as n1_name", "n2.n_name as n2_name", "l_shipdate", "l_extendedprice", "l_discount")
     benchQuery("q7a", spark, q7, q7aDf)
 
 
@@ -289,7 +299,7 @@ object TPCHBench {
         |  and s_nationkey = n2.n_nationkey
         |  and p_type = 'ECONOMY ANODIZED STEEL'
       """.stripMargin
-    val q8aDf = region.where("r_name == 'AMERICA'")
+    /*val q8aDf = region.where("r_name == 'AMERICA'")
         .join(nation.as("n1")).where("r_regionkey == n1.n_regionkey")
         .join(customer).where("n1.n_nationkey == c_nationkey")
         .join(orders).where("c_custkey == o_custkey")
@@ -300,7 +310,16 @@ object TPCHBench {
             .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
         )
       .where("o_orderkey = l_orderkey")
-        .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")
+        .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")*/
+    val q8aDf = supplier.join(
+      part.join(lineitem).where("p_type = 'ECONOMY ANODIZED STEEL' and p_partkey = l_partkey")
+        .join(orders).where("l_orderkey = o_orderkey")
+        .join(customer).where("o_custkey = c_custkey")
+        .join(nation.as("n1")).where("c_nationkey = n1.n_nationkey")
+        .join(region).where("r_name = 'AMERICA' and n1.n_regionkey = r_regionkey")
+    ).where("s_suppkey = l_suppkey")
+        .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
+      .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")
     benchQuery("q8a", spark, q8, q8aDf)
 
     println("\n Q9")
@@ -336,6 +355,7 @@ object TPCHBench {
         ).where("ps_suppkey = l_suppkey and ps_partkey = l_partkey")
       ).where("p_partkey = l_partkey")
     ).where("o_orderkey = l_orderkey")
+      .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
 
     benchQuery("q9a", spark, q9, q9aDf)
 
@@ -361,11 +381,16 @@ object TPCHBench {
         |  and c_nationkey = n_nationkey
       """.stripMargin
     // filter on fk for fk-pk join
-    val q10aDf = lineitem.where("l_returnflag = 'R'")
+    /*val q10aDf = lineitem.where("l_returnflag = 'R'")
         .join(orders).where("l_orderkey = o_orderkey")
         .join(customer).where("o_custkey = c_custkey")
         .join(nation).where("c_custkey = n_nationkey")
-        .select("c_name", "l_extendedprice", "l_discount", "c_acctbal", "n_name", "c_address", "c_phone", "c_comment")
+        .select("c_name", "l_extendedprice", "l_discount", "c_acctbal", "n_name", "c_address", "c_phone", "c_comment")*/
+    val q10aDf = lineitem.join(
+      customer.join(orders).where("c_custkey = o_custkey")
+        .join(nation).where("c_nationkey = n_nationkey")
+    ).where("l_returnflag = 'R' and l_orderkey = o_orderkey")
+      .select("c_name", "l_extendedprice", "l_discount", "c_acctbal", "n_name", "c_address", "c_phone", "c_comment")
     benchQuery("q10a", spark, q10, q10aDf)
 
 
