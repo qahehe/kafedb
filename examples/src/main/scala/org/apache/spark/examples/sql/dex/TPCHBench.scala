@@ -81,7 +81,7 @@ object TPCHBench {
     println(s"\n Q2")
     // TPCH Query 2
     val q2a = "select r_comment from region where r_name = 'EUROPE'"
-    val q2aDf = region.where("r_name == 'EUROPE'")
+    val q2aDf = region.where("r_name == 'EUROPE'").select("r_comment")
     benchQuery("q2a", spark, q2a, q2aDf)
 
     val q2b = "select n_name from region, nation where r_regionkey = n_regionkey"
@@ -111,6 +111,7 @@ object TPCHBench {
       .join(supplier).where("ps_suppkey == s_suppkey")
       .join(nation).where("s_nationkey == n_nationkey")
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
+      .select("ps_supplycost")
     val q2cDf = q2cMain
     benchQuery("q2c", spark, q2c, q2cDf)
 
@@ -118,6 +119,7 @@ object TPCHBench {
       .join(supplier).where("ps_suppkey == s_suppkey")
       .join(nation).where("s_nationkey == n_nationkey")
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
+      .select("ps_supplycost")
     benchQuery("q2c2", spark, q2c, q2c2Df)
 
     val q2d = "select * from part where p_size = 15"
@@ -183,6 +185,7 @@ object TPCHBench {
         .join(nation).where("r_regionkey == n_regionkey")
         .join(customer).where("n_nationkey == c_nationkey")
         .join(supplier).where("n_nationkey == s_nationkey")
+        .select("n_name")
     //val q5aDex = q5aDf.dexPkFk(pks, fks)
     benchQuery("q5a", spark, q5a, q5aDf)
 
@@ -190,6 +193,7 @@ object TPCHBench {
       customer.join(nation).where("c_nationkey == n_nationkey")
         .join(region).where("n_regionkey == r_regionkey and r_name == 'ASIA'")
     ).where("s_nationkey == n_nationkey")
+        .select("n_name")
     benchQuery("q5a2", spark, q5a, q5a2Df)
 
     val q5b =
@@ -207,6 +211,7 @@ object TPCHBench {
       .join(nation).where("r_regionkey == n_regionkey")
       .join(customer).where("n_nationkey == c_nationkey")
       .join(supplier).where("n_nationkey == s_nationkey")
+        .select("n_name")
     //val q5bDex = q5bDf.dexPkFk(pks, fks)
     benchQuery("q5b", spark, q5b, q5bDf)
 
@@ -253,6 +258,7 @@ object TPCHBench {
             .join(lineitem).where("o_orderkey == l_orderkey")
         )
         .where("s_suppkey = l_suppkey")
+        .selectExpr("n1.n_name as n1_name", "n2.n_name as n2_name", "l_shipdate", "l_extendedprice", "l_discount")
     benchQuery("q7a", spark, q7, q7aDf)
 
 
@@ -291,7 +297,10 @@ object TPCHBench {
         .join(
           part.where("p_type == 'ECONOMY ANODIZED STEEL'")
             .join(lineitem).where("p_partkey = l_partkey")
+            .join(supplier).where("s_suppkey = l_suppkey")
+            .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
         )
+        .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")
     benchQuery("q8a", spark, q8, q8aDf)
 
     println("\n Q9")
@@ -317,6 +326,7 @@ object TPCHBench {
       partsupp.join(part).where("ps_partkey = p_partkey")
         .join(supplier).where("ps_suppkey = s_suppkey")
     ).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey")
+      .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
     benchQuery("q9a", spark, q9, q9aDf)
 
     println("\n Q10")
@@ -345,6 +355,7 @@ object TPCHBench {
         .join(orders).where("l_orderkey = o_orderkey")
         .join(customer).where("o_custkey = c_custkey")
         .join(nation).where("c_custkey = n_nationkey")
+        .select("c_name", "l_extendedprice", "l_discount", "c_acctbal", "n_name", "c_address", "c_phone", "c_comment")
     benchQuery("q10a", spark, q10, q10aDf)
 
 
