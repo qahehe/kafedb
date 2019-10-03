@@ -144,7 +144,7 @@ object TPCHBench {
       .select("ps_supplycost")
     benchQuery("q2e2", spark, q2e, q2e2Df)
 
-    println("\n Q3")
+    /*println("\n Q3")
     val q3 =
       """
         |select
@@ -164,7 +164,7 @@ object TPCHBench {
     val q3aDf = customer.where("c_mktsegment == 'BUILDING'")
         .join(orders).where("c_custkey == o_custkey")
         .join(lineitem).where("o_orderkey == l_orderkey")
-    benchQuery("q3a", spark, q3, q3aDf)
+    benchQuery("q3a", spark, q3, q3aDf)*/
 
     println("\n Q5")
     val q5a =
@@ -223,8 +223,8 @@ object TPCHBench {
     val q7 =
       """
         |select
-        |  n1.n_name,
-        |  n2.n_name,
+        |  n1.n_name as n1_name,
+        |  n2.n_name as n2_name,
         |  l_shipdate,
         |  l_extendedprice,
         |  l_discount
