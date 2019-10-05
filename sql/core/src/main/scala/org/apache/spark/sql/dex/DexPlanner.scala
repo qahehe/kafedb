@@ -863,7 +863,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             val leftView = translatePlan(j.left)
             val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView), isNegated = false)
             val rightView = translatePlan(j.right)
-            // todo: optimize the case wehn rightView is just a table, merge the join with joinView without doing explicit join afterwards
+            // todo: optimize the case wehn rightView is just a table, merge the join with joinView without doing explicit join afterwards. Same for filter
             joinView.join(rightView, NaturalJoin(Inner))
           }
 
@@ -1311,8 +1311,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           val (taPEncName, taFEncName) = (tableEncNameOf(taP.table), tableEncNameOf(taF.table))
           leftChildView.join(
             DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
-            NaturalJoin(Inner)
-          ).join(rightChildView, NaturalJoin(Inner))
+            UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
+          ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
 
         case (taF, taP) if foreignKeys.contains(taF.attr) && primaryKeys.contains(taP.attr) =>
           // foreign to primary key join, e.g. partsupp.ps_suppkey = supplier.s_suppkey
