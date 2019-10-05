@@ -349,7 +349,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // join the result back with rows associated with leftRid in left_subquery_all_cols.
         // If we can do the row projection replacement, then we can also express the computation without the lastly natural
         // join with left_sbuquery_all_cols, but potentially with duplicate calls to t_correlated_join.
-        s"""
+        /*s"""
            |(
            |  WITH RECURSIVE left_subquery_all_cols AS (
            |   $leftSubquery
@@ -371,10 +371,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join NATURAL JOIN left_subquery_all_cols
            |) AS ${generateSubqueryName()}
-         """.stripMargin
+         """.stripMargin*/
 
 
-        /*s"""
+        s"""
            |(
            |  WITH RECURSIVE left_subquery AS (
            |   SELECT $leftSubqueryOutputCols, $labelPrfKey as label_prf_key, $valueDecKey as value_dec_key FROM ($leftSubquery) AS ${generateSubqueryName()}
@@ -393,7 +393,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join
            |) AS ${generateSubqueryName()}
-         """.stripMargin*/
+         """.stripMargin
 
       case v: DexDomainValues =>
         val (labelPrfKey, valueDecKey) = emmKeys(v.predicate)
