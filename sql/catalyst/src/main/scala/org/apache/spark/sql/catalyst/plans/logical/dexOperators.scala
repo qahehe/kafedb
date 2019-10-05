@@ -86,7 +86,7 @@ case class DexDomainJoin(leftPredicate: String, rightPredicate: String, intersec
   }
 }
 
-case class DexPseudoPrimaryKeyFilter(predicate: String, labelColumn: Attribute, filterTableName: String, filterTable: LogicalPlan, filterTableRid: Attribute) extends UnaryNode {
+case class DexPseudoPrimaryKeyFilter(predicate: String, labelColumn: String, labelColumnOrder: Attribute, filterTableName: String, filterTable: LogicalPlan, filterTableRid: Attribute) extends UnaryNode {
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 
   override def output: Seq[Attribute] = Seq(filterTableRid)
@@ -95,7 +95,7 @@ case class DexPseudoPrimaryKeyFilter(predicate: String, labelColumn: Attribute, 
 }
 
 // output: childView's schema plus
-case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = leftTable // only for resolving leftTableRid
 
   override def right: LogicalPlan = rightTable // only for resolving labelColumn

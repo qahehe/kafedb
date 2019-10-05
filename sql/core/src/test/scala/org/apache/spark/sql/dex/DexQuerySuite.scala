@@ -204,6 +204,11 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query1, query1.dexCorr(cks))
   }
 
+  test("dex table alias") {
+    val query1 = data2.as("d2").join(data3).where("d2.a = c")
+    checkDexFor(query1, query1.dexCorr(cks))
+  }
+
   test("jdbc rdd internal rows are unmaterialized cursors") {
     val expected = Seq((1, 1), (1, 2), (2, 3))
     val unsafeRowHeaderRepr = 0

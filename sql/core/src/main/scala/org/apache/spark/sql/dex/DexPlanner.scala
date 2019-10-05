@@ -483,7 +483,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       case f: DexPseudoPrimaryKeyFilter =>
         val labelPrfKey = emmKeyForPrimaryKeyFilter(f.predicate)
-        val labelCol = f.labelColumn.dialectSql(dialect.quoteIdentifier)
+        val labelCol = dialect.quoteIdentifier(f.labelColumn)
         val outputCols = f.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
         val ridOrder = f.filterTableRid.dialectSql(dialect.quoteIdentifier)
         /*s"""
@@ -537,7 +537,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin
 
       case j: DexPseudoPrimaryKeyJoin =>
-        val labelCol = j.labelColumn.dialectSql(dialect.quoteIdentifier)
+        val labelCol = dialect.quoteIdentifier(j.labelColumn)
         val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
         val (leftRid, rightRid) = (j.leftTableRid.dialectSql(dialect.quoteIdentifier), j.rightTableRid.dialectSql(dialect.quoteIdentifier))
         // first generate labelPrfKeys for each primary key
@@ -784,16 +784,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     def dexPlan: DexPlan
 
-    protected lazy val joinOrder: String => Int =
+    protected lazy val joinOrder: LogicalRelation => Int =
       dexPlan.collect {
-        case l: LogicalRelation =>
-          tableNameFromLogicalRelation(l)
+        case l: LogicalRelation => l
       }.indexOf
 
-    protected lazy val exprIdToTable: ExprId => String =
+    protected lazy val exprIdToTable: ExprId => LogicalRelation =
       dexPlan.collect {
         case l: LogicalRelation =>
-          l.output.map(x => (x.exprId, tableNameFromLogicalRelation(l)))
+          l.output.map(x => (x.exprId, l))
       }.flatten.toMap
 
     protected lazy val output = dexPlan.output.map(translateAttribute)
@@ -825,7 +824,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       DexDecrypt(encKey, randomAttr(prfKey, attr)).cast(attr.dataType).as(attr.name)
     }
 
-    private def randomAttr(prfKey: String, attr: Attribute): Attribute = $"${attr.name}_${prfKey}"
+    private def randomAttr(prfKey: String, attr: Attribute): Attribute = $"${attr.name}_${prfKey}_${joinOrder(exprIdToTable(attr.exprId))}"
 
     protected def translatePlan(plan: LogicalPlan): LogicalPlan = {
       plan match {
@@ -834,8 +833,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           // So here we simply return it as is
           d
         case l: LogicalRelation =>
-          val tableName = tableNameFromLogicalRelation(l)
-          tableEncWithRidOrderOf(tableName)
+          tableEncWithRidOrderOf(l)
 
         case p: Project =>
           // todo: projection push down
@@ -865,6 +863,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             val leftView = translatePlan(j.left)
             val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView), isNegated = false)
             val rightView = translatePlan(j.right)
+            // todo: optimize the case wehn rightView is just a table, merge the join with joinView without doing explicit join afterwards
             joinView.join(rightView, NaturalJoin(Inner))
           }
 
@@ -936,8 +935,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private def translateFilterPredicate(p: Predicate, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = p match {
       case EqualTo(left: Attribute, right@Literal(value, dataType)) =>
         val colName = left.name
-        val tableName = exprIdToTable(left.exprId)
-        val ridOrder = s"rid_${joinOrder(tableName)}"
+        val tableRel = exprIdToTable(left.exprId)
+        val ridOrder = s"rid_${joinOrder(tableRel)}"
         val valueStr = dataType match {
           case IntegerType => s"${value.asInstanceOf[Int]}"
           case StringType => s"$value"
@@ -948,17 +947,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           LocalRelation('predicate.string).output,
           InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
         //val predicate = s"$tableName~$colName~$valueStr"
-        dexFilterOf(tableName, colName, valueStr, ridOrder, childView, isNegated)
+        dexFilterOf(tableRel, colName, valueStr, ridOrder, childView, isNegated)
 
       case EqualTo(left: Attribute, right: Attribute) if left.name < right.name =>
         val colNames = (left.name, right.name)
-        val tableNames = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
-        require(tableNames._1 == tableNames._2)
-        val tableName = tableNames._1
-        val ridOrder = s"rid_${joinOrder(tableName)}"
+        val tableRels = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
+        require(tableRels._1 == tableRels._2)
+        val tableRel = tableRels._1
+        val ridOrder = s"rid_${joinOrder(tableRel)}"
+        val tableName = tableNameFromLogicalRelation(tableRel)
         val predicate = s"$tableName~${colNames._1}~${colNames._2}"
         // todo: extend this case to DexPkFk
-        dexFilterOf(tableName, colNames._1, colNames._2, ridOrder, childView, isNegated)
+        dexFilterOf(tableRel, colNames._1, colNames._2, ridOrder, childView, isNegated)
 
       case EqualTo(left: Attribute, right: Attribute) if left.name > right.name =>
         translateFilterPredicate(EqualTo(right, left), childView, isNegated)
@@ -966,13 +966,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case x => throw DexException("unsupported: " + x.toString)
     }
 
-    protected def dexFilterOf(predicateTableName: String, predicateColname: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan
+    protected def dexFilterOf(predicateTable: LogicalRelation, predicateColname: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan
 
     case class JoinAttrs(left: Attribute, right: Attribute) {
       val (leftColName, rightColName) = (left.name, right.name)
-      val (leftTableName, rightTableName) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
-      val (leftTableOrder, rightTableOrder) = (joinOrder(leftTableName), joinOrder(rightTableName))
-      val (leftRidOrder, rightRidOrder) = (s"rid_${leftTableOrder}", s"rid_${rightTableOrder}")
+      val (leftTableRel, rightTableRel) = (exprIdToTable(left.exprId), exprIdToTable(right.exprId))
+      val (leftTableName, rightTableName) = (tableNameFromLogicalRelation(leftTableRel), tableNameFromLogicalRelation(rightTableRel))
+      val (leftTableOrder, rightTableOrder) = (joinOrder(leftTableRel), joinOrder(rightTableRel))
+      val (leftRidOrder, rightRidOrder) = (s"rid_$leftTableOrder", s"rid_$rightTableOrder")
       val (leftQualifiedName, rightQualifiedName) = (s"$leftTableName.$leftColName", s"$rightTableName.$rightColName")
 
       def ridOrderAttrsGiven(childView: LogicalPlan): (Option[Attribute], Option[Attribute]) =
@@ -995,24 +996,25 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     protected def tableEncNameOf(tableName: String): String = s"${tableName}_prf"
 
-    protected def tableEncWithRidOrderOf(tableName: String): LogicalPlan = {
+    protected def tableEncWithRidOrderOf(tablePlain: LogicalRelation): LogicalPlan = {
       val tableEnc = LogicalRelation(
         DataSource.apply(
           sparkSession,
           className = "jdbc",
           options = Map(
             JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
-            JDBCOptions.JDBC_TABLE_NAME -> tableEncNameOf(tableName))).resolveRelation())
-      renameRidWithJoinOrder(tableEnc, tableName)
+            JDBCOptions.JDBC_TABLE_NAME -> tableEncNameOf(tableNameFromLogicalRelation(tablePlain)))).resolveRelation())
+      renameRidWithJoinOrder(tableEnc, tablePlain)
     }
 
-    private def renameRidWithJoinOrder(tableEnc: LogicalRelation, tableName: String): LogicalPlan = {
+    private def renameRidWithJoinOrder(tableEnc: LogicalRelation, tablePlain: LogicalRelation): LogicalPlan = {
       val output = tableEnc.output
+      val order = joinOrder(tablePlain)
       val columns = output.map { col =>
         if (resolver(col.name, "rid")) {
-          Column(col).as(s"rid_${joinOrder(tableName)}").expr
+          Column(col).as(s"rid_$order").expr
         } else {
-          Column(col).expr
+          Column(col).as(s"${col.name}_$order").expr
         }
       }
       tableEnc.select(columns: _*)
@@ -1059,7 +1061,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   sealed trait StandaloneTranslator extends DexPlanTranslator {
-    override protected def dexFilterOf(predicateTableName: String, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
+    override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
+      val predicateTableName = tableNameFromLogicalRelation(predicateTable)
       val predicate = s"$predicateTableName~$predicateColName~$predicateValue"
       val ridFilter = DexRidFilter(predicate, tFilter)
         .select(DexDecrypt($"value_dec_key", $"value").as(ridOrder))
@@ -1179,8 +1182,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case l: LogicalRelation =>
         // Assume the filter operator will output childView schema
         // Assume the join operator will output childView schema
-        val tableName = tableNameFromLogicalRelation(l)
-        tableEncWithRidOrderOf(tableName)
+        tableEncWithRidOrderOf(l)
 
       case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
         val joinCompoundCond = {
@@ -1269,9 +1271,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case _ => false
     }
 
-    override protected def dexFilterOf(predicateTableName: String, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
+    override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       require(!isNegated, "todo")
-      val labelCol = $"val_${predicateTableName}_${predicateColName}_prf"
+      val predicateTableName = tableNameFromLogicalRelation(predicateTable)
+      val labelCol = s"val_${predicateTableName}_${predicateColName}_$prfKey"
+      val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
       val predicate = s"$predicateTableName~$predicateColName~$predicateValue"
       // Output filtered rows in childView (eventually the source table).  Note that this is different from ridFilter
       // where output is just (value_dec_key, value) and to be joined with source table.
@@ -1279,9 +1283,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       // todo: projection pushdown
       // todo: add t_e column?  Can eliminnate this left semi join
       val encPredicateTableName = tableEncNameOf(predicateTableName)
-      val encPredicateTable = tableEncWithRidOrderOf(predicateTableName)
+      val encPredicateTable = tableEncWithRidOrderOf(predicateTable)
       childView.join(
-        DexPseudoPrimaryKeyFilter(predicate, labelCol, encPredicateTableName, encPredicateTable, $"$ridOrder"),
+        DexPseudoPrimaryKeyFilter(predicate, labelCol, labelColOrder, encPredicateTableName, encPredicateTable, $"$ridOrder"),
         UsingJoin(LeftSemi, Seq(ridOrder))
       )
     }
@@ -1299,23 +1303,24 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       (leftTableAttr, rightTableAttr) match {
         case (taP, taF) if primaryKeys.contains(taP.attr) && foreignKeys.contains(taF.attr) =>
           // primary to foreign key join, e.g. supplier.s_suppkey = partsupp.ps_suppkey
-          val labelColumn = $"pfk_${taP.table}_${taF.table}_prf"
+          val labelColumn = s"pfk_${taP.table}_${taF.table}_$prfKey"
+          val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.rightTableRel)}"
           val predicate = s"${taP.table}~${taF.table}"
           //DexPseudoPrimaryKeyJoin(predicate, labelColumn, leftChildView, leftRidOrder, rightChildView)
-          val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(taP.table), tableEncWithRidOrderOf(taF.table))
+          val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.leftTableRel), tableEncWithRidOrderOf(joinAttrs.rightTableRel))
           val (taPEncName, taFEncName) = (tableEncNameOf(taP.table), tableEncNameOf(taF.table))
           leftChildView.join(
-            DexPseudoPrimaryKeyJoin(predicate, labelColumn, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
+            DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
             NaturalJoin(Inner)
           ).join(rightChildView, NaturalJoin(Inner))
 
         case (taF, taP) if foreignKeys.contains(taF.attr) && primaryKeys.contains(taP.attr) =>
           // foreign to primary key join, e.g. partsupp.ps_suppkey = supplier.s_suppkey
-          val mapColumn = $"fpk_${taF.table}_${taP.table}_prf"
+          val mapColumnOrder = $"fpk_${taF.table}_${taP.table}_${prfKey}_${joinOrder(joinAttrs.leftTableRel)}"
           val predicate = s"${taF.table}~${taP.table}"
           val mapColumnDecKey = Concat(Seq(predicate, "~", leftRidOrder))
           //val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
-          leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumn).cast(LongType) === rightRidOrder))
+          leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder).cast(LongType) === rightRidOrder))
             .select(star())
 
         case (taL, taR) => throw DexException("unsupported: " + taL.toString + ", " + taR.toString) // todo: handle nonkey join using t_domain

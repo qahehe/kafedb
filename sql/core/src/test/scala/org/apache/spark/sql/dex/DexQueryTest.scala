@@ -172,16 +172,16 @@ trait DexQueryTest extends DexTest {
         .executeUpdate()
       connEnc.commit()
 
-      connEnc.prepareStatement("create table testdata4_prf (rid varchar, e_prf varchar, f_prf varchar)")
+      connEnc.prepareStatement("create table testdata4_prf (rid varchar, e_prf varchar, f_prf varchar, g_prf varchar, h_prf varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
         """
           |insert into testdata4_prf values
-          |('1', '2_enc', '1_enc'),
-          |('2', '2_enc', '2_enc'),
-          |('3', '2_enc', '3_enc'),
-          |('4', '3_enc', '4_enc'),
-          |('5', '3_enc', '5_enc')
+          |('1', '2_enc', '1_enc', '10_enc', '100_enc'),
+          |('2', '2_enc', '2_enc', '10_enc', '200_enc'),
+          |('3', '2_enc', '3_enc', '20_enc', '300_enc'),
+          |('4', '3_enc', '4_enc', '20_enc', '300_enc'),
+          |('5', '3_enc', '5_enc', '30_enc', '100_enc')
         """.stripMargin)
         .executeUpdate()
       connEnc.commit()
