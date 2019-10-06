@@ -263,10 +263,10 @@ object TPCHBench {
     val q7aDf = customer.join(
       orders.join(
         supplier.join(lineitem).where("s_suppkey = l_suppkey")
-          .join(nation.as("n1")).where("s_nationkey = n1.n_nationkey")
+          .join(nation.as("n1")).where("s_nationkey = n1.n_nationkey and n1.n_name = 'FRANCE'")
       ).where("o_orderkey = l_orderkey")
     ).where("c_custkey = o_custkey")
-      .join(nation.as("n2")).where("c_nationkey = n2.n_nationkey")
+      .join(nation.as("n2")).where("c_nationkey = n2.n_nationkey and n2.n_name = 'GERMANY'")
       .selectExpr("n1.n_name as n1_name", "n2.n_name as n2_name", "l_shipdate", "l_extendedprice", "l_discount")
     benchQuery("q7a", spark, q7, q7aDf)
 
@@ -352,7 +352,7 @@ object TPCHBench {
           supplier
             .join(lineitem).where("s_suppkey = l_suppkey")
             .join(nation).where("s_nationkey = n_nationkey") // todo: optimization: join small table first
-        ).where("ps_suppkey = l_suppkey and ps_partkey = l_partkey")
+        ).where("ps_partkey = l_partkey and ps_suppkey = l_suppkey")
       ).where("p_partkey = l_partkey")
     ).where("o_orderkey = l_orderkey")
       .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")

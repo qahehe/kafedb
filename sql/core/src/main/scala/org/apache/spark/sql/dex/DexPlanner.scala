@@ -1228,6 +1228,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
 
     private def isCompoundKeyJoin(condition: Expression): Boolean = {
+      // order sensitive components in compound key (A, B) need to join in order A = ... AND B = ...
       val attrLefts = condition.collect {
         case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrLeft
       }
