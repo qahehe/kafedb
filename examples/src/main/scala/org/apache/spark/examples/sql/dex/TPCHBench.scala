@@ -378,13 +378,25 @@ object TPCHBench {
       .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
     benchQuery("q9a", spark, q9, q9aDf)
 
+    // order fk-pk join tables from large to small
     val q9bDf = lineitem.join(supplier).where("l_suppkey = s_suppkey")
       .join(nation).where("s_nationkey = n_nationkey")
-      .join(partsupp).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey")
       .join(part).where("l_partkey = p_partkey")
+      .join(partsupp).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey")
       .join(orders).where("l_orderkey = o_orderkey")
       .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
     benchQuery("q9b", spark, q9, q9bDf)
+
+    // order fk-pk join tables from large to small
+    val q9cDf = lineitem
+      .join(orders).where("l_orderkey = o_orderkey")
+      .join(partsupp).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey")
+      .join(part).where("l_partkey = p_partkey")
+      .join(supplier).where("l_suppkey = s_suppkey")
+      .join(nation).where("s_nationkey = n_nationkey")
+
+      .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
+    benchQuery("q9b", spark, q9, q9cDf)
 
     println("\n Q10")
     val q10 =
