@@ -28,6 +28,7 @@ import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, row_number, udf}
 import org.apache.spark.util.Utils
 import org.apache.spark.sql.functions.{col, concat, lit}
+import org.apache.spark.sql.types.LongType
 import org.apache.spark.util.collection.BitSet
 
 object DexVariant {
@@ -121,7 +122,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     }
     require(c.attrs.size == 2, "only length-2 compound key is supported")
     val cols = c.attrs.map(col)
-    cantorPairing(cols.head, cols(1)) // unique identifier for ordered pair of numbers
+    cantorPairing(cols.head, cols(1)).cast(LongType) // unique identifier for ordered pair of numbers
   }
 
   private def pkCol(pk: PrimaryKey): Column = pk.attr match {
