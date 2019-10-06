@@ -106,14 +106,22 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   }
 
   private def compoundKeyCol(c: TableAttributeCompound): Column = {
+    /* doesn't work: 2a + 3b != 2a + 3b + 5c, but just using (2, 3) will equate them
     def sieve(s: Stream[Int]): Stream[Int] = {
       s.head #:: sieve(s.tail.filter(_ % s.head != 0))
-    }
-    val primes = sieve(Stream.from(2))
-    val uniquePrimeFactorization = c.attrs.map(col).zip(primes).map(x => x._1 * x._2).reduce((x, y) => x + y)
-    uniquePrimeFactorization
+    }*/
+    //val primes = sieve(Stream.from(2))
+    //val uniquePrimeFactorization = c.attrs.map(col).zip(primes).map(x => x._1 * x._2).reduce((x, y) => x + y)
+    //uniquePrimeFactorization
     // Use '&' to distinguish 1 || 12 collision with 11 || 2
     //concat(c.attrs.flatMap(x => Seq(col(x), lit("_and_"))).dropRight(1): _*)
+    def cantorPairing(a: Column, b: Column): Column = {
+      // https://en.wikipedia.org/wiki/Pairing_function
+      (a + b) * (a + b + 1) / 2 + b
+    }
+    require(c.attrs.size == 2, "only length-2 compound key is supported")
+    val cols = c.attrs.map(col)
+    cantorPairing(cols.head, cols(1)) // unique identifier for ordered pair of numbers
   }
 
   private def pkCol(pk: PrimaryKey): Column = pk.attr match {
