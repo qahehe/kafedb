@@ -21,15 +21,29 @@ import org.apache.spark.examples.sql.dex.TPCHDataGen.time
 import org.apache.spark.sql.dex.{DexCorr, DexPkFk, DexSpx, DexVariant}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-object TPCHBench {
+object BenchVariant {
+  def from(name: String): BenchVariant = {
+    name.toLowerCase() match {
+      case "spark" => Spark
+      case "postgres" => Postgres
+      case x if x.contains("dex") => Dex(DexVariant.from(x))
+    }
+  }
+}
+sealed trait BenchVariant {
+  def name: String = getClass.getSimpleName
+}
+case object Spark extends BenchVariant
+case object Postgres extends BenchVariant
+case class Dex(variant: DexVariant) extends BenchVariant {
+  override def name: String = variant.name
+}
 
-  val timeModes = Set("spark", "postgres", "dex")
+object TPCHBench {
 
   def main(args: Array[String]): Unit = {
     require(args.length == 2)
-    val dexVariant = DexVariant.from(args(0))
-    val timeMode = args(1)
-    require(timeMode.contains(timeMode))
+    val variant = BenchVariant.from(args(0))
 
     SparkSession.cleanupAnyExistingSession()
     val spark = SparkSession
@@ -64,23 +78,17 @@ object TPCHBench {
 
     def benchQuery(title: String, spark: SparkSession, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
       println(s"\n$title=\n$query")
-      if (timeMode == "spark") time {
-        val sparkResult = queryDf.count()
-        println(s"spark result size=$sparkResult")
-      }
-
-      if (timeMode == "postgres") time {
-        val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
-        println(s"postgres result size=${postgresResult.count()}")
-      }
-
-      if (timeMode == "dex") time {
-        val dexResult = queryDex.getOrElse(dexVariant match {
-          case DexSpx => queryDf.dexSpx(cks)
-          case DexCorr => queryDf.dexCorr(cks)
-          case DexPkFk  => queryDf.dexPkFk(pks, fks)
-        })
-        println(s"dex-${dexVariant.getClass.toString} result size=${dexResult.count()}")
+      time {
+        val result = variant match {
+          case Spark => queryDf
+          case Postgres => spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
+          case d: Dex => queryDex.getOrElse(d.variant match {
+            case DexSpx => queryDf.dexSpx(cks)
+            case DexCorr => queryDf.dexCorr(cks)
+            case DexPkFk  => queryDf.dexPkFk(pks, fks)
+          })
+        }
+        println(s"${variant.name} result size=${result.count()}")
       }
     }
 

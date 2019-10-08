@@ -38,7 +38,9 @@ object DexVariant {
     case "dexpkfk" => DexPkFk
   }
 }
-sealed trait DexVariant
+sealed trait DexVariant {
+  def name: String = getClass.getSimpleName
+}
 sealed trait DexStandalone
 case object DexSpx extends DexVariant with DexStandalone
 case object DexCorr extends DexVariant with DexStandalone
