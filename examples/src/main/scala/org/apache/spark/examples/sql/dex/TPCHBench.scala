@@ -42,7 +42,7 @@ case class Dex(variant: DexVariant) extends BenchVariant {
 object TPCHBench {
 
   def main(args: Array[String]): Unit = {
-    require(args.length == 2)
+    require(args.length == 1)
     val variant = BenchVariant.from(args(0))
 
     SparkSession.cleanupAnyExistingSession()
