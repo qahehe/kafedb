@@ -23,9 +23,13 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object TPCHBench {
 
+  val timeModes = Set("spark", "postgres", "dex")
+
   def main(args: Array[String]): Unit = {
-    require(args.length == 1)
+    require(args.length == 2)
     val dexVariant = DexVariant.from(args(0))
+    val timeMode = args(1)
+    require(timeMode.contains(timeMode))
 
     SparkSession.cleanupAnyExistingSession()
     val spark = SparkSession
@@ -60,15 +64,17 @@ object TPCHBench {
 
     def benchQuery(title: String, spark: SparkSession, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
       println(s"\n$title=\n$query")
-      /*time {
+      if (timeMode == "spark") time {
         val sparkResult = queryDf.count()
-        println(s"spark result size=${sparkResult}")
-      }*/
-      time {
+        println(s"spark result size=$sparkResult")
+      }
+
+      if (timeMode == "postgres") time {
         val postgresResult = spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
         println(s"postgres result size=${postgresResult.count()}")
       }
-      time {
+
+      if (timeMode == "dex") time {
         val dexResult = queryDex.getOrElse(dexVariant match {
           case DexSpx => queryDf.dexSpx(cks)
           case DexCorr => queryDf.dexCorr(cks)
@@ -203,6 +209,7 @@ object TPCHBench {
         |  customer, supplier, nation, region
         |where
         |  r_regionkey = n_regionkey
+        |  and c_nationkey = s_nationkey
         |  and n_nationkey = c_nationkey
         |  and n_nationkey = s_nationkey
       """.stripMargin
@@ -214,6 +221,7 @@ object TPCHBench {
     //val q5bDex = q5bDf.dexPkFk(pks, fks)
     benchQuery("q5b", spark, q5b, q5bDf)
 
+    // good for pkfk; lots of intermedaite data for fk-fk join,
     val q5b2Df =
       supplier.join(
         customer.join(nation).where("c_nationkey == n_nationkey")
@@ -405,6 +413,38 @@ object TPCHBench {
       .select("c_name", "l_extendedprice", "l_discount", "c_acctbal", "n_name", "c_address", "c_phone", "c_comment")
     benchQuery("q10a", spark, q10, q10aDf)
 
+    /*println("\nQ11")
+    val q11 =
+      """
+        |select
+        |  ps_partkey,
+        |  ps_supplycost,
+        |  ps_availqty
+        |from
+        |  partsupp, supplier, nation
+        |where
+        |  ps_suppkey = s_suppkey
+        |  and s_nationkey = n_nationkey
+        |  and n_name = 'GERMANY'
+      """.stripMargin
+    val q11aDf = partsupp.join(supplier).where("ps_suppkey = s_suppkey")
+        .join(nation).where("s_nationkey = n_nationkey and n_name = 'GERMANY'")
+        .select("ps_partkey", "ps_supplycost", "ps_availqty")
+    benchQuery("q11a", spark, q11, q11aDf)
+
+    println("\nQ12")
+    val q12 =
+      """
+        |select
+        |  l_shipmode,
+        |  o_orderpriority
+        |from
+        |  orders,
+        |  lineitem
+        |where
+        |  o_orderkey = l_orderkey
+        |  and l_shipmode in ('MAIL', 'SHIP')
+      """.stripMargin*/
 
     spark.stop()
   }
