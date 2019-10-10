@@ -91,23 +91,23 @@ trait DexTPCHBenchCommon {
     }
   }
 
-  def benchQuery(variant: BenchVariant, query: BenchQuery): BenchQueryResult = {
-    println(s"\n${query.name}=\n$query")
+  def benchQuery(variant: BenchVariant, bq: BenchQuery): BenchQueryResult = {
+    println(s"\n${bq.name}=\n${bq.query}")
     val (resultCount, duration) = time {
       val result = variant match {
-        case Spark => query.queryDf
-        case Postgres => spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
+        case Spark => bq.queryDf
+        case Postgres => spark.read.jdbc(TPCHDataGen.dbUrl, s"(${bq.query}) as postgresResult", TPCHDataGen.dbProps)
         case d: Dex => d.variant match {
-          case DexSpx => query.queryDf.dexSpx(cks)
-          case DexCorr => query.queryDf.dexCorr(cks)
-          case DexPkFk  => query.queryDf.dexPkFk(pks, fks)
+          case DexSpx => bq.queryDf.dexSpx(cks)
+          case DexCorr => bq.queryDf.dexCorr(cks)
+          case DexPkFk  => bq.queryDf.dexPkFk(pks, fks)
         }
       }
       val c = result.count()
       println(s"${variant.name} result size=$c")
       c
     }
-    BenchQueryResult(query.name, resultCount, duration)
+    BenchQueryResult(bq.name, resultCount, duration)
   }
 }
 
