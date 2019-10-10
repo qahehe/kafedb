@@ -228,7 +228,7 @@ object TPCHPredicates extends DexTPCHBenchCommon {
           ).where("c_custkey = o_custkey")),
 
       // P - (F - P_F), intermediate data
-      BenchQuery("r1f", "select * from customer, linitems, orders where l_orderkey = o_orderkey and c_custkey = o_custkey",
+      BenchQuery("r1f", "select * from customer, lineitem, orders where l_orderkey = o_orderkey and c_custkey = o_custkey",
         customer
           .join(lineitem
             .join(orders).where("l_orderkey = o_orderkey")
