@@ -39,68 +39,98 @@ case class Dex(variant: DexVariant) extends BenchVariant {
   override def name: String = variant.name
 }
 
-object TPCHBench {
-
-  def main(args: Array[String]): Unit = {
-    require(args.length == 1)
-    val variant = BenchVariant.from(args(0))
-
-    SparkSession.cleanupAnyExistingSession()
-    val spark = SparkSession
+trait DexTPCHBenchCommon {
+  SparkSession.cleanupAnyExistingSession()
+  lazy val spark = {
+    val s = SparkSession
       .builder()
       .appName("TPCH Bench")
       .getOrCreate()
-    SparkSession.setActiveSession(spark)
-    SparkSession.setDefaultSession(spark)
+    SparkSession.setActiveSession(s)
+    SparkSession.setDefaultSession(s)
 
     TPCHDataGen.setScaleConfig(spark, TPCHDataGen.scaleFactor)
 
     val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(spark, TPCHDataGen.scaleFactor)
     TPCHDataGen.pointDataToSpark(spark, dbname, tables, location)
     //tables.analyzeTables(dbname, analyzeColumns = true)
+    s
+  }
 
-    val nameToDfForDex = TPCHDataGen.tableNamesToDex.map { t =>
-      t -> spark.table(t)
-    }.toMap
+  lazy val nameToDfForDex = TPCHDataGen.tableNamesToDex.map { t =>
+    t -> spark.table(t)
+  }.toMap
 
-    val pks = TPCHDataGen.primaryKeys.map(_.attr.attr)
-    val fks = TPCHDataGen.foreignKeys.map(_.attr.attr)
-    val cks = TPCHDataGen.compoundKeys.map(_.attr)
+  lazy val pks = TPCHDataGen.primaryKeys.map(_.attr.attr)
+  lazy val fks = TPCHDataGen.foreignKeys.map(_.attr.attr)
+  lazy val cks = TPCHDataGen.compoundKeys.map(_.attr)
 
-    val part = nameToDfForDex("part")
-    val partsupp = nameToDfForDex("partsupp")
-    val supplier = nameToDfForDex("supplier")
-    val nation = nameToDfForDex("nation")
-    val region = nameToDfForDex("region")
-    val customer = nameToDfForDex("customer")
-    val orders = nameToDfForDex("orders")
-    val lineitem = nameToDfForDex("lineitem")
+  lazy val part = nameToDfForDex("part")
+  lazy val partsupp = nameToDfForDex("partsupp")
+  lazy val supplier = nameToDfForDex("supplier")
+  lazy val nation = nameToDfForDex("nation")
+  lazy val region = nameToDfForDex("region")
+  lazy val customer = nameToDfForDex("customer")
+  lazy val orders = nameToDfForDex("orders")
+  lazy val lineitem = nameToDfForDex("lineitem")
 
-    def benchQuery(title: String, spark: SparkSession, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
-      println(s"\n$title=\n$query")
-      time {
-        val result = variant match {
-          case Spark => queryDf
-          case Postgres => spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
-          case d: Dex => queryDex.getOrElse(d.variant match {
-            case DexSpx => queryDf.dexSpx(cks)
-            case DexCorr => queryDf.dexCorr(cks)
-            case DexPkFk  => queryDf.dexPkFk(pks, fks)
-          })
-        }
-        println(s"${variant.name} result size=${result.count()}")
+  def benchQuery(variant: BenchVariant, title: String, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
+    println(s"\n$title=\n$query")
+    time {
+      val result = variant match {
+        case Spark => queryDf
+        case Postgres => spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
+        case d: Dex => queryDex.getOrElse(d.variant match {
+          case DexSpx => queryDf.dexSpx(cks)
+          case DexCorr => queryDf.dexCorr(cks)
+          case DexPkFk  => queryDf.dexPkFk(pks, fks)
+        })
       }
+      println(s"${variant.name} result size=${result.count()}")
     }
+  }
+
+  def benchQuery(variant: BenchVariant, query: BenchQuery): BenchQueryResult = {
+    println(s"\n${query.name}=\n$query")
+    val (resultCount, duration) = time {
+      val result = variant match {
+        case Spark => query.queryDf
+        case Postgres => spark.read.jdbc(TPCHDataGen.dbUrl, s"($query) as postgresResult", TPCHDataGen.dbProps)
+        case d: Dex => d.variant match {
+          case DexSpx => query.queryDf.dexSpx(cks)
+          case DexCorr => query.queryDf.dexCorr(cks)
+          case DexPkFk  => query.queryDf.dexPkFk(pks, fks)
+        }
+      }
+      val c = result.count()
+      println(s"${variant.name} result size=$c")
+      c
+    }
+    BenchQueryResult(query.name, resultCount, duration)
+  }
+}
+
+object TPCHBench extends DexTPCHBenchCommon {
+
+  def main(args: Array[String]): Unit = {
+    require(args.length == 1)
+    val variant = BenchVariant.from(args(0))
 
     println(s"\n Q2")
     val q2a = "select r_comment from region where r_name = 'EUROPE'"
     val q2aDf = region.where("r_name == 'EUROPE'").select("r_comment")
-    benchQuery("q2a", spark, q2a, q2aDf)
+    benchQuery(variant, "q2a", q2a, q2aDf)
 
     val q2b = "select n_name from region, nation where r_regionkey = n_regionkey"
     val q2bDf = region.join(nation).where("r_regionkey = n_regionkey").select("n_name")
-    benchQuery("q2b", spark, q2b, q2bDf)
+    benchQuery(variant, "q2b", q2b, q2bDf)
 
+    // flat:
+    //      P
+    //    /
+    // PS     N  - R
+    //    \   /
+    //      S
     val q2c =
       """
         |select
@@ -119,6 +149,7 @@ object TPCHBench {
         |  and r_name = 'EUROPE'
         |  and p_size = 15
       """.stripMargin
+    // filter on P first, R last
     val q2cMain = part.where("p_size == 15")
       .join(partsupp).where("p_partkey == ps_partkey")
       .join(supplier).where("ps_suppkey == s_suppkey")
@@ -126,18 +157,39 @@ object TPCHBench {
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
       .select("ps_supplycost")
     val q2cDf = q2cMain
-    benchQuery("q2c", spark, q2c, q2cDf)
+    benchQuery(variant, "q2c", q2c, q2cDf)
 
+    // filter on P later than join, R last
     val q2c2Df = partsupp.join(part).where("ps_partkey == p_partkey and p_size == 15")
       .join(supplier).where("ps_suppkey == s_suppkey")
       .join(nation).where("s_nationkey == n_nationkey")
       .join(region.where("r_name == 'EUROPE'")).where("n_regionkey == r_regionkey")
       .select("ps_supplycost")
-    benchQuery("q2c2", spark, q2c, q2c2Df)
+    benchQuery(variant, "q2c2", q2c, q2c2Df)
+
+    // filter on R first, P last
+    val q2c3Df = region.where("r_name == 'EUROPE'")
+      .join(nation).where("r_regionkey = n_nationkey")
+      .join(supplier).where("n_nationkey = s_nationkey")
+      .join(partsupp).where("s_suppkey = ps_suppkey")
+      .join(part).where("ps_partkey = p_partkey and p_size = 15")
+      .select("ps_supplycost")
+    benchQuery(variant, "q2c3", q2c, q2c3Df)
+
+    // frilter on R first, P beyond join
+    val q2c4Df = region.where("r_name == 'EUROPE'")
+      .join(nation).where("r_regionkey = n_nationkey")
+      .join(supplier).where("n_nationkey = s_nationkey")
+      .join(part
+          .join(partsupp).where("p_size = 15 and p_partkey = ps_partkey")
+      ).where("s_suppkey = ps_suppkey")
+      .select("ps_supplycost")
+    benchQuery(variant, "q2c4", q2c, q2c4Df)
+
 
     val q2d = "select * from part where p_size = 15"
     val q2dDf = part.where("p_size == 15")
-    benchQuery("q2d", spark, q2d, q2dDf)
+    benchQuery(variant, "q2d", q2d, q2dDf)
 
     val q2e =
       """
@@ -153,11 +205,11 @@ object TPCHBench {
         .select("ps_supplycost")
     val q2eDf = q2eMain
     //val q2eDex = q2eMain.dexPkFk(pks, fks)
-    benchQuery("q2e", spark, q2e, q2eDf)
+    benchQuery(variant, "q2e", q2e, q2eDf)
 
     val q2e2Df = part.join(partsupp).where("p_partkey == ps_partkey")
       .select("ps_supplycost")
-    benchQuery("q2e2", spark, q2e, q2e2Df)
+    benchQuery(variant, "q2e2", q2e, q2e2Df)
 
     /*println("\n Q3")
     val q3 =
@@ -179,9 +231,13 @@ object TPCHBench {
     val q3aDf = customer.where("c_mktsegment == 'BUILDING'")
         .join(orders).where("c_custkey == o_custkey")
         .join(lineitem).where("o_orderkey == l_orderkey")
-    benchQuery("q3a", spark, q3, q3aDf)*/
+    benchQuery(variant, "q3a", spark, q3, q3aDf)*/
 
     println("\n Q5")
+    // Triangle
+    //  C  -  S
+    //   \   /
+    //     N  -  R
     val q5a =
       """
         |select
@@ -200,15 +256,17 @@ object TPCHBench {
         .join(supplier).where("n_nationkey == s_nationkey")
         .select("n_name")
     //val q5aDex = q5aDf.dexPkFk(pks, fks)
-    benchQuery("q5a", spark, q5a, q5aDf)
+    benchQuery(variant, "q5a", q5a, q5aDf)
 
     val q5a2Df = supplier.join(
-      customer.join(nation).where("c_nationkey == n_nationkey")
+      customer
+        .join(nation).where("c_nationkey == n_nationkey")
         .join(region).where("n_regionkey == r_regionkey and r_name == 'ASIA'")
     ).where("s_nationkey == n_nationkey")
         .select("n_name")
-    benchQuery("q5a2", spark, q5a, q5a2Df)
+    benchQuery(variant, "q5a2", q5a, q5a2Df)
 
+    // same as q5a without filter
     val q5b =
       """
         |select
@@ -226,22 +284,20 @@ object TPCHBench {
       .join(customer).where("n_nationkey == c_nationkey")
       .join(supplier).where("n_nationkey == s_nationkey")
         .select("n_name")
-    //val q5bDex = q5bDf.dexPkFk(pks, fks)
-    benchQuery("q5b", spark, q5b, q5bDf)
+    benchQuery(variant, "q5b", q5b, q5bDf)
 
-    // good for pkfk; lots of intermedaite data for fk-fk join,
     val q5b2Df =
-      supplier.join(
-        customer.join(nation).where("c_nationkey == n_nationkey")
+      supplier.join(customer
+          .join(nation).where("c_nationkey == n_nationkey")
+          .join(region).where("n_regionkey == r_regionkey")
       ).where("s_nationkey == n_nationkey")
-        .join(region).where("n_regionkey == r_regionkey")
         .select("n_name")
-    benchQuery("q5b2", spark, q5b, q5b2Df)
+    benchQuery(variant, "q5b2", q5b, q5b2Df)
 
     // Q6 has only range queries, skip.
 
     println("\nQ7")
-    // diamond
+    //  N1 - S - L - O - C - N2
     val q7 =
       """
         |select
@@ -275,7 +331,7 @@ object TPCHBench {
     ).where("c_custkey = o_custkey")
       .join(nation.as("n2")).where("c_nationkey = n2.n_nationkey and n2.n_name = 'GERMANY'")
       .selectExpr("n1.n_name as n1_name", "n2.n_name as n2_name", "l_shipdate", "l_extendedprice", "l_discount")
-    benchQuery("q7a", spark, q7, q7aDf)
+    benchQuery(variant, "q7a", q7, q7aDf)
 
     val q7bDf = nation.as("n1").where("n1.n_name = 'FRANCE'")
       .join(supplier).where("n1.n_nationkey = s_nationkey")
@@ -284,7 +340,7 @@ object TPCHBench {
       .join(customer).where("o_custkey = c_custkey")
       .join(nation.as("n2")).where("c_nationkey = n2.n_nationkey and n2.n_name = 'GERMANY'")
       .selectExpr("n1.n_name as n1_name", "n2.n_name as n2_name", "l_shipdate", "l_extendedprice", "l_discount")
-    benchQuery("q7b", spark, q7, q7bDf)
+    benchQuery(variant, "q7b", q7, q7bDf)
 
     val q7cDf = nation.as("n2").where("n2.n_name = 'GERMANY'")
       .join(customer).where("n2.n_nationkey = c_nationkey")
@@ -293,10 +349,15 @@ object TPCHBench {
       .join(supplier).where("l_suppkey = s_suppkey")
       .join(nation.as("n1")).where("s_nationkey = n1.n_nationkey and n1.n_name = 'FRANCE'")
       .selectExpr("n1.n_name as n1_name", "n2.n_name as n2_name", "l_shipdate", "l_extendedprice", "l_discount")
-    benchQuery("q7c", spark, q7, q7cDf)
+    benchQuery(variant, "q7c", q7, q7cDf)
 
 
     println("\nQ8")
+    // q7c plus filter on dimension table P and subtract filter on N2
+    // snowflake
+    //           f(P)
+    //           |
+    //  N2 - S - L - O - C - N1 - f(R)
     val q8 =
       """
         |select
@@ -324,6 +385,7 @@ object TPCHBench {
         |  and s_nationkey = n2.n_nationkey
         |  and p_type = 'ECONOMY ANODIZED STEEL'
       """.stripMargin
+    // as SQL
     val q8aDf = supplier.join(
       part.join(lineitem).where("p_type = 'ECONOMY ANODIZED STEEL' and p_partkey = l_partkey")
         .join(orders).where("l_orderkey = o_orderkey")
@@ -333,10 +395,42 @@ object TPCHBench {
     ).where("s_suppkey = l_suppkey")
         .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
       .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")
-    benchQuery("q8a", spark, q8, q8aDf)
+    benchQuery(variant, "q8a", q8, q8aDf)
+
+    // filters on P and R first, filter on R as right subtree, large intermediate data from L - O subtrees-join, need indices on both subtrees
+    val q8a2Df = part.where("p_type = 'ECONOMY ANODIZED STEEL'")
+        .join(lineitem).where("p_partkey = l_partkey")
+        .join(
+          region.where("r_name = 'AMERICA'")
+          .join(nation.as("n1")).where("r_regionkey = n1.n_regionkey")
+            .join(customer).where("n1.n_nationkey = c_nationkey")
+            .join(orders).where("c_custkey = o_custkey")
+        ).where("l_orderkey = o_orderkey")
+        .join(supplier).where("l_suppkey = s_suppkey")
+        .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
+      .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")
+    benchQuery(variant, "q8a2", q8, q8a2Df)
+
+    // same as q8a2, but filter on P is right subtree
+    val q8a3Df = region.where("r_name = 'AMERICA'")
+        .join(nation.as("n1")).where("r_regionkey = n1.n_regionkey")
+        .join(customer).where("n_nationkey = c_nationkey")
+        .join(orders).where("c_custkey = o_custkey")
+        .join(part
+            .join(lineitem).where("p_type = 'ECONOMY ANODIZED STEEL' and p_partkey = l_partkey")
+        ).where("o_orderkey = l_orderkey")
+        .join(supplier).where("l_suppkey = s_suppkey")
+        .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
+      .selectExpr("o_orderdate", "l_extendedprice", "l_discount", "n2.n_name")
+    benchQuery(variant, "q8a3", q8, q8a3Df)
 
     println("\n Q9")
     // snowflake
+    // N - S   PS  P
+    //      \  |  /
+    //         L
+    //        /
+    //       O
     val q9 =
       """
         |select
@@ -365,7 +459,7 @@ object TPCHBench {
       ).where("p_partkey = l_partkey")
     ).where("o_orderkey = l_orderkey")
       .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
-    benchQuery("q9a", spark, q9, q9aDf)
+    benchQuery(variant, "q9a", q9, q9aDf)
 
     // order fk-pk join tables from large to small
     val q9bDf = lineitem.join(supplier).where("l_suppkey = s_suppkey")
@@ -374,7 +468,7 @@ object TPCHBench {
       .join(partsupp).where("l_partkey = ps_partkey and l_suppkey = ps_suppkey")
       .join(orders).where("l_orderkey = o_orderkey")
       .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
-    benchQuery("q9b", spark, q9, q9bDf)
+    benchQuery(variant, "q9b", q9, q9bDf)
 
     // order fk-pk join tables from large to small
     val q9cDf = lineitem
@@ -385,7 +479,7 @@ object TPCHBench {
       .join(nation).where("s_nationkey = n_nationkey")
 
       .select("n_name", "o_orderdate", "l_extendedprice", "l_discount", "ps_supplycost", "l_quantity")
-    benchQuery("q9c", spark, q9, q9cDf)
+    benchQuery(variant, "q9c", q9, q9cDf)
 
     println("\n Q10")
     val q10 =
@@ -419,7 +513,7 @@ object TPCHBench {
         .join(nation).where("c_nationkey = n_nationkey")
     ).where("l_returnflag = 'R' and l_orderkey = o_orderkey")
       .select("c_name", "l_extendedprice", "l_discount", "c_acctbal", "n_name", "c_address", "c_phone", "c_comment")
-    benchQuery("q10a", spark, q10, q10aDf)
+    benchQuery(variant, "q10a", q10, q10aDf)
 
     /*println("\nQ11")
     val q11 =
@@ -438,7 +532,7 @@ object TPCHBench {
     val q11aDf = partsupp.join(supplier).where("ps_suppkey = s_suppkey")
         .join(nation).where("s_nationkey = n_nationkey and n_name = 'GERMANY'")
         .select("ps_partkey", "ps_supplycost", "ps_availqty")
-    benchQuery("q11a", spark, q11, q11aDf)
+    benchQuery(variant, "q11a", spark, q11, q11aDf)
 
     println("\nQ12")
     val q12 =

@@ -249,12 +249,12 @@ object TPCHDataGen {
     }
   }
 
-  def time[R](block: => R): R = {
+  def time[R](block: => R): (R, Long)  = {
     val t0 = System.currentTimeMillis() //nanoTime()
     val result = block    // call-by-name
     val t1 = System.currentTimeMillis() //nanoTime()
     println("Elapsed time: " + (t1 - t0) + "ms")
-    result
+    (result, t1 - t0)
   }
 
   def installDBGEN(url: String = "https://github.com/zheguang/tpch-dbgen.git",
