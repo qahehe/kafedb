@@ -18,6 +18,7 @@ package org.apache.spark.examples.sql.dex
 // scalastyle:off
 
 import org.apache.spark.examples.sql.dex.TPCHDataGen.time
+import org.apache.spark.sql.dex.DexConstants.AttrName
 import org.apache.spark.sql.dex.{DexCorr, DexPkFk, DexSpx, DexVariant}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -41,7 +42,7 @@ case class Dex(variant: DexVariant) extends BenchVariant {
 
 trait DexTPCHBenchCommon {
   SparkSession.cleanupAnyExistingSession()
-  lazy val spark = {
+  lazy val spark: SparkSession = {
     val s = SparkSession
       .builder()
       .appName("TPCH Bench")
@@ -49,30 +50,30 @@ trait DexTPCHBenchCommon {
     SparkSession.setActiveSession(s)
     SparkSession.setDefaultSession(s)
 
-    TPCHDataGen.setScaleConfig(spark, TPCHDataGen.scaleFactor)
+    TPCHDataGen.setScaleConfig(s, TPCHDataGen.scaleFactor)
 
-    val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(spark, TPCHDataGen.scaleFactor)
-    TPCHDataGen.pointDataToSpark(spark, dbname, tables, location)
+    val (dbname, tables, location) = TPCHDataGen.getBenchmarkData(s, TPCHDataGen.scaleFactor)
+    TPCHDataGen.pointDataToSpark(s, dbname, tables, location)
     //tables.analyzeTables(dbname, analyzeColumns = true)
     s
   }
 
-  lazy val nameToDfForDex = TPCHDataGen.tableNamesToDex.map { t =>
+  lazy val nameToDfForDex: Map[String, DataFrame] = TPCHDataGen.tableNamesToDex.map { t =>
     t -> spark.table(t)
   }.toMap
 
-  lazy val pks = TPCHDataGen.primaryKeys.map(_.attr.attr)
-  lazy val fks = TPCHDataGen.foreignKeys.map(_.attr.attr)
-  lazy val cks = TPCHDataGen.compoundKeys.map(_.attr)
+  lazy val pks: Set[AttrName] = TPCHDataGen.primaryKeys.map(_.attr.attr)
+  lazy val fks: Set[AttrName] = TPCHDataGen.foreignKeys.map(_.attr.attr)
+  lazy val cks: Set[AttrName] = TPCHDataGen.compoundKeys.map(_.attr)
 
-  lazy val part = nameToDfForDex("part")
-  lazy val partsupp = nameToDfForDex("partsupp")
-  lazy val supplier = nameToDfForDex("supplier")
-  lazy val nation = nameToDfForDex("nation")
-  lazy val region = nameToDfForDex("region")
-  lazy val customer = nameToDfForDex("customer")
-  lazy val orders = nameToDfForDex("orders")
-  lazy val lineitem = nameToDfForDex("lineitem")
+  lazy val part: DataFrame = nameToDfForDex("part")
+  lazy val partsupp: DataFrame = nameToDfForDex("partsupp")
+  lazy val supplier: DataFrame = nameToDfForDex("supplier")
+  lazy val nation: DataFrame = nameToDfForDex("nation")
+  lazy val region: DataFrame = nameToDfForDex("region")
+  lazy val customer: DataFrame = nameToDfForDex("customer")
+  lazy val orders: DataFrame = nameToDfForDex("orders")
+  lazy val lineitem: DataFrame = nameToDfForDex("lineitem")
 
   def benchQuery(variant: BenchVariant, title: String, query: String, queryDf: DataFrame, queryDex: Option[DataFrame] = None): Unit = {
     println(s"\n$title=\n$query")
