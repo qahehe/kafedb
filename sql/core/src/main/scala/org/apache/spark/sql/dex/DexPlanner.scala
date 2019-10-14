@@ -376,20 +376,17 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         s"""
            |(
-           |  WITH RECURSIVE left_subquery AS (
-           |   SELECT $leftSubqueryOutputCols, $labelPrfKey as label_prf_key, $valueDecKey as value_dec_key FROM ($leftSubquery) AS ${generateSubqueryName()}
-           |  ),
-           |  dex_rid_correlated_join AS (
-           |    SELECT $leftSubqueryOutputCols, label_prf_key, value_dec_key, $emm.value AS value, ${DexConstants.cashCounterStart} AS counter
-           |    FROM left_subquery, $emm
+           |  WITH RECURSIVE dex_rid_correlated_join AS (
+           |    SELECT $leftSubqueryOutputCols, $valueDecKey AS value_dec_key, $emm.value AS value, ${DexConstants.cashCounterStart} AS counter
+           |    FROM ($leftSubquery) AS ${generateSubqueryName()}, $emm
            |    WHERE $emm.label =
-           |      ${nextLabel("label_prf_key", s"${DexConstants.cashCounterStart}")}
+           |      ${nextLabel(labelPrfKey, s"${DexConstants.cashCounterStart}")}
            |
            |    UNION ALL
            |
-           |    SELECT $leftSubqueryOutputCols, label_prf_key, value_dec_key, $emm.value AS value, counter + 1 AS counter
+           |    SELECT $leftSubqueryOutputCols, $valueDecKey AS value_dec_key, $emm.value AS value, counter + 1 AS counter
            |    FROM dex_rid_correlated_join, $emm
-           |    WHERE $emm.label = ${nextLabel("label_prf_key", "counter + 1")}
+           |    WHERE $emm.label = ${nextLabel(labelPrfKey, "counter + 1")}
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join
            |) AS ${generateSubqueryName()}
