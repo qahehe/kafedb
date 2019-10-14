@@ -994,14 +994,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     protected def tableEncNameOf(tableName: String): String = s"${tableName}_prf"
 
     protected def tableEncWithRidOrderOf(tablePlain: LogicalRelation): LogicalPlan = {
-      val tableEnc = LogicalRelation(
+      val tableEnc = tableEncOf(tablePlain)
+      renameRidWithJoinOrder(tableEnc, tablePlain)
+    }
+
+    protected def tableEncOf(tablePlain: LogicalRelation): LogicalRelation = {
+      LogicalRelation(
         DataSource.apply(
           sparkSession,
           className = "jdbc",
           options = Map(
             JDBCOptions.JDBC_URL -> SQLConf.get.dexEncryptedDataSourceUrl,
             JDBCOptions.JDBC_TABLE_NAME -> tableEncNameOf(tableNameFromLogicalRelation(tablePlain)))).resolveRelation())
-      renameRidWithJoinOrder(tableEnc, tablePlain)
     }
 
     private def renameRidWithJoinOrder(tableEnc: LogicalRelation, tablePlain: LogicalRelation): LogicalPlan = {
@@ -1090,6 +1094,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
+      val hasJoinOnChildView = childView.find(_.isInstanceOf[DexRidCorrelatedJoin]).nonEmpty
 
       def predicateOf(joinAttrs: JoinAttrs, reverse: Boolean): String = {
         if (reverse)
@@ -1098,9 +1103,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}~${joinAttrs.rightTableName}~${joinAttrs.rightColName}"
       }
 
-      def newRidJoinOf(l: Attribute, rightRidOrder: String, predicate: String) = {
+      def newRidJoinOf(l: Attribute, leftSubquery: LogicalPlan, rightRidOrder: String, predicate: String) = {
         // "right" relation is a new relation to join
-        val ridJoin = DexRidCorrelatedJoin(predicate, childView, tCorrelatedJoin, l)
+        val ridJoin = DexRidCorrelatedJoin(predicate, leftSubquery, tCorrelatedJoin, l)
         val ridJoinProject = ridJoin.output.collect {
           case x: Attribute if x.name == "value" => DexDecrypt($"value_dec_key", x).as(rightRidOrder)
           case x: Attribute if x.name != "value_dec_key" => // remove extra value_dec_key column
@@ -1120,7 +1125,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       joinAttrs.ridOrderAttrsGiven(childView) match {
         case (Some(l), None) =>
-          newRidJoinOf(l, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false))
+          if (hasJoinOnChildView) {
+            val leftSubquery = tableEncOf(joinAttrs.leftTableRel).select(col("rid").as(joinAttrs.leftRidOrder).expr)
+            childView.join(
+              newRidJoinOf(l, leftSubquery, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false)),
+              UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
+            )
+          } else {
+            newRidJoinOf(l, childView, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false))
+          }
 
         case (Some(l), Some(r)) if l == r =>
           // Self join: attr == attr
@@ -1137,7 +1150,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         case (None, Some(r)) =>
           // "left" relation is a new relation to join
-          newRidJoinOf(r, joinAttrs.leftRidOrder, predicateOf(joinAttrs, reverse = true))
+          if (hasJoinOnChildView) {
+            val rightSubquery = tableEncOf(joinAttrs.rightTableRel).select(col("rid").as(joinAttrs.rightRidOrder).expr)
+            newRidJoinOf(r, rightSubquery, joinAttrs.leftRidOrder, predicateOf(joinAttrs, reverse = true))
+              .join(childView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+          } else {
+            newRidJoinOf(r, childView, joinAttrs.leftRidOrder, predicateOf(joinAttrs, reverse = true))
+          }
+
 
         case x => throw DexException("unsupported: (None, None)")
       }
