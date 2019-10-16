@@ -279,6 +279,39 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
           .join(orders).where("c_custkey = o_custkey")
           .join(lineitem).where("o_orderkey = l_orderkey")
           .join(part).where("l_partkey = p_partkey")
+      ),
+
+      // P - (L - (f(C) - O))
+      BenchQuery("fs1b",
+        """
+          |select *
+          |from
+          |  customer, orders, lineitem, part
+          |where
+          |  c_mktsegment = 'BUILDING' and c_custkey = o_custkey and o_orderkey = l_orderkey and l_partkey = p_partkey
+        """.stripMargin,
+        part
+          .join(lineitem
+            .join(customer.where("c_mktsegment = 'BUILDING'")
+              .join(orders).where("c_custkey = o_custkey")
+            .where("l_orderkey = o_orderkey")))
+          .where("p_partkey = l_partkey")
+      ),
+
+      // (P - L) - (f(C) - O)
+      BenchQuery("fs1c",
+        """
+          |select *
+          |from
+          |  customer, orders, lineitem, part
+          |where
+          |  c_mktsegment = 'BUILDING' and c_custkey = o_custkey and o_orderkey = l_orderkey and l_partkey = p_partkey
+        """.stripMargin,
+        part
+          .join(lineitem).where("p_partkey = l_partkey")
+          .join(customer.where("c_mktsegment = 'BUILDING'")
+            .join(orders).where("c_custkey = o_custkey"))
+          .where("l_orderkey = o_orderkey")
       )
 
       // snowflake: closer filter on dimension P
