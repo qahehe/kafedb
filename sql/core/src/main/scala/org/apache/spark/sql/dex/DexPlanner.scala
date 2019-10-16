@@ -877,8 +877,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           case c: CatalogFileIndex =>
             c.table.identifier.table
           case i: InMemoryFileIndex =>
-            val rootPathSet = i.rootPaths.map(_.getName).toSet
+            val rootPathSet = i.rootPaths.map(_.getParent.getName).toSet
             require(rootPathSet.size == 1)
+            log.warn(s"InMemoryFileIndex=${rootPathSet.head}")
             rootPathSet.head
           case x => throw DexException("unsupported: " + x.getClass.toString)
         }
