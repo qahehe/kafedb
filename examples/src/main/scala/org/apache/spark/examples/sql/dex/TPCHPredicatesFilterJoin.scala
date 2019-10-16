@@ -294,8 +294,8 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
           .join(lineitem
             .join(customer.where("c_mktsegment = 'BUILDING'")
               .join(orders).where("c_custkey = o_custkey")
-            .where("l_orderkey = o_orderkey")))
-          .where("p_partkey = l_partkey")
+            ).where("l_orderkey = o_orderkey")
+          ).where("p_partkey = l_partkey")
       ),
 
       // (P - L) - (f(C) - O)
@@ -310,8 +310,8 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
         part
           .join(lineitem).where("p_partkey = l_partkey")
           .join(customer.where("c_mktsegment = 'BUILDING'")
-            .join(orders).where("c_custkey = o_custkey"))
-          .where("l_orderkey = o_orderkey")
+            .join(orders).where("c_custkey = o_custkey")
+          ).where("l_orderkey = o_orderkey")
       )
 
       // snowflake: closer filter on dimension P
