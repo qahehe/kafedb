@@ -279,7 +279,7 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
           .join(orders).where("c_custkey = o_custkey")
           .join(lineitem).where("o_orderkey = l_orderkey")
           .join(part).where("l_partkey = p_partkey")
-      ),
+      )
 
       // snowflake: closer filter on dimension P
 
