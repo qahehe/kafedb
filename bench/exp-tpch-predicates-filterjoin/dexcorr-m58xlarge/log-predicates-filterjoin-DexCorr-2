@@ -1,0 +1,1640 @@
+19/10/16 06:26:40 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+baseLocation=/data/encrypted-spark/bench/data
+baseDatagenFolder=/data/encrypted-spark/bench/datagen
+Creating external tables at /data/encrypted-spark/bench/data/tpch/sf1_parquet
+Creating external table part in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/part.
+Discovering partitions for table part.
+Creating external table supplier in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier.
+Creating external table partsupp in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp.
+Creating external table customer in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/customer.
+Discovering partitions for table customer.
+Creating external table orders in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/orders.
+Discovering partitions for table orders.
+Creating external table lineitem in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem.
+Discovering partitions for table lineitem.
+Creating external table nation in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/nation.
+Creating external table region in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/region.
+The current database has been set to tpch_sf1_parquet.
+Elapsed time: 7132ms
+Table part has 25 partitions
+Cannot VACUUM part
++----------------------------+-------------------------------------------------------------+-------+
+|col_name                    |data_type                                                    |comment|
++----------------------------+-------------------------------------------------------------+-------+
+|p_partkey                   |bigint                                                       |null   |
+|p_name                      |string                                                       |null   |
+|p_mfgr                      |string                                                       |null   |
+|p_type                      |string                                                       |null   |
+|p_size                      |int                                                          |null   |
+|p_container                 |string                                                       |null   |
+|p_retailprice               |decimal(12,2)                                                |null   |
+|p_comment                   |string                                                       |null   |
+|p_brand                     |string                                                       |null   |
+|# Partition Information     |                                                             |       |
+|# col_name                  |data_type                                                    |comment|
+|p_brand                     |string                                                       |null   |
+|                            |                                                             |       |
+|# Detailed Table Information|                                                             |       |
+|Database                    |tpch_sf1_parquet                                             |       |
+|Table                       |part                                                         |       |
+|Created Time                |Wed Oct 16 06:26:42 UTC 2019                                 |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                 |       |
+|Created By                  |Spark 2.4.0                                                  |       |
+|Type                        |EXTERNAL                                                     |       |
+|Provider                    |parquet                                                      |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/part|       |
+|Partition Provider          |Catalog                                                      |       |
++----------------------------+-------------------------------------------------------------+-------+
+
+
+Table supplier has no partitions
+Cannot VACUUM supplier
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|s_suppkey                   |bigint                                                           |null   |
+|s_name                      |string                                                           |null   |
+|s_address                   |string                                                           |null   |
+|s_nationkey                 |bigint                                                           |null   |
+|s_phone                     |string                                                           |null   |
+|s_acctbal                   |decimal(12,2)                                                    |null   |
+|s_comment                   |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |supplier                                                         |       |
+|Created Time                |Wed Oct 16 06:26:43 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table partsupp has no partitions
+Cannot VACUUM partsupp
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|ps_partkey                  |bigint                                                           |null   |
+|ps_suppkey                  |bigint                                                           |null   |
+|ps_availqty                 |int                                                              |null   |
+|ps_supplycost               |decimal(12,2)                                                    |null   |
+|ps_comment                  |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |partsupp                                                         |       |
+|Created Time                |Wed Oct 16 06:26:43 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table customer has 5 partitions
+Cannot VACUUM customer
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|c_custkey                   |bigint                                                           |null   |
+|c_name                      |string                                                           |null   |
+|c_address                   |string                                                           |null   |
+|c_nationkey                 |bigint                                                           |null   |
+|c_phone                     |string                                                           |null   |
+|c_acctbal                   |decimal(12,2)                                                    |null   |
+|c_comment                   |string                                                           |null   |
+|c_mktsegment                |string                                                           |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|c_mktsegment                |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |customer                                                         |       |
+|Created Time                |Wed Oct 16 06:26:43 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/customer|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table orders has 2406 partitions
+Cannot VACUUM orders
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|o_orderkey                  |bigint                                                         |null   |
+|o_custkey                   |bigint                                                         |null   |
+|o_orderstatus               |string                                                         |null   |
+|o_totalprice                |decimal(12,2)                                                  |null   |
+|o_orderpriority             |string                                                         |null   |
+|o_clerk                     |string                                                         |null   |
+|o_shippriority              |int                                                            |null   |
+|o_comment                   |string                                                         |null   |
+|o_orderdate                 |date                                                           |null   |
+|# Partition Information     |                                                               |       |
+|# col_name                  |data_type                                                      |comment|
+|o_orderdate                 |date                                                           |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |orders                                                         |       |
+|Created Time                |Wed Oct 16 06:26:43 UTC 2019                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/orders|       |
+|Partition Provider          |Catalog                                                        |       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table lineitem has 2526 partitions
+Cannot VACUUM lineitem
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|l_orderkey                  |bigint                                                           |null   |
+|l_partkey                   |bigint                                                           |null   |
+|l_suppkey                   |bigint                                                           |null   |
+|l_linenumber                |int                                                              |null   |
+|l_quantity                  |decimal(12,2)                                                    |null   |
+|l_extendedprice             |decimal(12,2)                                                    |null   |
+|l_discount                  |decimal(12,2)                                                    |null   |
+|l_tax                       |decimal(12,2)                                                    |null   |
+|l_returnflag                |string                                                           |null   |
+|l_linestatus                |string                                                           |null   |
+|l_commitdate                |string                                                           |null   |
+|l_receiptdate               |string                                                           |null   |
+|l_shipinstruct              |string                                                           |null   |
+|l_shipmode                  |string                                                           |null   |
+|l_comment                   |string                                                           |null   |
+|l_shipdate                  |date                                                             |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|l_shipdate                  |date                                                             |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |lineitem                                                         |       |
+|Created Time                |Wed Oct 16 06:26:46 UTC 2019                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table nation has no partitions
+Cannot VACUUM nation
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|n_nationkey                 |bigint                                                         |null   |
+|n_name                      |string                                                         |null   |
+|n_regionkey                 |bigint                                                         |null   |
+|n_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |nation                                                         |       |
+|Created Time                |Wed Oct 16 06:26:48 UTC 2019                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/nation|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table region has no partitions
+Cannot VACUUM region
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|r_regionkey                 |bigint                                                         |null   |
+|r_name                      |string                                                         |null   |
+|r_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |region                                                         |       |
+|Created Time                |Wed Oct 16 06:26:48 UTC 2019                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/region|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+
+fr1b=
+select * from lineitem, orders, customer where o_custkey = c_custkey and (l_orderkey = o_orderkey and c_mktsegment = 'BUILDING')
+19/10/16 06:26:50 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:26:50 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#1795L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :- Project [l_orderkey#306L]
+         :  +- Filter isnotnull(l_orderkey#306L)
+         :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         +- Project [o_orderkey#342L]
+            +- Join Inner, (o_custkey#343L = c_custkey#290L)
+               :- Project [o_orderkey#342L, o_custkey#343L]
+               :  +- Filter (isnotnull(o_custkey#343L) && isnotnull(o_orderkey#342L))
+               :     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+               +- Project [c_custkey#290L]
+                  +- Filter ((isnotnull(c_mktsegment#297) && (c_mktsegment#297 = BUILDING)) && isnotnull(c_custkey#290L))
+                     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+19/10/16 06:26:50 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:26:50 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:26:50 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:26:50 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#1795L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#1837]
+         :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#1820: string
+         :     :- Project [l_returnflag_prf#1797 AS l_returnflag_prf_0#1816, l_orderkey_and_l_linenumber_prf#1798 AS l_orderkey_and_l_linenumber_prf_0#1817, l_comment_prf#1799 AS l_comment_prf_0#1818, l_linestatus_prf#1800 AS l_linestatus_prf_0#1819, rid#1801 AS rid_0#1820, l_shipmode_prf#1802 AS l_shipmode_prf_0#1821, l_shipinstruct_prf#1803 AS l_shipinstruct_prf_0#1822, l_quantity_prf#1804 AS l_quantity_prf_0#1823, l_receiptdate_prf#1805 AS l_receiptdate_prf_0#1824, l_linenumber_prf#1806 AS l_linenumber_prf_0#1825, l_tax_prf#1807 AS l_tax_prf_0#1826, l_shipdate_prf#1808 AS l_shipdate_prf_0#1827, l_extendedprice_prf#1809 AS l_extendedprice_prf_0#1828, l_partkey_prf#1810 AS l_partkey_prf_0#1829, l_discount_prf#1811 AS l_discount_prf_0#1830, l_partkey_and_l_suppkey_prf#1812 AS l_partkey_and_l_suppkey_prf_0#1831, l_commitdate_prf#1813 AS l_commitdate_prf_0#1832, l_suppkey_prf#1814 AS l_suppkey_prf_0#1833, l_orderkey_prf#1815 AS l_orderkey_prf_0#1834]
+         :     :  +- Relation[l_returnflag_prf#1797,l_orderkey_and_l_linenumber_prf#1798,l_comment_prf#1799,l_linestatus_prf#1800,rid#1801,l_shipmode_prf#1802,l_shipinstruct_prf#1803,l_quantity_prf#1804,l_receiptdate_prf#1805,l_linenumber_prf#1806,l_tax_prf#1807,l_shipdate_prf#1808,l_extendedprice_prf#1809,l_partkey_prf#1810,l_discount_prf#1811,l_partkey_and_l_suppkey_prf#1812,l_commitdate_prf#1813,l_suppkey_prf#1814,l_orderkey_prf#1815] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['o_shippriority_prf_1, 'rid_1, 'o_orderdate_prf_1, 'o_custkey_prf_1, 'o_orderpriority_prf_1, 'o_clerk_prf_1, 'o_orderstatus_prf_1, 'o_totalprice_prf_1, 'o_orderkey_prf_1, 'o_comment_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#1858]
+            :  +- DexRidCorrelatedJoin orders~o_custkey~customer~c_custkey, rid_1#1849: string
+            :     :- Project [o_shippriority_prf#1838 AS o_shippriority_prf_1#1848, rid#1839 AS rid_1#1849, o_orderdate_prf#1840 AS o_orderdate_prf_1#1850, o_custkey_prf#1841 AS o_custkey_prf_1#1851, o_orderpriority_prf#1842 AS o_orderpriority_prf_1#1852, o_clerk_prf#1843 AS o_clerk_prf_1#1853, o_orderstatus_prf#1844 AS o_orderstatus_prf_1#1854, o_totalprice_prf#1845 AS o_totalprice_prf_1#1855, o_orderkey_prf#1846 AS o_orderkey_prf_1#1856, o_comment_prf#1847 AS o_comment_prf_1#1857]
+            :     :  +- Relation[o_shippriority_prf#1838,rid#1839,o_orderdate_prf#1840,o_custkey_prf#1841,o_orderpriority_prf#1842,o_clerk_prf#1843,o_orderstatus_prf#1844,o_totalprice_prf#1845,o_orderkey_prf#1846,o_comment_prf#1847] JDBCRelation(orders_prf) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- 'Join UsingJoin(LeftSemi,List(rid_2))
+               :- Project [c_acctbal_prf#1859 AS c_acctbal_prf_2#1868, rid#1860 AS rid_2#1869, c_name_prf#1861 AS c_name_prf_2#1870, c_nationkey_prf#1862 AS c_nationkey_prf_2#1871, c_custkey_prf#1863 AS c_custkey_prf_2#1872, c_comment_prf#1864 AS c_comment_prf_2#1873, c_address_prf#1865 AS c_address_prf_2#1874, c_mktsegment_prf#1866 AS c_mktsegment_prf_2#1875, c_phone_prf#1867 AS c_phone_prf_2#1876]
+               :  +- Relation[c_acctbal_prf#1859,rid#1860,c_name_prf#1861,c_nationkey_prf#1862,c_custkey_prf#1863,c_comment_prf#1864,c_address_prf#1865,c_mktsegment_prf#1866,c_phone_prf#1867] JDBCRelation(customer_prf) [numPartitions=1]
+               +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_2#1879]
+                  +- DexRidFilter customer~c_mktsegment~BUILDING
+                     +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+
+19/10/16 06:26:50 WARN Utils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.debug.maxToStringFields' in SparkEnv.conf.
+DexCorr$ result size=1214743
+Elapsed time: 143380ms
+
+fq1b=
+
+select *
+from nation, customer, orders, lineitem
+where
+  n_name = 'FRANCE' and n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey
+        
+19/10/16 06:29:13 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:29:13 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#1958L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (c_custkey#290L = o_custkey#343L)
+         :- Project [c_custkey#290L]
+         :  +- Join Inner, (n_nationkey#108L = c_nationkey#293L)
+         :     :- Project [n_nationkey#108L]
+         :     :  +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+         :     :     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+         :     +- Project [c_custkey#290L, c_nationkey#293L]
+         :        +- Filter (isnotnull(c_nationkey#293L) && isnotnull(c_custkey#290L))
+         :           +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         +- Project [o_custkey#343L]
+            +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+               :- Project [o_orderkey#342L, o_custkey#343L]
+               :  +- Filter (isnotnull(o_orderkey#342L) && isnotnull(o_custkey#343L))
+               :     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+               +- Project [l_orderkey#306L]
+                  +- Filter isnotnull(l_orderkey#306L)
+                     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 06:29:13 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:29:13 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:29:13 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:29:13 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#1958L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['rid_0, 'n_regionkey_prf_0, 'n_nationkey_prf_0, 'n_name_prf_0, 'n_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#1971]
+         :  :  :  +- 'DexRidCorrelatedJoin nation~n_nationkey~customer~c_nationkey, rid_0#1965: string
+         :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :     :  :- Project [rid#1960 AS rid_0#1965, n_regionkey_prf#1961 AS n_regionkey_prf_0#1966, n_nationkey_prf#1962 AS n_nationkey_prf_0#1967, n_name_prf#1963 AS n_name_prf_0#1968, n_comment_prf#1964 AS n_comment_prf_0#1969]
+         :  :  :     :  :  +- Relation[rid#1960,n_regionkey_prf#1961,n_nationkey_prf#1962,n_name_prf#1963,n_comment_prf#1964] JDBCRelation(nation_prf) [numPartitions=1]
+         :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#1970]
+         :  :  :     :     +- DexRidFilter nation~n_name~FRANCE
+         :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [c_acctbal_prf#1972 AS c_acctbal_prf_1#1981, rid#1973 AS rid_1#1982, c_name_prf#1974 AS c_name_prf_1#1983, c_nationkey_prf#1975 AS c_nationkey_prf_1#1984, c_custkey_prf#1976 AS c_custkey_prf_1#1985, c_comment_prf#1977 AS c_comment_prf_1#1986, c_address_prf#1978 AS c_address_prf_1#1987, c_mktsegment_prf#1979 AS c_mktsegment_prf_1#1988, c_phone_prf#1980 AS c_phone_prf_1#1989]
+         :  :     +- Relation[c_acctbal_prf#1972,rid#1973,c_name_prf#1974,c_nationkey_prf#1975,c_custkey_prf#1976,c_comment_prf#1977,c_address_prf#1978,c_mktsegment_prf#1979,c_phone_prf#1980] JDBCRelation(customer_prf) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#2000]
+         :     +- 'DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#1999]
+         :        :  +- Relation[c_acctbal_prf#1990,rid#1991,c_name_prf#1992,c_nationkey_prf#1993,c_custkey_prf#1994,c_comment_prf#1995,c_address_prf#1996,c_mktsegment_prf#1997,c_phone_prf#1998] JDBCRelation(customer_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['o_shippriority_prf_2, 'rid_2, 'o_orderdate_prf_2, 'o_custkey_prf_2, 'o_orderpriority_prf_2, 'o_clerk_prf_2, 'o_orderstatus_prf_2, 'o_totalprice_prf_2, 'o_orderkey_prf_2, 'o_comment_prf_2, dexdecrypt('value_dec_key, value#1836) AS rid_3#2021]
+            :  +- DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, rid_2#2012: string
+            :     :- Project [o_shippriority_prf#2001 AS o_shippriority_prf_2#2011, rid#2002 AS rid_2#2012, o_orderdate_prf#2003 AS o_orderdate_prf_2#2013, o_custkey_prf#2004 AS o_custkey_prf_2#2014, o_orderpriority_prf#2005 AS o_orderpriority_prf_2#2015, o_clerk_prf#2006 AS o_clerk_prf_2#2016, o_orderstatus_prf#2007 AS o_orderstatus_prf_2#2017, o_totalprice_prf#2008 AS o_totalprice_prf_2#2018, o_orderkey_prf#2009 AS o_orderkey_prf_2#2019, o_comment_prf#2010 AS o_comment_prf_2#2020]
+            :     :  +- Relation[o_shippriority_prf#2001,rid#2002,o_orderdate_prf#2003,o_custkey_prf#2004,o_orderpriority_prf#2005,o_clerk_prf#2006,o_orderstatus_prf#2007,o_totalprice_prf#2008,o_orderkey_prf#2009,o_comment_prf#2010] JDBCRelation(orders_prf) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [l_returnflag_prf#2022 AS l_returnflag_prf_3#2041, l_orderkey_and_l_linenumber_prf#2023 AS l_orderkey_and_l_linenumber_prf_3#2042, l_comment_prf#2024 AS l_comment_prf_3#2043, l_linestatus_prf#2025 AS l_linestatus_prf_3#2044, rid#2026 AS rid_3#2045, l_shipmode_prf#2027 AS l_shipmode_prf_3#2046, l_shipinstruct_prf#2028 AS l_shipinstruct_prf_3#2047, l_quantity_prf#2029 AS l_quantity_prf_3#2048, l_receiptdate_prf#2030 AS l_receiptdate_prf_3#2049, l_linenumber_prf#2031 AS l_linenumber_prf_3#2050, l_tax_prf#2032 AS l_tax_prf_3#2051, l_shipdate_prf#2033 AS l_shipdate_prf_3#2052, l_extendedprice_prf#2034 AS l_extendedprice_prf_3#2053, l_partkey_prf#2035 AS l_partkey_prf_3#2054, l_discount_prf#2036 AS l_discount_prf_3#2055, l_partkey_and_l_suppkey_prf#2037 AS l_partkey_and_l_suppkey_prf_3#2056, l_commitdate_prf#2038 AS l_commitdate_prf_3#2057, l_suppkey_prf#2039 AS l_suppkey_prf_3#2058, l_orderkey_prf#2040 AS l_orderkey_prf_3#2059]
+               +- Relation[l_returnflag_prf#2022,l_orderkey_and_l_linenumber_prf#2023,l_comment_prf#2024,l_linestatus_prf#2025,rid#2026,l_shipmode_prf#2027,l_shipinstruct_prf#2028,l_quantity_prf#2029,l_receiptdate_prf#2030,l_linenumber_prf#2031,l_tax_prf#2032,l_shipdate_prf#2033,l_extendedprice_prf#2034,l_partkey_prf#2035,l_discount_prf#2036,l_partkey_and_l_suppkey_prf#2037,l_commitdate_prf#2038,l_suppkey_prf#2039,l_orderkey_prf#2040] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=246415
+Elapsed time: 225286ms
+
+ft3a=
+select * from lineitem, part, supplier where l_partkey = p_partkey and p_size = 15 and l_suppkey = s_suppkey
+19/10/16 06:32:58 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:32:58 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2138L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (l_suppkey#308L = s_suppkey#18L)
+         :- Project [l_suppkey#308L]
+         :  +- Join Inner, (l_partkey#307L = p_partkey#360L)
+         :     :- Project [l_partkey#307L, l_suppkey#308L]
+         :     :  +- Filter (isnotnull(l_partkey#307L) && isnotnull(l_suppkey#308L))
+         :     :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         :     +- Project [p_partkey#360L]
+         :        +- Filter isnotnull(p_partkey#360L)
+         :           +- Relation[p_partkey#360L,p_name#361,p_mfgr#362,p_type#363,p_size#364,p_container#365,p_retailprice#366,p_comment#367,p_brand#368] parquet
+         +- Project [s_suppkey#18L]
+            +- Filter isnotnull(s_suppkey#18L)
+               +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+
+19/10/16 06:32:58 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:32:58 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:32:58 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2138L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_0))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#2178]
+         :  :  :  +- DexRidCorrelatedJoin lineitem~l_partkey~part~p_partkey, rid_0#2163: string
+         :  :  :     :- Project [l_returnflag_prf#2140 AS l_returnflag_prf_0#2159, l_orderkey_and_l_linenumber_prf#2141 AS l_orderkey_and_l_linenumber_prf_0#2160, l_comment_prf#2142 AS l_comment_prf_0#2161, l_linestatus_prf#2143 AS l_linestatus_prf_0#2162, rid#2144 AS rid_0#2163, l_shipmode_prf#2145 AS l_shipmode_prf_0#2164, l_shipinstruct_prf#2146 AS l_shipinstruct_prf_0#2165, l_quantity_prf#2147 AS l_quantity_prf_0#2166, l_receiptdate_prf#2148 AS l_receiptdate_prf_0#2167, l_linenumber_prf#2149 AS l_linenumber_prf_0#2168, l_tax_prf#2150 AS l_tax_prf_0#2169, l_shipdate_prf#2151 AS l_shipdate_prf_0#2170, l_extendedprice_prf#2152 AS l_extendedprice_prf_0#2171, l_partkey_prf#2153 AS l_partkey_prf_0#2172, l_discount_prf#2154 AS l_discount_prf_0#2173, l_partkey_and_l_suppkey_prf#2155 AS l_partkey_and_l_suppkey_prf_0#2174, l_commitdate_prf#2156 AS l_commitdate_prf_0#2175, l_suppkey_prf#2157 AS l_suppkey_prf_0#2176, l_orderkey_prf#2158 AS l_orderkey_prf_0#2177]
+         :  :  :     :  +- Relation[l_returnflag_prf#2140,l_orderkey_and_l_linenumber_prf#2141,l_comment_prf#2142,l_linestatus_prf#2143,rid#2144,l_shipmode_prf#2145,l_shipinstruct_prf#2146,l_quantity_prf#2147,l_receiptdate_prf#2148,l_linenumber_prf#2149,l_tax_prf#2150,l_shipdate_prf#2151,l_extendedprice_prf#2152,l_partkey_prf#2153,l_discount_prf#2154,l_partkey_and_l_suppkey_prf#2155,l_commitdate_prf#2156,l_suppkey_prf#2157,l_orderkey_prf#2158] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [p_comment_prf#2179 AS p_comment_prf_1#2189, p_name_prf#2180 AS p_name_prf_1#2190, rid#2181 AS rid_1#2191, p_type_prf#2182 AS p_type_prf_1#2192, p_retailprice_prf#2183 AS p_retailprice_prf_1#2193, p_mfgr_prf#2184 AS p_mfgr_prf_1#2194, p_container_prf#2185 AS p_container_prf_1#2195, p_brand_prf#2186 AS p_brand_prf_1#2196, p_size_prf#2187 AS p_size_prf_1#2197, p_partkey_prf#2188 AS p_partkey_prf_1#2198]
+         :  :     +- Relation[p_comment_prf#2179,p_name_prf#2180,rid#2181,p_type_prf#2182,p_retailprice_prf#2183,p_mfgr_prf#2184,p_container_prf#2185,p_brand_prf#2186,p_size_prf#2187,p_partkey_prf#2188] JDBCRelation(part_prf) [numPartitions=1]
+         :  +- 'Project ['rid_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#2219]
+         :     +- 'DexRidCorrelatedJoin lineitem~l_suppkey~supplier~s_suppkey, 'rid_0
+         :        :- 'Project ['rid AS rid_0#2218]
+         :        :  +- Relation[l_returnflag_prf#2199,l_orderkey_and_l_linenumber_prf#2200,l_comment_prf#2201,l_linestatus_prf#2202,rid#2203,l_shipmode_prf#2204,l_shipinstruct_prf#2205,l_quantity_prf#2206,l_receiptdate_prf#2207,l_linenumber_prf#2208,l_tax_prf#2209,l_shipdate_prf#2210,l_extendedprice_prf#2211,l_partkey_prf#2212,l_discount_prf#2213,l_partkey_and_l_suppkey_prf#2214,l_commitdate_prf#2215,l_suppkey_prf#2216,l_orderkey_prf#2217] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [s_phone_prf#2220 AS s_phone_prf_2#2228, rid#2221 AS rid_2#2229, s_address_prf#2222 AS s_address_prf_2#2230, s_nationkey_prf#2223 AS s_nationkey_prf_2#2231, s_suppkey_prf#2224 AS s_suppkey_prf_2#2232, s_name_prf#2225 AS s_name_prf_2#2233, s_acctbal_prf#2226 AS s_acctbal_prf_2#2234, s_comment_prf#2227 AS s_comment_prf_2#2235]
+            +- Relation[s_phone_prf#2220,rid#2221,s_address_prf#2222,s_nationkey_prf#2223,s_suppkey_prf#2224,s_name_prf#2225,s_acctbal_prf#2226,s_comment_prf#2227] JDBCRelation(supplier_prf) [numPartitions=1]
+
+DexCorr$ result size=6001215
+Elapsed time: 222143ms
+
+ft2b=
+select * from part, partsupp, supplier where p_size = 15 and p_partkey = ps_partkey and ps_suppkey = s_suppkey
+19/10/16 06:36:40 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:36:40 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2297L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (ps_suppkey#33L = s_suppkey#18L)
+         :- Project [ps_suppkey#33L]
+         :  +- Join Inner, (p_partkey#360L = ps_partkey#32L)
+         :     :- Project [p_partkey#360L]
+         :     :  +- Filter ((isnotnull(p_size#364) && (p_size#364 = 15)) && isnotnull(p_partkey#360L))
+         :     :     +- Relation[p_partkey#360L,p_name#361,p_mfgr#362,p_type#363,p_size#364,p_container#365,p_retailprice#366,p_comment#367,p_brand#368] parquet
+         :     +- Project [ps_partkey#32L, ps_suppkey#33L]
+         :        +- Filter (isnotnull(ps_partkey#32L) && isnotnull(ps_suppkey#33L))
+         :           +- Relation[ps_partkey#32L,ps_suppkey#33L,ps_availqty#34,ps_supplycost#35,ps_comment#36] parquet
+         +- Project [s_suppkey#18L]
+            +- Filter isnotnull(s_suppkey#18L)
+               +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+
+19/10/16 06:36:40 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:36:40 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:36:40 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:36:40 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:36:40 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:36:40 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:36:40 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2297L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['p_comment_prf_0, 'p_name_prf_0, 'rid_0, 'p_type_prf_0, 'p_retailprice_prf_0, 'p_mfgr_prf_0, 'p_container_prf_0, 'p_brand_prf_0, 'p_size_prf_0, 'p_partkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#2320]
+         :  :  :  +- 'DexRidCorrelatedJoin part~p_partkey~partsupp~ps_partkey, rid_0#2311: string
+         :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :     :  :- Project [p_comment_prf#2299 AS p_comment_prf_0#2309, p_name_prf#2300 AS p_name_prf_0#2310, rid#2301 AS rid_0#2311, p_type_prf#2302 AS p_type_prf_0#2312, p_retailprice_prf#2303 AS p_retailprice_prf_0#2313, p_mfgr_prf#2304 AS p_mfgr_prf_0#2314, p_container_prf#2305 AS p_container_prf_0#2315, p_brand_prf#2306 AS p_brand_prf_0#2316, p_size_prf#2307 AS p_size_prf_0#2317, p_partkey_prf#2308 AS p_partkey_prf_0#2318]
+         :  :  :     :  :  +- Relation[p_comment_prf#2299,p_name_prf#2300,rid#2301,p_type_prf#2302,p_retailprice_prf#2303,p_mfgr_prf#2304,p_container_prf#2305,p_brand_prf#2306,p_size_prf#2307,p_partkey_prf#2308] JDBCRelation(part_prf) [numPartitions=1]
+         :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#2319]
+         :  :  :     :     +- DexRidFilter part~p_size~15
+         :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [ps_partkey_and_ps_suppkey_prf#2321 AS ps_partkey_and_ps_suppkey_prf_1#2328, rid#2322 AS rid_1#2329, ps_availqty_prf#2323 AS ps_availqty_prf_1#2330, ps_comment_prf#2324 AS ps_comment_prf_1#2331, ps_partkey_prf#2325 AS ps_partkey_prf_1#2332, ps_supplycost_prf#2326 AS ps_supplycost_prf_1#2333, ps_suppkey_prf#2327 AS ps_suppkey_prf_1#2334]
+         :  :     +- Relation[ps_partkey_and_ps_suppkey_prf#2321,rid#2322,ps_availqty_prf#2323,ps_comment_prf#2324,ps_partkey_prf#2325,ps_supplycost_prf#2326,ps_suppkey_prf#2327] JDBCRelation(partsupp_prf) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#2343]
+         :     +- 'DexRidCorrelatedJoin partsupp~ps_suppkey~supplier~s_suppkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#2342]
+         :        :  +- Relation[ps_partkey_and_ps_suppkey_prf#2335,rid#2336,ps_availqty_prf#2337,ps_comment_prf#2338,ps_partkey_prf#2339,ps_supplycost_prf#2340,ps_suppkey_prf#2341] JDBCRelation(partsupp_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [s_phone_prf#2344 AS s_phone_prf_2#2352, rid#2345 AS rid_2#2353, s_address_prf#2346 AS s_address_prf_2#2354, s_nationkey_prf#2347 AS s_nationkey_prf_2#2355, s_suppkey_prf#2348 AS s_suppkey_prf_2#2356, s_name_prf#2349 AS s_name_prf_2#2357, s_acctbal_prf#2350 AS s_acctbal_prf_2#2358, s_comment_prf#2351 AS s_comment_prf_2#2359]
+            +- Relation[s_phone_prf#2344,rid#2345,s_address_prf#2346,s_nationkey_prf#2347,s_suppkey_prf#2348,s_name_prf#2349,s_acctbal_prf#2350,s_comment_prf#2351] JDBCRelation(supplier_prf) [numPartitions=1]
+
+DexCorr$ result size=15628
+Elapsed time: 45887ms
+
+fq1a=
+
+select *
+from nation, customer, orders, lineitem
+where
+  n_name = 'FRANCE' and n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey
+        
+19/10/16 06:37:26 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:37:26 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2425L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+         :- Project [o_orderkey#342L]
+         :  +- Join Inner, (c_custkey#290L = o_custkey#343L)
+         :     :- Project [c_custkey#290L]
+         :     :  +- Join Inner, (n_nationkey#108L = c_nationkey#293L)
+         :     :     :- Project [n_nationkey#108L]
+         :     :     :  +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+         :     :     :     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+         :     :     +- Project [c_custkey#290L, c_nationkey#293L]
+         :     :        +- Filter (isnotnull(c_nationkey#293L) && isnotnull(c_custkey#290L))
+         :     :           +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         :     +- Project [o_orderkey#342L, o_custkey#343L]
+         :        +- Filter (isnotnull(o_custkey#343L) && isnotnull(o_orderkey#342L))
+         :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         +- Project [l_orderkey#306L]
+            +- Filter isnotnull(l_orderkey#306L)
+               +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 06:37:26 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:37:26 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:37:26 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:37:26 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2425L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_2))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :  :  :- 'Join NaturalJoin(Inner)
+         :  :  :  :  :- 'Project ['rid_0, 'n_regionkey_prf_0, 'n_nationkey_prf_0, 'n_name_prf_0, 'n_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#2438]
+         :  :  :  :  :  +- 'DexRidCorrelatedJoin nation~n_nationkey~customer~c_nationkey, rid_0#2432: string
+         :  :  :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :  :  :     :  :- Project [rid#2427 AS rid_0#2432, n_regionkey_prf#2428 AS n_regionkey_prf_0#2433, n_nationkey_prf#2429 AS n_nationkey_prf_0#2434, n_name_prf#2430 AS n_name_prf_0#2435, n_comment_prf#2431 AS n_comment_prf_0#2436]
+         :  :  :  :  :     :  :  +- Relation[rid#2427,n_regionkey_prf#2428,n_nationkey_prf#2429,n_name_prf#2430,n_comment_prf#2431] JDBCRelation(nation_prf) [numPartitions=1]
+         :  :  :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#2437]
+         :  :  :  :  :     :     +- DexRidFilter nation~n_name~FRANCE
+         :  :  :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  :  :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  :  :  +- Project [c_acctbal_prf#2439 AS c_acctbal_prf_1#2448, rid#2440 AS rid_1#2449, c_name_prf#2441 AS c_name_prf_1#2450, c_nationkey_prf#2442 AS c_nationkey_prf_1#2451, c_custkey_prf#2443 AS c_custkey_prf_1#2452, c_comment_prf#2444 AS c_comment_prf_1#2453, c_address_prf#2445 AS c_address_prf_1#2454, c_mktsegment_prf#2446 AS c_mktsegment_prf_1#2455, c_phone_prf#2447 AS c_phone_prf_1#2456]
+         :  :  :  :     +- Relation[c_acctbal_prf#2439,rid#2440,c_name_prf#2441,c_nationkey_prf#2442,c_custkey_prf#2443,c_comment_prf#2444,c_address_prf#2445,c_mktsegment_prf#2446,c_phone_prf#2447] JDBCRelation(customer_prf) [numPartitions=1]
+         :  :  :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#2467]
+         :  :  :     +- 'DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, 'rid_1
+         :  :  :        :- 'Project ['rid AS rid_1#2466]
+         :  :  :        :  +- Relation[c_acctbal_prf#2457,rid#2458,c_name_prf#2459,c_nationkey_prf#2460,c_custkey_prf#2461,c_comment_prf#2462,c_address_prf#2463,c_mktsegment_prf#2464,c_phone_prf#2465] JDBCRelation(customer_prf) [numPartitions=1]
+         :  :  :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [o_shippriority_prf#2468 AS o_shippriority_prf_2#2478, rid#2469 AS rid_2#2479, o_orderdate_prf#2470 AS o_orderdate_prf_2#2480, o_custkey_prf#2471 AS o_custkey_prf_2#2481, o_orderpriority_prf#2472 AS o_orderpriority_prf_2#2482, o_clerk_prf#2473 AS o_clerk_prf_2#2483, o_orderstatus_prf#2474 AS o_orderstatus_prf_2#2484, o_totalprice_prf#2475 AS o_totalprice_prf_2#2485, o_orderkey_prf#2476 AS o_orderkey_prf_2#2486, o_comment_prf#2477 AS o_comment_prf_2#2487]
+         :  :     +- Relation[o_shippriority_prf#2468,rid#2469,o_orderdate_prf#2470,o_custkey_prf#2471,o_orderpriority_prf#2472,o_clerk_prf#2473,o_orderstatus_prf#2474,o_totalprice_prf#2475,o_orderkey_prf#2476,o_comment_prf#2477] JDBCRelation(orders_prf) [numPartitions=1]
+         :  +- 'Project ['rid_2, dexdecrypt('value_dec_key, value#1836) AS rid_3#2499]
+         :     +- 'DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, 'rid_2
+         :        :- 'Project ['rid AS rid_2#2498]
+         :        :  +- Relation[o_shippriority_prf#2488,rid#2489,o_orderdate_prf#2490,o_custkey_prf#2491,o_orderpriority_prf#2492,o_clerk_prf#2493,o_orderstatus_prf#2494,o_totalprice_prf#2495,o_orderkey_prf#2496,o_comment_prf#2497] JDBCRelation(orders_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [l_returnflag_prf#2500 AS l_returnflag_prf_3#2519, l_orderkey_and_l_linenumber_prf#2501 AS l_orderkey_and_l_linenumber_prf_3#2520, l_comment_prf#2502 AS l_comment_prf_3#2521, l_linestatus_prf#2503 AS l_linestatus_prf_3#2522, rid#2504 AS rid_3#2523, l_shipmode_prf#2505 AS l_shipmode_prf_3#2524, l_shipinstruct_prf#2506 AS l_shipinstruct_prf_3#2525, l_quantity_prf#2507 AS l_quantity_prf_3#2526, l_receiptdate_prf#2508 AS l_receiptdate_prf_3#2527, l_linenumber_prf#2509 AS l_linenumber_prf_3#2528, l_tax_prf#2510 AS l_tax_prf_3#2529, l_shipdate_prf#2511 AS l_shipdate_prf_3#2530, l_extendedprice_prf#2512 AS l_extendedprice_prf_3#2531, l_partkey_prf#2513 AS l_partkey_prf_3#2532, l_discount_prf#2514 AS l_discount_prf_3#2533, l_partkey_and_l_suppkey_prf#2515 AS l_partkey_and_l_suppkey_prf_3#2534, l_commitdate_prf#2516 AS l_commitdate_prf_3#2535, l_suppkey_prf#2517 AS l_suppkey_prf_3#2536, l_orderkey_prf#2518 AS l_orderkey_prf_3#2537]
+            +- Relation[l_returnflag_prf#2500,l_orderkey_and_l_linenumber_prf#2501,l_comment_prf#2502,l_linestatus_prf#2503,rid#2504,l_shipmode_prf#2505,l_shipinstruct_prf#2506,l_quantity_prf#2507,l_receiptdate_prf#2508,l_linenumber_prf#2509,l_tax_prf#2510,l_shipdate_prf#2511,l_extendedprice_prf#2512,l_partkey_prf#2513,l_discount_prf#2514,l_partkey_and_l_suppkey_prf#2515,l_commitdate_prf#2516,l_suppkey_prf#2517,l_orderkey_prf#2518] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=246415
+Elapsed time: 163654ms
+
+ft1b=
+select * from nation, supplier, customer where n_name = 'FRANCE' and n_nationkey = s_nationkey and n_nationkey = c_nationkey
+19/10/16 06:40:10 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:40:10 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2603L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (n_nationkey#108L = c_nationkey#293L)
+         :- Project [n_nationkey#108L]
+         :  +- Join Inner, (n_nationkey#108L = s_nationkey#21L)
+         :     :- Project [n_nationkey#108L]
+         :     :  +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+         :     :     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+         :     +- Project [s_nationkey#21L]
+         :        +- Filter isnotnull(s_nationkey#21L)
+         :           +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+         +- Project [c_nationkey#293L]
+            +- Filter isnotnull(c_nationkey#293L)
+               +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+19/10/16 06:40:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:40:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:40:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:40:10 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:40:10 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:40:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:40:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:40:10 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2603L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_0))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['rid_0, 'n_regionkey_prf_0, 'n_nationkey_prf_0, 'n_name_prf_0, 'n_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#2616]
+         :  :  :  +- 'DexRidCorrelatedJoin nation~n_nationkey~supplier~s_nationkey, rid_0#2610: string
+         :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :     :  :- Project [rid#2605 AS rid_0#2610, n_regionkey_prf#2606 AS n_regionkey_prf_0#2611, n_nationkey_prf#2607 AS n_nationkey_prf_0#2612, n_name_prf#2608 AS n_name_prf_0#2613, n_comment_prf#2609 AS n_comment_prf_0#2614]
+         :  :  :     :  :  +- Relation[rid#2605,n_regionkey_prf#2606,n_nationkey_prf#2607,n_name_prf#2608,n_comment_prf#2609] JDBCRelation(nation_prf) [numPartitions=1]
+         :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#2615]
+         :  :  :     :     +- DexRidFilter nation~n_name~FRANCE
+         :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [s_phone_prf#2617 AS s_phone_prf_1#2625, rid#2618 AS rid_1#2626, s_address_prf#2619 AS s_address_prf_1#2627, s_nationkey_prf#2620 AS s_nationkey_prf_1#2628, s_suppkey_prf#2621 AS s_suppkey_prf_1#2629, s_name_prf#2622 AS s_name_prf_1#2630, s_acctbal_prf#2623 AS s_acctbal_prf_1#2631, s_comment_prf#2624 AS s_comment_prf_1#2632]
+         :  :     +- Relation[s_phone_prf#2617,rid#2618,s_address_prf#2619,s_nationkey_prf#2620,s_suppkey_prf#2621,s_name_prf#2622,s_acctbal_prf#2623,s_comment_prf#2624] JDBCRelation(supplier_prf) [numPartitions=1]
+         :  +- 'Project ['rid_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#2639]
+         :     +- 'DexRidCorrelatedJoin nation~n_nationkey~customer~c_nationkey, 'rid_0
+         :        :- 'Project ['rid AS rid_0#2638]
+         :        :  +- Relation[rid#2633,n_regionkey_prf#2634,n_nationkey_prf#2635,n_name_prf#2636,n_comment_prf#2637] JDBCRelation(nation_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [c_acctbal_prf#2640 AS c_acctbal_prf_2#2649, rid#2641 AS rid_2#2650, c_name_prf#2642 AS c_name_prf_2#2651, c_nationkey_prf#2643 AS c_nationkey_prf_2#2652, c_custkey_prf#2644 AS c_custkey_prf_2#2653, c_comment_prf#2645 AS c_comment_prf_2#2654, c_address_prf#2646 AS c_address_prf_2#2655, c_mktsegment_prf#2647 AS c_mktsegment_prf_2#2656, c_phone_prf#2648 AS c_phone_prf_2#2657]
+            +- Relation[c_acctbal_prf#2640,rid#2641,c_name_prf#2642,c_nationkey_prf#2643,c_custkey_prf#2644,c_comment_prf#2645,c_address_prf#2646,c_mktsegment_prf#2647,c_phone_prf#2648] JDBCRelation(customer_prf) [numPartitions=1]
+
+DexCorr$ result size=2452200
+Elapsed time: 2625ms
+
+fr1a=
+select * from lineitem, orders, customer where l_orderkey = o_orderkey and o_custkey = c_custkey and c_mktsegment = 'BUILDING'
+19/10/16 06:40:13 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:40:13 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2716L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (o_custkey#343L = c_custkey#290L)
+         :- Project [o_custkey#343L]
+         :  +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :     :- Project [l_orderkey#306L]
+         :     :  +- Filter isnotnull(l_orderkey#306L)
+         :     :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         :     +- Project [o_orderkey#342L, o_custkey#343L]
+         :        +- Filter (isnotnull(o_orderkey#342L) && isnotnull(o_custkey#343L))
+         :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         +- Project [c_custkey#290L]
+            +- Filter ((isnotnull(c_mktsegment#297) && (c_mktsegment#297 = BUILDING)) && isnotnull(c_custkey#290L))
+               +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+19/10/16 06:40:13 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:40:13 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:40:13 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:40:13 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2716L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#2756]
+         :  :  :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#2741: string
+         :  :  :     :- Project [l_returnflag_prf#2718 AS l_returnflag_prf_0#2737, l_orderkey_and_l_linenumber_prf#2719 AS l_orderkey_and_l_linenumber_prf_0#2738, l_comment_prf#2720 AS l_comment_prf_0#2739, l_linestatus_prf#2721 AS l_linestatus_prf_0#2740, rid#2722 AS rid_0#2741, l_shipmode_prf#2723 AS l_shipmode_prf_0#2742, l_shipinstruct_prf#2724 AS l_shipinstruct_prf_0#2743, l_quantity_prf#2725 AS l_quantity_prf_0#2744, l_receiptdate_prf#2726 AS l_receiptdate_prf_0#2745, l_linenumber_prf#2727 AS l_linenumber_prf_0#2746, l_tax_prf#2728 AS l_tax_prf_0#2747, l_shipdate_prf#2729 AS l_shipdate_prf_0#2748, l_extendedprice_prf#2730 AS l_extendedprice_prf_0#2749, l_partkey_prf#2731 AS l_partkey_prf_0#2750, l_discount_prf#2732 AS l_discount_prf_0#2751, l_partkey_and_l_suppkey_prf#2733 AS l_partkey_and_l_suppkey_prf_0#2752, l_commitdate_prf#2734 AS l_commitdate_prf_0#2753, l_suppkey_prf#2735 AS l_suppkey_prf_0#2754, l_orderkey_prf#2736 AS l_orderkey_prf_0#2755]
+         :  :  :     :  +- Relation[l_returnflag_prf#2718,l_orderkey_and_l_linenumber_prf#2719,l_comment_prf#2720,l_linestatus_prf#2721,rid#2722,l_shipmode_prf#2723,l_shipinstruct_prf#2724,l_quantity_prf#2725,l_receiptdate_prf#2726,l_linenumber_prf#2727,l_tax_prf#2728,l_shipdate_prf#2729,l_extendedprice_prf#2730,l_partkey_prf#2731,l_discount_prf#2732,l_partkey_and_l_suppkey_prf#2733,l_commitdate_prf#2734,l_suppkey_prf#2735,l_orderkey_prf#2736] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [o_shippriority_prf#2757 AS o_shippriority_prf_1#2767, rid#2758 AS rid_1#2768, o_orderdate_prf#2759 AS o_orderdate_prf_1#2769, o_custkey_prf#2760 AS o_custkey_prf_1#2770, o_orderpriority_prf#2761 AS o_orderpriority_prf_1#2771, o_clerk_prf#2762 AS o_clerk_prf_1#2772, o_orderstatus_prf#2763 AS o_orderstatus_prf_1#2773, o_totalprice_prf#2764 AS o_totalprice_prf_1#2774, o_orderkey_prf#2765 AS o_orderkey_prf_1#2775, o_comment_prf#2766 AS o_comment_prf_1#2776]
+         :  :     +- Relation[o_shippriority_prf#2757,rid#2758,o_orderdate_prf#2759,o_custkey_prf#2760,o_orderpriority_prf#2761,o_clerk_prf#2762,o_orderstatus_prf#2763,o_totalprice_prf#2764,o_orderkey_prf#2765,o_comment_prf#2766] JDBCRelation(orders_prf) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#2788]
+         :     +- 'DexRidCorrelatedJoin orders~o_custkey~customer~c_custkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#2787]
+         :        :  +- Relation[o_shippriority_prf#2777,rid#2778,o_orderdate_prf#2779,o_custkey_prf#2780,o_orderpriority_prf#2781,o_clerk_prf#2782,o_orderstatus_prf#2783,o_totalprice_prf#2784,o_orderkey_prf#2785,o_comment_prf#2786] JDBCRelation(orders_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join UsingJoin(LeftSemi,List(rid_2))
+            :- Project [c_acctbal_prf#2789 AS c_acctbal_prf_2#2798, rid#2790 AS rid_2#2799, c_name_prf#2791 AS c_name_prf_2#2800, c_nationkey_prf#2792 AS c_nationkey_prf_2#2801, c_custkey_prf#2793 AS c_custkey_prf_2#2802, c_comment_prf#2794 AS c_comment_prf_2#2803, c_address_prf#2795 AS c_address_prf_2#2804, c_mktsegment_prf#2796 AS c_mktsegment_prf_2#2805, c_phone_prf#2797 AS c_phone_prf_2#2806]
+            :  +- Relation[c_acctbal_prf#2789,rid#2790,c_name_prf#2791,c_nationkey_prf#2792,c_custkey_prf#2793,c_comment_prf#2794,c_address_prf#2795,c_mktsegment_prf#2796,c_phone_prf#2797] JDBCRelation(customer_prf) [numPartitions=1]
+            +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_2#2807]
+               +- DexRidFilter customer~c_mktsegment~BUILDING
+                  +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+
+DexCorr$ result size=1214743
+Elapsed time: 139067ms
+
+fr2a=
+select * from lineitem, orders, customer where l_orderkey = o_orderkey and o_orderstatus = 'F' and o_custkey = c_custkey
+19/10/16 06:42:32 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:42:32 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2882L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (o_custkey#343L = c_custkey#290L)
+         :- Project [o_custkey#343L]
+         :  +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :     :- Project [l_orderkey#306L]
+         :     :  +- Filter isnotnull(l_orderkey#306L)
+         :     :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         :     +- Project [o_orderkey#342L, o_custkey#343L]
+         :        +- Filter (((isnotnull(o_orderstatus#344) && (o_orderstatus#344 = F)) && isnotnull(o_orderkey#342L)) && isnotnull(o_custkey#343L))
+         :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         +- Project [c_custkey#290L]
+            +- Filter isnotnull(c_custkey#290L)
+               +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+19/10/16 06:42:32 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2882L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#2922]
+         :  :  :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#2907: string
+         :  :  :     :- Project [l_returnflag_prf#2884 AS l_returnflag_prf_0#2903, l_orderkey_and_l_linenumber_prf#2885 AS l_orderkey_and_l_linenumber_prf_0#2904, l_comment_prf#2886 AS l_comment_prf_0#2905, l_linestatus_prf#2887 AS l_linestatus_prf_0#2906, rid#2888 AS rid_0#2907, l_shipmode_prf#2889 AS l_shipmode_prf_0#2908, l_shipinstruct_prf#2890 AS l_shipinstruct_prf_0#2909, l_quantity_prf#2891 AS l_quantity_prf_0#2910, l_receiptdate_prf#2892 AS l_receiptdate_prf_0#2911, l_linenumber_prf#2893 AS l_linenumber_prf_0#2912, l_tax_prf#2894 AS l_tax_prf_0#2913, l_shipdate_prf#2895 AS l_shipdate_prf_0#2914, l_extendedprice_prf#2896 AS l_extendedprice_prf_0#2915, l_partkey_prf#2897 AS l_partkey_prf_0#2916, l_discount_prf#2898 AS l_discount_prf_0#2917, l_partkey_and_l_suppkey_prf#2899 AS l_partkey_and_l_suppkey_prf_0#2918, l_commitdate_prf#2900 AS l_commitdate_prf_0#2919, l_suppkey_prf#2901 AS l_suppkey_prf_0#2920, l_orderkey_prf#2902 AS l_orderkey_prf_0#2921]
+         :  :  :     :  +- Relation[l_returnflag_prf#2884,l_orderkey_and_l_linenumber_prf#2885,l_comment_prf#2886,l_linestatus_prf#2887,rid#2888,l_shipmode_prf#2889,l_shipinstruct_prf#2890,l_quantity_prf#2891,l_receiptdate_prf#2892,l_linenumber_prf#2893,l_tax_prf#2894,l_shipdate_prf#2895,l_extendedprice_prf#2896,l_partkey_prf#2897,l_discount_prf#2898,l_partkey_and_l_suppkey_prf#2899,l_commitdate_prf#2900,l_suppkey_prf#2901,l_orderkey_prf#2902] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- 'Join UsingJoin(LeftSemi,List(rid_1))
+         :  :     :- Project [o_shippriority_prf#2923 AS o_shippriority_prf_1#2933, rid#2924 AS rid_1#2934, o_orderdate_prf#2925 AS o_orderdate_prf_1#2935, o_custkey_prf#2926 AS o_custkey_prf_1#2936, o_orderpriority_prf#2927 AS o_orderpriority_prf_1#2937, o_clerk_prf#2928 AS o_clerk_prf_1#2938, o_orderstatus_prf#2929 AS o_orderstatus_prf_1#2939, o_totalprice_prf#2930 AS o_totalprice_prf_1#2940, o_orderkey_prf#2931 AS o_orderkey_prf_1#2941, o_comment_prf#2932 AS o_comment_prf_1#2942]
+         :  :     :  +- Relation[o_shippriority_prf#2923,rid#2924,o_orderdate_prf#2925,o_custkey_prf#2926,o_orderpriority_prf#2927,o_clerk_prf#2928,o_orderstatus_prf#2929,o_totalprice_prf#2930,o_orderkey_prf#2931,o_comment_prf#2932] JDBCRelation(orders_prf) [numPartitions=1]
+         :  :     +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#2943]
+         :  :        +- DexRidFilter orders~o_orderstatus~F
+         :  :           +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#2955]
+         :     +- 'DexRidCorrelatedJoin orders~o_custkey~customer~c_custkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#2954]
+         :        :  +- Relation[o_shippriority_prf#2944,rid#2945,o_orderdate_prf#2946,o_custkey_prf#2947,o_orderpriority_prf#2948,o_clerk_prf#2949,o_orderstatus_prf#2950,o_totalprice_prf#2951,o_orderkey_prf#2952,o_comment_prf#2953] JDBCRelation(orders_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [c_acctbal_prf#2956 AS c_acctbal_prf_2#2965, rid#2957 AS rid_2#2966, c_name_prf#2958 AS c_name_prf_2#2967, c_nationkey_prf#2959 AS c_nationkey_prf_2#2968, c_custkey_prf#2960 AS c_custkey_prf_2#2969, c_comment_prf#2961 AS c_comment_prf_2#2970, c_address_prf#2962 AS c_address_prf_2#2971, c_mktsegment_prf#2963 AS c_mktsegment_prf_2#2972, c_phone_prf#2964 AS c_phone_prf_2#2973]
+            +- Relation[c_acctbal_prf#2956,rid#2957,c_name_prf#2958,c_nationkey_prf#2959,c_custkey_prf#2960,c_comment_prf#2961,c_address_prf#2962,c_mktsegment_prf#2963,c_phone_prf#2964] JDBCRelation(customer_prf) [numPartitions=1]
+
+DexCorr$ result size=2901744
+Elapsed time: 173507ms
+
+fq1c=
+
+select *
+from nation, customer, orders, lineitem
+where
+  n_name = 'FRANCE' and n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey
+        
+19/10/16 06:45:25 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:45:25 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#3052L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (n_nationkey#108L = c_nationkey#293L)
+         :- Project [n_nationkey#108L]
+         :  +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+         :     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+         +- Project [c_nationkey#293L]
+            +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+               :- Project [c_nationkey#293L, o_orderkey#342L]
+               :  +- Join Inner, (c_custkey#290L = o_custkey#343L)
+               :     :- Project [c_custkey#290L, c_nationkey#293L]
+               :     :  +- Filter (isnotnull(c_custkey#290L) && isnotnull(c_nationkey#293L))
+               :     :     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+               :     +- Project [o_orderkey#342L, o_custkey#343L]
+               :        +- Filter (isnotnull(o_custkey#343L) && isnotnull(o_orderkey#342L))
+               :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+               +- Project [l_orderkey#306L]
+                  +- Filter isnotnull(l_orderkey#306L)
+                     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 06:45:25 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:45:25 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:45:25 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:45:25 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#3052L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['rid_0, 'n_regionkey_prf_0, 'n_nationkey_prf_0, 'n_name_prf_0, 'n_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#3065]
+         :  +- 'DexRidCorrelatedJoin nation~n_nationkey~customer~c_nationkey, rid_0#3059: string
+         :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :     :  :- Project [rid#3054 AS rid_0#3059, n_regionkey_prf#3055 AS n_regionkey_prf_0#3060, n_nationkey_prf#3056 AS n_nationkey_prf_0#3061, n_name_prf#3057 AS n_name_prf_0#3062, n_comment_prf#3058 AS n_comment_prf_0#3063]
+         :     :  :  +- Relation[rid#3054,n_regionkey_prf#3055,n_nationkey_prf#3056,n_name_prf#3057,n_comment_prf#3058] JDBCRelation(nation_prf) [numPartitions=1]
+         :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#3064]
+         :     :     +- DexRidFilter nation~n_name~FRANCE
+         :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Join UsingJoin(Inner,List(rid_2))
+            :  :- 'Join NaturalJoin(Inner)
+            :  :  :- 'Project ['c_acctbal_prf_1, 'rid_1, 'c_name_prf_1, 'c_nationkey_prf_1, 'c_custkey_prf_1, 'c_comment_prf_1, 'c_address_prf_1, 'c_mktsegment_prf_1, 'c_phone_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#3084]
+            :  :  :  +- DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, rid_1#3076: string
+            :  :  :     :- Project [c_acctbal_prf#3066 AS c_acctbal_prf_1#3075, rid#3067 AS rid_1#3076, c_name_prf#3068 AS c_name_prf_1#3077, c_nationkey_prf#3069 AS c_nationkey_prf_1#3078, c_custkey_prf#3070 AS c_custkey_prf_1#3079, c_comment_prf#3071 AS c_comment_prf_1#3080, c_address_prf#3072 AS c_address_prf_1#3081, c_mktsegment_prf#3073 AS c_mktsegment_prf_1#3082, c_phone_prf#3074 AS c_phone_prf_1#3083]
+            :  :  :     :  +- Relation[c_acctbal_prf#3066,rid#3067,c_name_prf#3068,c_nationkey_prf#3069,c_custkey_prf#3070,c_comment_prf#3071,c_address_prf#3072,c_mktsegment_prf#3073,c_phone_prf#3074] JDBCRelation(customer_prf) [numPartitions=1]
+            :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            :  :  +- Project [o_shippriority_prf#3085 AS o_shippriority_prf_2#3095, rid#3086 AS rid_2#3096, o_orderdate_prf#3087 AS o_orderdate_prf_2#3097, o_custkey_prf#3088 AS o_custkey_prf_2#3098, o_orderpriority_prf#3089 AS o_orderpriority_prf_2#3099, o_clerk_prf#3090 AS o_clerk_prf_2#3100, o_orderstatus_prf#3091 AS o_orderstatus_prf_2#3101, o_totalprice_prf#3092 AS o_totalprice_prf_2#3102, o_orderkey_prf#3093 AS o_orderkey_prf_2#3103, o_comment_prf#3094 AS o_comment_prf_2#3104]
+            :  :     +- Relation[o_shippriority_prf#3085,rid#3086,o_orderdate_prf#3087,o_custkey_prf#3088,o_orderpriority_prf#3089,o_clerk_prf#3090,o_orderstatus_prf#3091,o_totalprice_prf#3092,o_orderkey_prf#3093,o_comment_prf#3094] JDBCRelation(orders_prf) [numPartitions=1]
+            :  +- 'Project ['rid_2, dexdecrypt('value_dec_key, value#1836) AS rid_3#3116]
+            :     +- 'DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, 'rid_2
+            :        :- 'Project ['rid AS rid_2#3115]
+            :        :  +- Relation[o_shippriority_prf#3105,rid#3106,o_orderdate_prf#3107,o_custkey_prf#3108,o_orderpriority_prf#3109,o_clerk_prf#3110,o_orderstatus_prf#3111,o_totalprice_prf#3112,o_orderkey_prf#3113,o_comment_prf#3114] JDBCRelation(orders_prf) [numPartitions=1]
+            :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [l_returnflag_prf#3117 AS l_returnflag_prf_3#3136, l_orderkey_and_l_linenumber_prf#3118 AS l_orderkey_and_l_linenumber_prf_3#3137, l_comment_prf#3119 AS l_comment_prf_3#3138, l_linestatus_prf#3120 AS l_linestatus_prf_3#3139, rid#3121 AS rid_3#3140, l_shipmode_prf#3122 AS l_shipmode_prf_3#3141, l_shipinstruct_prf#3123 AS l_shipinstruct_prf_3#3142, l_quantity_prf#3124 AS l_quantity_prf_3#3143, l_receiptdate_prf#3125 AS l_receiptdate_prf_3#3144, l_linenumber_prf#3126 AS l_linenumber_prf_3#3145, l_tax_prf#3127 AS l_tax_prf_3#3146, l_shipdate_prf#3128 AS l_shipdate_prf_3#3147, l_extendedprice_prf#3129 AS l_extendedprice_prf_3#3148, l_partkey_prf#3130 AS l_partkey_prf_3#3149, l_discount_prf#3131 AS l_discount_prf_3#3150, l_partkey_and_l_suppkey_prf#3132 AS l_partkey_and_l_suppkey_prf_3#3151, l_commitdate_prf#3133 AS l_commitdate_prf_3#3152, l_suppkey_prf#3134 AS l_suppkey_prf_3#3153, l_orderkey_prf#3135 AS l_orderkey_prf_3#3154]
+               +- Relation[l_returnflag_prf#3117,l_orderkey_and_l_linenumber_prf#3118,l_comment_prf#3119,l_linestatus_prf#3120,rid#3121,l_shipmode_prf#3122,l_shipinstruct_prf#3123,l_quantity_prf#3124,l_receiptdate_prf#3125,l_linenumber_prf#3126,l_tax_prf#3127,l_shipdate_prf#3128,l_extendedprice_prf#3129,l_partkey_prf#3130,l_discount_prf#3131,l_partkey_and_l_suppkey_prf#3132,l_commitdate_prf#3133,l_suppkey_prf#3134,l_orderkey_prf#3135] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=246415
+Elapsed time: 228877ms
+
+fr2f=
+select * from customer, orders, lineitem where o_orderkey = l_orderkey and o_orderstatus = 'F' and c_custkey = o_custkey
+19/10/16 06:49:14 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:49:14 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#3234L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+         :- Project [o_orderkey#342L]
+         :  +- Join Inner, (o_custkey#343L = c_custkey#290L)
+         :     :- Project [o_orderkey#342L, o_custkey#343L]
+         :     :  +- Filter (((isnotnull(o_orderstatus#344) && (o_orderstatus#344 = F)) && isnotnull(o_custkey#343L)) && isnotnull(o_orderkey#342L))
+         :     :     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         :     +- Project [c_custkey#290L]
+         :        +- Filter isnotnull(c_custkey#290L)
+         :           +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         +- Project [l_orderkey#306L]
+            +- Filter isnotnull(l_orderkey#306L)
+               +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 06:49:14 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#3234L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_0))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['o_shippriority_prf_0, 'rid_0, 'o_orderdate_prf_0, 'o_custkey_prf_0, 'o_orderpriority_prf_0, 'o_clerk_prf_0, 'o_orderstatus_prf_0, 'o_totalprice_prf_0, 'o_orderkey_prf_0, 'o_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#3257]
+         :  :  :  +- 'DexRidCorrelatedJoin orders~o_custkey~customer~c_custkey, rid_0#3247: string
+         :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :     :  :- Project [o_shippriority_prf#3236 AS o_shippriority_prf_0#3246, rid#3237 AS rid_0#3247, o_orderdate_prf#3238 AS o_orderdate_prf_0#3248, o_custkey_prf#3239 AS o_custkey_prf_0#3249, o_orderpriority_prf#3240 AS o_orderpriority_prf_0#3250, o_clerk_prf#3241 AS o_clerk_prf_0#3251, o_orderstatus_prf#3242 AS o_orderstatus_prf_0#3252, o_totalprice_prf#3243 AS o_totalprice_prf_0#3253, o_orderkey_prf#3244 AS o_orderkey_prf_0#3254, o_comment_prf#3245 AS o_comment_prf_0#3255]
+         :  :  :     :  :  +- Relation[o_shippriority_prf#3236,rid#3237,o_orderdate_prf#3238,o_custkey_prf#3239,o_orderpriority_prf#3240,o_clerk_prf#3241,o_orderstatus_prf#3242,o_totalprice_prf#3243,o_orderkey_prf#3244,o_comment_prf#3245] JDBCRelation(orders_prf) [numPartitions=1]
+         :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#3256]
+         :  :  :     :     +- DexRidFilter orders~o_orderstatus~F
+         :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [c_acctbal_prf#3258 AS c_acctbal_prf_1#3267, rid#3259 AS rid_1#3268, c_name_prf#3260 AS c_name_prf_1#3269, c_nationkey_prf#3261 AS c_nationkey_prf_1#3270, c_custkey_prf#3262 AS c_custkey_prf_1#3271, c_comment_prf#3263 AS c_comment_prf_1#3272, c_address_prf#3264 AS c_address_prf_1#3273, c_mktsegment_prf#3265 AS c_mktsegment_prf_1#3274, c_phone_prf#3266 AS c_phone_prf_1#3275]
+         :  :     +- Relation[c_acctbal_prf#3258,rid#3259,c_name_prf#3260,c_nationkey_prf#3261,c_custkey_prf#3262,c_comment_prf#3263,c_address_prf#3264,c_mktsegment_prf#3265,c_phone_prf#3266] JDBCRelation(customer_prf) [numPartitions=1]
+         :  +- 'Project ['rid_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#3287]
+         :     +- 'DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, 'rid_0
+         :        :- 'Project ['rid AS rid_0#3286]
+         :        :  +- Relation[o_shippriority_prf#3276,rid#3277,o_orderdate_prf#3278,o_custkey_prf#3279,o_orderpriority_prf#3280,o_clerk_prf#3281,o_orderstatus_prf#3282,o_totalprice_prf#3283,o_orderkey_prf#3284,o_comment_prf#3285] JDBCRelation(orders_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [l_returnflag_prf#3288 AS l_returnflag_prf_2#3307, l_orderkey_and_l_linenumber_prf#3289 AS l_orderkey_and_l_linenumber_prf_2#3308, l_comment_prf#3290 AS l_comment_prf_2#3309, l_linestatus_prf#3291 AS l_linestatus_prf_2#3310, rid#3292 AS rid_2#3311, l_shipmode_prf#3293 AS l_shipmode_prf_2#3312, l_shipinstruct_prf#3294 AS l_shipinstruct_prf_2#3313, l_quantity_prf#3295 AS l_quantity_prf_2#3314, l_receiptdate_prf#3296 AS l_receiptdate_prf_2#3315, l_linenumber_prf#3297 AS l_linenumber_prf_2#3316, l_tax_prf#3298 AS l_tax_prf_2#3317, l_shipdate_prf#3299 AS l_shipdate_prf_2#3318, l_extendedprice_prf#3300 AS l_extendedprice_prf_2#3319, l_partkey_prf#3301 AS l_partkey_prf_2#3320, l_discount_prf#3302 AS l_discount_prf_2#3321, l_partkey_and_l_suppkey_prf#3303 AS l_partkey_and_l_suppkey_prf_2#3322, l_commitdate_prf#3304 AS l_commitdate_prf_2#3323, l_suppkey_prf#3305 AS l_suppkey_prf_2#3324, l_orderkey_prf#3306 AS l_orderkey_prf_2#3325]
+            +- Relation[l_returnflag_prf#3288,l_orderkey_and_l_linenumber_prf#3289,l_comment_prf#3290,l_linestatus_prf#3291,rid#3292,l_shipmode_prf#3293,l_shipinstruct_prf#3294,l_quantity_prf#3295,l_receiptdate_prf#3296,l_linenumber_prf#3297,l_tax_prf#3298,l_shipdate_prf#3299,l_extendedprice_prf#3300,l_partkey_prf#3301,l_discount_prf#3302,l_partkey_and_l_suppkey_prf#3303,l_commitdate_prf#3304,l_suppkey_prf#3305,l_orderkey_prf#3306] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=2901744
+Elapsed time: 216300ms
+
+ft3b=
+select * from part, lineitem, supplier where p_size = 15 and p_partkey = l_partkey and l_suppkey = s_suppkey
+19/10/16 06:52:50 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:52:50 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#3399L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (l_suppkey#308L = s_suppkey#18L)
+         :- Project [l_suppkey#308L]
+         :  +- Join Inner, (p_partkey#360L = l_partkey#307L)
+         :     :- Project [p_partkey#360L]
+         :     :  +- Filter ((isnotnull(p_size#364) && (p_size#364 = 15)) && isnotnull(p_partkey#360L))
+         :     :     +- Relation[p_partkey#360L,p_name#361,p_mfgr#362,p_type#363,p_size#364,p_container#365,p_retailprice#366,p_comment#367,p_brand#368] parquet
+         :     +- Project [l_partkey#307L, l_suppkey#308L]
+         :        +- Filter (isnotnull(l_partkey#307L) && isnotnull(l_suppkey#308L))
+         :           +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         +- Project [s_suppkey#18L]
+            +- Filter isnotnull(s_suppkey#18L)
+               +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+
+19/10/16 06:52:50 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:52:50 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:52:50 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#3399L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['p_comment_prf_0, 'p_name_prf_0, 'rid_0, 'p_type_prf_0, 'p_retailprice_prf_0, 'p_mfgr_prf_0, 'p_container_prf_0, 'p_brand_prf_0, 'p_size_prf_0, 'p_partkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#3422]
+         :  :  :  +- 'DexRidCorrelatedJoin part~p_partkey~lineitem~l_partkey, rid_0#3413: string
+         :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :     :  :- Project [p_comment_prf#3401 AS p_comment_prf_0#3411, p_name_prf#3402 AS p_name_prf_0#3412, rid#3403 AS rid_0#3413, p_type_prf#3404 AS p_type_prf_0#3414, p_retailprice_prf#3405 AS p_retailprice_prf_0#3415, p_mfgr_prf#3406 AS p_mfgr_prf_0#3416, p_container_prf#3407 AS p_container_prf_0#3417, p_brand_prf#3408 AS p_brand_prf_0#3418, p_size_prf#3409 AS p_size_prf_0#3419, p_partkey_prf#3410 AS p_partkey_prf_0#3420]
+         :  :  :     :  :  +- Relation[p_comment_prf#3401,p_name_prf#3402,rid#3403,p_type_prf#3404,p_retailprice_prf#3405,p_mfgr_prf#3406,p_container_prf#3407,p_brand_prf#3408,p_size_prf#3409,p_partkey_prf#3410] JDBCRelation(part_prf) [numPartitions=1]
+         :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#3421]
+         :  :  :     :     +- DexRidFilter part~p_size~15
+         :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [l_returnflag_prf#3423 AS l_returnflag_prf_1#3442, l_orderkey_and_l_linenumber_prf#3424 AS l_orderkey_and_l_linenumber_prf_1#3443, l_comment_prf#3425 AS l_comment_prf_1#3444, l_linestatus_prf#3426 AS l_linestatus_prf_1#3445, rid#3427 AS rid_1#3446, l_shipmode_prf#3428 AS l_shipmode_prf_1#3447, l_shipinstruct_prf#3429 AS l_shipinstruct_prf_1#3448, l_quantity_prf#3430 AS l_quantity_prf_1#3449, l_receiptdate_prf#3431 AS l_receiptdate_prf_1#3450, l_linenumber_prf#3432 AS l_linenumber_prf_1#3451, l_tax_prf#3433 AS l_tax_prf_1#3452, l_shipdate_prf#3434 AS l_shipdate_prf_1#3453, l_extendedprice_prf#3435 AS l_extendedprice_prf_1#3454, l_partkey_prf#3436 AS l_partkey_prf_1#3455, l_discount_prf#3437 AS l_discount_prf_1#3456, l_partkey_and_l_suppkey_prf#3438 AS l_partkey_and_l_suppkey_prf_1#3457, l_commitdate_prf#3439 AS l_commitdate_prf_1#3458, l_suppkey_prf#3440 AS l_suppkey_prf_1#3459, l_orderkey_prf#3441 AS l_orderkey_prf_1#3460]
+         :  :     +- Relation[l_returnflag_prf#3423,l_orderkey_and_l_linenumber_prf#3424,l_comment_prf#3425,l_linestatus_prf#3426,rid#3427,l_shipmode_prf#3428,l_shipinstruct_prf#3429,l_quantity_prf#3430,l_receiptdate_prf#3431,l_linenumber_prf#3432,l_tax_prf#3433,l_shipdate_prf#3434,l_extendedprice_prf#3435,l_partkey_prf#3436,l_discount_prf#3437,l_partkey_and_l_suppkey_prf#3438,l_commitdate_prf#3439,l_suppkey_prf#3440,l_orderkey_prf#3441] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#3481]
+         :     +- 'DexRidCorrelatedJoin lineitem~l_suppkey~supplier~s_suppkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#3480]
+         :        :  +- Relation[l_returnflag_prf#3461,l_orderkey_and_l_linenumber_prf#3462,l_comment_prf#3463,l_linestatus_prf#3464,rid#3465,l_shipmode_prf#3466,l_shipinstruct_prf#3467,l_quantity_prf#3468,l_receiptdate_prf#3469,l_linenumber_prf#3470,l_tax_prf#3471,l_shipdate_prf#3472,l_extendedprice_prf#3473,l_partkey_prf#3474,l_discount_prf#3475,l_partkey_and_l_suppkey_prf#3476,l_commitdate_prf#3477,l_suppkey_prf#3478,l_orderkey_prf#3479] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [s_phone_prf#3482 AS s_phone_prf_2#3490, rid#3483 AS rid_2#3491, s_address_prf#3484 AS s_address_prf_2#3492, s_nationkey_prf#3485 AS s_nationkey_prf_2#3493, s_suppkey_prf#3486 AS s_suppkey_prf_2#3494, s_name_prf#3487 AS s_name_prf_2#3495, s_acctbal_prf#3488 AS s_acctbal_prf_2#3496, s_comment_prf#3489 AS s_comment_prf_2#3497]
+            +- Relation[s_phone_prf#3482,rid#3483,s_address_prf#3484,s_nationkey_prf#3485,s_suppkey_prf#3486,s_name_prf#3487,s_acctbal_prf#3488,s_comment_prf#3489] JDBCRelation(supplier_prf) [numPartitions=1]
+
+DexCorr$ result size=117754
+Elapsed time: 53025ms
+
+fr2b=
+select * from lineitem, orders, customer where o_custkey = c_custkey and o_orderstatus = 'F' and l_orderkey = o_orderkey
+19/10/16 06:53:43 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:53:43 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#3571L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :- Project [l_orderkey#306L]
+         :  +- Filter isnotnull(l_orderkey#306L)
+         :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         +- Project [o_orderkey#342L]
+            +- Join Inner, (o_custkey#343L = c_custkey#290L)
+               :- Project [o_orderkey#342L, o_custkey#343L]
+               :  +- Filter (((isnotnull(o_orderstatus#344) && (o_orderstatus#344 = F)) && isnotnull(o_custkey#343L)) && isnotnull(o_orderkey#342L))
+               :     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+               +- Project [c_custkey#290L]
+                  +- Filter isnotnull(c_custkey#290L)
+                     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+19/10/16 06:53:43 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#3571L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#3611]
+         :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#3596: string
+         :     :- Project [l_returnflag_prf#3573 AS l_returnflag_prf_0#3592, l_orderkey_and_l_linenumber_prf#3574 AS l_orderkey_and_l_linenumber_prf_0#3593, l_comment_prf#3575 AS l_comment_prf_0#3594, l_linestatus_prf#3576 AS l_linestatus_prf_0#3595, rid#3577 AS rid_0#3596, l_shipmode_prf#3578 AS l_shipmode_prf_0#3597, l_shipinstruct_prf#3579 AS l_shipinstruct_prf_0#3598, l_quantity_prf#3580 AS l_quantity_prf_0#3599, l_receiptdate_prf#3581 AS l_receiptdate_prf_0#3600, l_linenumber_prf#3582 AS l_linenumber_prf_0#3601, l_tax_prf#3583 AS l_tax_prf_0#3602, l_shipdate_prf#3584 AS l_shipdate_prf_0#3603, l_extendedprice_prf#3585 AS l_extendedprice_prf_0#3604, l_partkey_prf#3586 AS l_partkey_prf_0#3605, l_discount_prf#3587 AS l_discount_prf_0#3606, l_partkey_and_l_suppkey_prf#3588 AS l_partkey_and_l_suppkey_prf_0#3607, l_commitdate_prf#3589 AS l_commitdate_prf_0#3608, l_suppkey_prf#3590 AS l_suppkey_prf_0#3609, l_orderkey_prf#3591 AS l_orderkey_prf_0#3610]
+         :     :  +- Relation[l_returnflag_prf#3573,l_orderkey_and_l_linenumber_prf#3574,l_comment_prf#3575,l_linestatus_prf#3576,rid#3577,l_shipmode_prf#3578,l_shipinstruct_prf#3579,l_quantity_prf#3580,l_receiptdate_prf#3581,l_linenumber_prf#3582,l_tax_prf#3583,l_shipdate_prf#3584,l_extendedprice_prf#3585,l_partkey_prf#3586,l_discount_prf#3587,l_partkey_and_l_suppkey_prf#3588,l_commitdate_prf#3589,l_suppkey_prf#3590,l_orderkey_prf#3591] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['o_shippriority_prf_1, 'rid_1, 'o_orderdate_prf_1, 'o_custkey_prf_1, 'o_orderpriority_prf_1, 'o_clerk_prf_1, 'o_orderstatus_prf_1, 'o_totalprice_prf_1, 'o_orderkey_prf_1, 'o_comment_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#3633]
+            :  +- 'DexRidCorrelatedJoin orders~o_custkey~customer~c_custkey, rid_1#3623: string
+            :     :- 'Join UsingJoin(LeftSemi,List(rid_1))
+            :     :  :- Project [o_shippriority_prf#3612 AS o_shippriority_prf_1#3622, rid#3613 AS rid_1#3623, o_orderdate_prf#3614 AS o_orderdate_prf_1#3624, o_custkey_prf#3615 AS o_custkey_prf_1#3625, o_orderpriority_prf#3616 AS o_orderpriority_prf_1#3626, o_clerk_prf#3617 AS o_clerk_prf_1#3627, o_orderstatus_prf#3618 AS o_orderstatus_prf_1#3628, o_totalprice_prf#3619 AS o_totalprice_prf_1#3629, o_orderkey_prf#3620 AS o_orderkey_prf_1#3630, o_comment_prf#3621 AS o_comment_prf_1#3631]
+            :     :  :  +- Relation[o_shippriority_prf#3612,rid#3613,o_orderdate_prf#3614,o_custkey_prf#3615,o_orderpriority_prf#3616,o_clerk_prf#3617,o_orderstatus_prf#3618,o_totalprice_prf#3619,o_orderkey_prf#3620,o_comment_prf#3621] JDBCRelation(orders_prf) [numPartitions=1]
+            :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#3632]
+            :     :     +- DexRidFilter orders~o_orderstatus~F
+            :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [c_acctbal_prf#3634 AS c_acctbal_prf_2#3643, rid#3635 AS rid_2#3644, c_name_prf#3636 AS c_name_prf_2#3645, c_nationkey_prf#3637 AS c_nationkey_prf_2#3646, c_custkey_prf#3638 AS c_custkey_prf_2#3647, c_comment_prf#3639 AS c_comment_prf_2#3648, c_address_prf#3640 AS c_address_prf_2#3649, c_mktsegment_prf#3641 AS c_mktsegment_prf_2#3650, c_phone_prf#3642 AS c_phone_prf_2#3651]
+               +- Relation[c_acctbal_prf#3634,rid#3635,c_name_prf#3636,c_nationkey_prf#3637,c_custkey_prf#3638,c_comment_prf#3639,c_address_prf#3640,c_mktsegment_prf#3641,c_phone_prf#3642] JDBCRelation(customer_prf) [numPartitions=1]
+
+DexCorr$ result size=2901744
+Elapsed time: 120922ms
+
+fr1c=
+select * from lineitem, orders, customer where c_custkey = o_custkey and (c_mktsegment = 'BUILDING' and l_orderkey = o_orderkey)
+19/10/16 06:55:44 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:55:44 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#3726L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :- Project [l_orderkey#306L]
+         :  +- Filter isnotnull(l_orderkey#306L)
+         :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         +- Project [o_orderkey#342L]
+            +- Join Inner, (c_custkey#290L = o_custkey#343L)
+               :- Project [c_custkey#290L]
+               :  +- Filter ((isnotnull(c_mktsegment#297) && (c_mktsegment#297 = BUILDING)) && isnotnull(c_custkey#290L))
+               :     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+               +- Project [o_orderkey#342L, o_custkey#343L]
+                  +- Filter (isnotnull(o_custkey#343L) && isnotnull(o_orderkey#342L))
+                     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+
+19/10/16 06:55:44 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:55:44 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:55:44 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 06:55:44 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#3726L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#3766]
+         :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#3751: string
+         :     :- Project [l_returnflag_prf#3728 AS l_returnflag_prf_0#3747, l_orderkey_and_l_linenumber_prf#3729 AS l_orderkey_and_l_linenumber_prf_0#3748, l_comment_prf#3730 AS l_comment_prf_0#3749, l_linestatus_prf#3731 AS l_linestatus_prf_0#3750, rid#3732 AS rid_0#3751, l_shipmode_prf#3733 AS l_shipmode_prf_0#3752, l_shipinstruct_prf#3734 AS l_shipinstruct_prf_0#3753, l_quantity_prf#3735 AS l_quantity_prf_0#3754, l_receiptdate_prf#3736 AS l_receiptdate_prf_0#3755, l_linenumber_prf#3737 AS l_linenumber_prf_0#3756, l_tax_prf#3738 AS l_tax_prf_0#3757, l_shipdate_prf#3739 AS l_shipdate_prf_0#3758, l_extendedprice_prf#3740 AS l_extendedprice_prf_0#3759, l_partkey_prf#3741 AS l_partkey_prf_0#3760, l_discount_prf#3742 AS l_discount_prf_0#3761, l_partkey_and_l_suppkey_prf#3743 AS l_partkey_and_l_suppkey_prf_0#3762, l_commitdate_prf#3744 AS l_commitdate_prf_0#3763, l_suppkey_prf#3745 AS l_suppkey_prf_0#3764, l_orderkey_prf#3746 AS l_orderkey_prf_0#3765]
+         :     :  +- Relation[l_returnflag_prf#3728,l_orderkey_and_l_linenumber_prf#3729,l_comment_prf#3730,l_linestatus_prf#3731,rid#3732,l_shipmode_prf#3733,l_shipinstruct_prf#3734,l_quantity_prf#3735,l_receiptdate_prf#3736,l_linenumber_prf#3737,l_tax_prf#3738,l_shipdate_prf#3739,l_extendedprice_prf#3740,l_partkey_prf#3741,l_discount_prf#3742,l_partkey_and_l_suppkey_prf#3743,l_commitdate_prf#3744,l_suppkey_prf#3745,l_orderkey_prf#3746] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['c_acctbal_prf_1, 'rid_1, 'c_name_prf_1, 'c_nationkey_prf_1, 'c_custkey_prf_1, 'c_comment_prf_1, 'c_address_prf_1, 'c_mktsegment_prf_1, 'c_phone_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#3786]
+            :  +- 'DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, rid_1#3777: string
+            :     :- 'Join UsingJoin(LeftSemi,List(rid_1))
+            :     :  :- Project [c_acctbal_prf#3767 AS c_acctbal_prf_1#3776, rid#3768 AS rid_1#3777, c_name_prf#3769 AS c_name_prf_1#3778, c_nationkey_prf#3770 AS c_nationkey_prf_1#3779, c_custkey_prf#3771 AS c_custkey_prf_1#3780, c_comment_prf#3772 AS c_comment_prf_1#3781, c_address_prf#3773 AS c_address_prf_1#3782, c_mktsegment_prf#3774 AS c_mktsegment_prf_1#3783, c_phone_prf#3775 AS c_phone_prf_1#3784]
+            :     :  :  +- Relation[c_acctbal_prf#3767,rid#3768,c_name_prf#3769,c_nationkey_prf#3770,c_custkey_prf#3771,c_comment_prf#3772,c_address_prf#3773,c_mktsegment_prf#3774,c_phone_prf#3775] JDBCRelation(customer_prf) [numPartitions=1]
+            :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#3785]
+            :     :     +- DexRidFilter customer~c_mktsegment~BUILDING
+            :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [o_shippriority_prf#3787 AS o_shippriority_prf_2#3797, rid#3788 AS rid_2#3798, o_orderdate_prf#3789 AS o_orderdate_prf_2#3799, o_custkey_prf#3790 AS o_custkey_prf_2#3800, o_orderpriority_prf#3791 AS o_orderpriority_prf_2#3801, o_clerk_prf#3792 AS o_clerk_prf_2#3802, o_orderstatus_prf#3793 AS o_orderstatus_prf_2#3803, o_totalprice_prf#3794 AS o_totalprice_prf_2#3804, o_orderkey_prf#3795 AS o_orderkey_prf_2#3805, o_comment_prf#3796 AS o_comment_prf_2#3806]
+               +- Relation[o_shippriority_prf#3787,rid#3788,o_orderdate_prf#3789,o_custkey_prf#3790,o_orderpriority_prf#3791,o_clerk_prf#3792,o_orderstatus_prf#3793,o_totalprice_prf#3794,o_orderkey_prf#3795,o_comment_prf#3796] JDBCRelation(orders_prf) [numPartitions=1]
+
+DexCorr$ result size=1214743
+Elapsed time: 99163ms
+
+ft2a=
+select * from partsupp, part, supplier where ps_partkey = p_partkey and p_size = 15 and ps_suppkey = s_suppkey
+19/10/16 06:57:23 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:57:23 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#3869L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (ps_suppkey#33L = s_suppkey#18L)
+         :- Project [ps_suppkey#33L]
+         :  +- Join Inner, (ps_partkey#32L = p_partkey#360L)
+         :     :- Project [ps_partkey#32L, ps_suppkey#33L]
+         :     :  +- Filter (isnotnull(ps_partkey#32L) && isnotnull(ps_suppkey#33L))
+         :     :     +- Relation[ps_partkey#32L,ps_suppkey#33L,ps_availqty#34,ps_supplycost#35,ps_comment#36] parquet
+         :     +- Project [p_partkey#360L]
+         :        +- Filter ((isnotnull(p_size#364) && (p_size#364 = 15)) && isnotnull(p_partkey#360L))
+         :           +- Relation[p_partkey#360L,p_name#361,p_mfgr#362,p_type#363,p_size#364,p_container#365,p_retailprice#366,p_comment#367,p_brand#368] parquet
+         +- Project [s_suppkey#18L]
+            +- Filter isnotnull(s_suppkey#18L)
+               +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+
+19/10/16 06:57:23 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:57:23 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:57:23 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:57:23 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:57:23 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 06:57:23 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 06:57:23 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#3869L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_0))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['ps_partkey_and_ps_suppkey_prf_0, 'rid_0, 'ps_availqty_prf_0, 'ps_comment_prf_0, 'ps_partkey_prf_0, 'ps_supplycost_prf_0, 'ps_suppkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#3885]
+         :  :  :  +- DexRidCorrelatedJoin partsupp~ps_partkey~part~p_partkey, rid_0#3879: string
+         :  :  :     :- Project [ps_partkey_and_ps_suppkey_prf#3871 AS ps_partkey_and_ps_suppkey_prf_0#3878, rid#3872 AS rid_0#3879, ps_availqty_prf#3873 AS ps_availqty_prf_0#3880, ps_comment_prf#3874 AS ps_comment_prf_0#3881, ps_partkey_prf#3875 AS ps_partkey_prf_0#3882, ps_supplycost_prf#3876 AS ps_supplycost_prf_0#3883, ps_suppkey_prf#3877 AS ps_suppkey_prf_0#3884]
+         :  :  :     :  +- Relation[ps_partkey_and_ps_suppkey_prf#3871,rid#3872,ps_availqty_prf#3873,ps_comment_prf#3874,ps_partkey_prf#3875,ps_supplycost_prf#3876,ps_suppkey_prf#3877] JDBCRelation(partsupp_prf) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- 'Join UsingJoin(LeftSemi,List(rid_1))
+         :  :     :- Project [p_comment_prf#3886 AS p_comment_prf_1#3896, p_name_prf#3887 AS p_name_prf_1#3897, rid#3888 AS rid_1#3898, p_type_prf#3889 AS p_type_prf_1#3899, p_retailprice_prf#3890 AS p_retailprice_prf_1#3900, p_mfgr_prf#3891 AS p_mfgr_prf_1#3901, p_container_prf#3892 AS p_container_prf_1#3902, p_brand_prf#3893 AS p_brand_prf_1#3903, p_size_prf#3894 AS p_size_prf_1#3904, p_partkey_prf#3895 AS p_partkey_prf_1#3905]
+         :  :     :  +- Relation[p_comment_prf#3886,p_name_prf#3887,rid#3888,p_type_prf#3889,p_retailprice_prf#3890,p_mfgr_prf#3891,p_container_prf#3892,p_brand_prf#3893,p_size_prf#3894,p_partkey_prf#3895] JDBCRelation(part_prf) [numPartitions=1]
+         :  :     +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#3906]
+         :  :        +- DexRidFilter part~p_size~15
+         :  :           +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  +- 'Project ['rid_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#3915]
+         :     +- 'DexRidCorrelatedJoin partsupp~ps_suppkey~supplier~s_suppkey, 'rid_0
+         :        :- 'Project ['rid AS rid_0#3914]
+         :        :  +- Relation[ps_partkey_and_ps_suppkey_prf#3907,rid#3908,ps_availqty_prf#3909,ps_comment_prf#3910,ps_partkey_prf#3911,ps_supplycost_prf#3912,ps_suppkey_prf#3913] JDBCRelation(partsupp_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [s_phone_prf#3916 AS s_phone_prf_2#3924, rid#3917 AS rid_2#3925, s_address_prf#3918 AS s_address_prf_2#3926, s_nationkey_prf#3919 AS s_nationkey_prf_2#3927, s_suppkey_prf#3920 AS s_suppkey_prf_2#3928, s_name_prf#3921 AS s_name_prf_2#3929, s_acctbal_prf#3922 AS s_acctbal_prf_2#3930, s_comment_prf#3923 AS s_comment_prf_2#3931]
+            +- Relation[s_phone_prf#3916,rid#3917,s_address_prf#3918,s_nationkey_prf#3919,s_suppkey_prf#3920,s_name_prf#3921,s_acctbal_prf#3922,s_comment_prf#3923] JDBCRelation(supplier_prf) [numPartitions=1]
+
+DexCorr$ result size=15628
+Elapsed time: 101977ms
+
+fq1f=
+
+select *
+from nation, customer, orders, lineitem
+where
+  n_name = 'FRANCE' and n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey
+        
+19/10/16 06:59:05 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 06:59:05 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#3997L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (c_nationkey#293L = n_nationkey#108L)
+         :- Project [c_nationkey#293L]
+         :  +- Join Inner, (o_custkey#343L = c_custkey#290L)
+         :     :- Project [o_custkey#343L]
+         :     :  +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :     :     :- Project [l_orderkey#306L]
+         :     :     :  +- Filter isnotnull(l_orderkey#306L)
+         :     :     :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         :     :     +- Project [o_orderkey#342L, o_custkey#343L]
+         :     :        +- Filter (isnotnull(o_orderkey#342L) && isnotnull(o_custkey#343L))
+         :     :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         :     +- Project [c_custkey#290L, c_nationkey#293L]
+         :        +- Filter (isnotnull(c_custkey#290L) && isnotnull(c_nationkey#293L))
+         :           +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         +- Project [n_nationkey#108L]
+            +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+               +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+
+19/10/16 06:59:05 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:59:05 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:59:05 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 06:59:05 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#3997L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_2))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :  :  :- 'Join NaturalJoin(Inner)
+         :  :  :  :  :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#4037]
+         :  :  :  :  :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#4022: string
+         :  :  :  :  :     :- Project [l_returnflag_prf#3999 AS l_returnflag_prf_0#4018, l_orderkey_and_l_linenumber_prf#4000 AS l_orderkey_and_l_linenumber_prf_0#4019, l_comment_prf#4001 AS l_comment_prf_0#4020, l_linestatus_prf#4002 AS l_linestatus_prf_0#4021, rid#4003 AS rid_0#4022, l_shipmode_prf#4004 AS l_shipmode_prf_0#4023, l_shipinstruct_prf#4005 AS l_shipinstruct_prf_0#4024, l_quantity_prf#4006 AS l_quantity_prf_0#4025, l_receiptdate_prf#4007 AS l_receiptdate_prf_0#4026, l_linenumber_prf#4008 AS l_linenumber_prf_0#4027, l_tax_prf#4009 AS l_tax_prf_0#4028, l_shipdate_prf#4010 AS l_shipdate_prf_0#4029, l_extendedprice_prf#4011 AS l_extendedprice_prf_0#4030, l_partkey_prf#4012 AS l_partkey_prf_0#4031, l_discount_prf#4013 AS l_discount_prf_0#4032, l_partkey_and_l_suppkey_prf#4014 AS l_partkey_and_l_suppkey_prf_0#4033, l_commitdate_prf#4015 AS l_commitdate_prf_0#4034, l_suppkey_prf#4016 AS l_suppkey_prf_0#4035, l_orderkey_prf#4017 AS l_orderkey_prf_0#4036]
+         :  :  :  :  :     :  +- Relation[l_returnflag_prf#3999,l_orderkey_and_l_linenumber_prf#4000,l_comment_prf#4001,l_linestatus_prf#4002,rid#4003,l_shipmode_prf#4004,l_shipinstruct_prf#4005,l_quantity_prf#4006,l_receiptdate_prf#4007,l_linenumber_prf#4008,l_tax_prf#4009,l_shipdate_prf#4010,l_extendedprice_prf#4011,l_partkey_prf#4012,l_discount_prf#4013,l_partkey_and_l_suppkey_prf#4014,l_commitdate_prf#4015,l_suppkey_prf#4016,l_orderkey_prf#4017] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :  :  :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  :  :  +- Project [o_shippriority_prf#4038 AS o_shippriority_prf_1#4048, rid#4039 AS rid_1#4049, o_orderdate_prf#4040 AS o_orderdate_prf_1#4050, o_custkey_prf#4041 AS o_custkey_prf_1#4051, o_orderpriority_prf#4042 AS o_orderpriority_prf_1#4052, o_clerk_prf#4043 AS o_clerk_prf_1#4053, o_orderstatus_prf#4044 AS o_orderstatus_prf_1#4054, o_totalprice_prf#4045 AS o_totalprice_prf_1#4055, o_orderkey_prf#4046 AS o_orderkey_prf_1#4056, o_comment_prf#4047 AS o_comment_prf_1#4057]
+         :  :  :  :     +- Relation[o_shippriority_prf#4038,rid#4039,o_orderdate_prf#4040,o_custkey_prf#4041,o_orderpriority_prf#4042,o_clerk_prf#4043,o_orderstatus_prf#4044,o_totalprice_prf#4045,o_orderkey_prf#4046,o_comment_prf#4047] JDBCRelation(orders_prf) [numPartitions=1]
+         :  :  :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#4069]
+         :  :  :     +- 'DexRidCorrelatedJoin orders~o_custkey~customer~c_custkey, 'rid_1
+         :  :  :        :- 'Project ['rid AS rid_1#4068]
+         :  :  :        :  +- Relation[o_shippriority_prf#4058,rid#4059,o_orderdate_prf#4060,o_custkey_prf#4061,o_orderpriority_prf#4062,o_clerk_prf#4063,o_orderstatus_prf#4064,o_totalprice_prf#4065,o_orderkey_prf#4066,o_comment_prf#4067] JDBCRelation(orders_prf) [numPartitions=1]
+         :  :  :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [c_acctbal_prf#4070 AS c_acctbal_prf_2#4079, rid#4071 AS rid_2#4080, c_name_prf#4072 AS c_name_prf_2#4081, c_nationkey_prf#4073 AS c_nationkey_prf_2#4082, c_custkey_prf#4074 AS c_custkey_prf_2#4083, c_comment_prf#4075 AS c_comment_prf_2#4084, c_address_prf#4076 AS c_address_prf_2#4085, c_mktsegment_prf#4077 AS c_mktsegment_prf_2#4086, c_phone_prf#4078 AS c_phone_prf_2#4087]
+         :  :     +- Relation[c_acctbal_prf#4070,rid#4071,c_name_prf#4072,c_nationkey_prf#4073,c_custkey_prf#4074,c_comment_prf#4075,c_address_prf#4076,c_mktsegment_prf#4077,c_phone_prf#4078] JDBCRelation(customer_prf) [numPartitions=1]
+         :  +- 'Project ['rid_2, dexdecrypt('value_dec_key, value#1836) AS rid_3#4098]
+         :     +- 'DexRidCorrelatedJoin customer~c_nationkey~nation~n_nationkey, 'rid_2
+         :        :- 'Project ['rid AS rid_2#4097]
+         :        :  +- Relation[c_acctbal_prf#4088,rid#4089,c_name_prf#4090,c_nationkey_prf#4091,c_custkey_prf#4092,c_comment_prf#4093,c_address_prf#4094,c_mktsegment_prf#4095,c_phone_prf#4096] JDBCRelation(customer_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join UsingJoin(LeftSemi,List(rid_3))
+            :- Project [rid#4099 AS rid_3#4104, n_regionkey_prf#4100 AS n_regionkey_prf_3#4105, n_nationkey_prf#4101 AS n_nationkey_prf_3#4106, n_name_prf#4102 AS n_name_prf_3#4107, n_comment_prf#4103 AS n_comment_prf_3#4108]
+            :  +- Relation[rid#4099,n_regionkey_prf#4100,n_nationkey_prf#4101,n_name_prf#4102,n_comment_prf#4103] JDBCRelation(nation_prf) [numPartitions=1]
+            +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_3#4109]
+               +- DexRidFilter nation~n_name~FRANCE
+                  +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+
+DexCorr$ result size=246415
+Elapsed time: 183260ms
+
+fr1d=
+select * from customer, orders, lineitem where c_mktsegment = 'BUILDING' and c_custkey = o_custkey and o_orderkey = l_orderkey
+19/10/16 07:02:09 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:02:09 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#4189L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+         :- Project [o_orderkey#342L]
+         :  +- Join Inner, (c_custkey#290L = o_custkey#343L)
+         :     :- Project [c_custkey#290L]
+         :     :  +- Filter ((isnotnull(c_mktsegment#297) && (c_mktsegment#297 = BUILDING)) && isnotnull(c_custkey#290L))
+         :     :     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         :     +- Project [o_orderkey#342L, o_custkey#343L]
+         :        +- Filter (isnotnull(o_custkey#343L) && isnotnull(o_orderkey#342L))
+         :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         +- Project [l_orderkey#306L]
+            +- Filter isnotnull(l_orderkey#306L)
+               +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 07:02:09 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 07:02:09 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 07:02:09 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 07:02:09 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#4189L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['c_acctbal_prf_0, 'rid_0, 'c_name_prf_0, 'c_nationkey_prf_0, 'c_custkey_prf_0, 'c_comment_prf_0, 'c_address_prf_0, 'c_mktsegment_prf_0, 'c_phone_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#4210]
+         :  :  :  +- 'DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, rid_0#4201: string
+         :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :  :  :     :  :- Project [c_acctbal_prf#4191 AS c_acctbal_prf_0#4200, rid#4192 AS rid_0#4201, c_name_prf#4193 AS c_name_prf_0#4202, c_nationkey_prf#4194 AS c_nationkey_prf_0#4203, c_custkey_prf#4195 AS c_custkey_prf_0#4204, c_comment_prf#4196 AS c_comment_prf_0#4205, c_address_prf#4197 AS c_address_prf_0#4206, c_mktsegment_prf#4198 AS c_mktsegment_prf_0#4207, c_phone_prf#4199 AS c_phone_prf_0#4208]
+         :  :  :     :  :  +- Relation[c_acctbal_prf#4191,rid#4192,c_name_prf#4193,c_nationkey_prf#4194,c_custkey_prf#4195,c_comment_prf#4196,c_address_prf#4197,c_mktsegment_prf#4198,c_phone_prf#4199] JDBCRelation(customer_prf) [numPartitions=1]
+         :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#4209]
+         :  :  :     :     +- DexRidFilter customer~c_mktsegment~BUILDING
+         :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [o_shippriority_prf#4211 AS o_shippriority_prf_1#4221, rid#4212 AS rid_1#4222, o_orderdate_prf#4213 AS o_orderdate_prf_1#4223, o_custkey_prf#4214 AS o_custkey_prf_1#4224, o_orderpriority_prf#4215 AS o_orderpriority_prf_1#4225, o_clerk_prf#4216 AS o_clerk_prf_1#4226, o_orderstatus_prf#4217 AS o_orderstatus_prf_1#4227, o_totalprice_prf#4218 AS o_totalprice_prf_1#4228, o_orderkey_prf#4219 AS o_orderkey_prf_1#4229, o_comment_prf#4220 AS o_comment_prf_1#4230]
+         :  :     +- Relation[o_shippriority_prf#4211,rid#4212,o_orderdate_prf#4213,o_custkey_prf#4214,o_orderpriority_prf#4215,o_clerk_prf#4216,o_orderstatus_prf#4217,o_totalprice_prf#4218,o_orderkey_prf#4219,o_comment_prf#4220] JDBCRelation(orders_prf) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#4242]
+         :     +- 'DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#4241]
+         :        :  +- Relation[o_shippriority_prf#4231,rid#4232,o_orderdate_prf#4233,o_custkey_prf#4234,o_orderpriority_prf#4235,o_clerk_prf#4236,o_orderstatus_prf#4237,o_totalprice_prf#4238,o_orderkey_prf#4239,o_comment_prf#4240] JDBCRelation(orders_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [l_returnflag_prf#4243 AS l_returnflag_prf_2#4262, l_orderkey_and_l_linenumber_prf#4244 AS l_orderkey_and_l_linenumber_prf_2#4263, l_comment_prf#4245 AS l_comment_prf_2#4264, l_linestatus_prf#4246 AS l_linestatus_prf_2#4265, rid#4247 AS rid_2#4266, l_shipmode_prf#4248 AS l_shipmode_prf_2#4267, l_shipinstruct_prf#4249 AS l_shipinstruct_prf_2#4268, l_quantity_prf#4250 AS l_quantity_prf_2#4269, l_receiptdate_prf#4251 AS l_receiptdate_prf_2#4270, l_linenumber_prf#4252 AS l_linenumber_prf_2#4271, l_tax_prf#4253 AS l_tax_prf_2#4272, l_shipdate_prf#4254 AS l_shipdate_prf_2#4273, l_extendedprice_prf#4255 AS l_extendedprice_prf_2#4274, l_partkey_prf#4256 AS l_partkey_prf_2#4275, l_discount_prf#4257 AS l_discount_prf_2#4276, l_partkey_and_l_suppkey_prf#4258 AS l_partkey_and_l_suppkey_prf_2#4277, l_commitdate_prf#4259 AS l_commitdate_prf_2#4278, l_suppkey_prf#4260 AS l_suppkey_prf_2#4279, l_orderkey_prf#4261 AS l_orderkey_prf_2#4280]
+            +- Relation[l_returnflag_prf#4243,l_orderkey_and_l_linenumber_prf#4244,l_comment_prf#4245,l_linestatus_prf#4246,rid#4247,l_shipmode_prf#4248,l_shipinstruct_prf#4249,l_quantity_prf#4250,l_receiptdate_prf#4251,l_linenumber_prf#4252,l_tax_prf#4253,l_shipdate_prf#4254,l_extendedprice_prf#4255,l_partkey_prf#4256,l_discount_prf#4257,l_partkey_and_l_suppkey_prf#4258,l_commitdate_prf#4259,l_suppkey_prf#4260,l_orderkey_prf#4261] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=1214743
+Elapsed time: 152874ms
+
+fr2d=
+select * from customer, orders, lineitem where c_custkey = o_custkey and o_orderstatus = 'F' and o_orderkey = l_orderkey
+19/10/16 07:04:42 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:04:42 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#4355L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+         :- Project [o_orderkey#342L]
+         :  +- Join Inner, (c_custkey#290L = o_custkey#343L)
+         :     :- Project [c_custkey#290L]
+         :     :  +- Filter isnotnull(c_custkey#290L)
+         :     :     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         :     +- Project [o_orderkey#342L, o_custkey#343L]
+         :        +- Filter (((isnotnull(o_orderstatus#344) && (o_orderstatus#344 = F)) && isnotnull(o_custkey#343L)) && isnotnull(o_orderkey#342L))
+         :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         +- Project [l_orderkey#306L]
+            +- Filter isnotnull(l_orderkey#306L)
+               +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 07:04:42 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#4355L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['c_acctbal_prf_0, 'rid_0, 'c_name_prf_0, 'c_nationkey_prf_0, 'c_custkey_prf_0, 'c_comment_prf_0, 'c_address_prf_0, 'c_mktsegment_prf_0, 'c_phone_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#4375]
+         :  :  :  +- DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, rid_0#4367: string
+         :  :  :     :- Project [c_acctbal_prf#4357 AS c_acctbal_prf_0#4366, rid#4358 AS rid_0#4367, c_name_prf#4359 AS c_name_prf_0#4368, c_nationkey_prf#4360 AS c_nationkey_prf_0#4369, c_custkey_prf#4361 AS c_custkey_prf_0#4370, c_comment_prf#4362 AS c_comment_prf_0#4371, c_address_prf#4363 AS c_address_prf_0#4372, c_mktsegment_prf#4364 AS c_mktsegment_prf_0#4373, c_phone_prf#4365 AS c_phone_prf_0#4374]
+         :  :  :     :  +- Relation[c_acctbal_prf#4357,rid#4358,c_name_prf#4359,c_nationkey_prf#4360,c_custkey_prf#4361,c_comment_prf#4362,c_address_prf#4363,c_mktsegment_prf#4364,c_phone_prf#4365] JDBCRelation(customer_prf) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- 'Join UsingJoin(LeftSemi,List(rid_1))
+         :  :     :- Project [o_shippriority_prf#4376 AS o_shippriority_prf_1#4386, rid#4377 AS rid_1#4387, o_orderdate_prf#4378 AS o_orderdate_prf_1#4388, o_custkey_prf#4379 AS o_custkey_prf_1#4389, o_orderpriority_prf#4380 AS o_orderpriority_prf_1#4390, o_clerk_prf#4381 AS o_clerk_prf_1#4391, o_orderstatus_prf#4382 AS o_orderstatus_prf_1#4392, o_totalprice_prf#4383 AS o_totalprice_prf_1#4393, o_orderkey_prf#4384 AS o_orderkey_prf_1#4394, o_comment_prf#4385 AS o_comment_prf_1#4395]
+         :  :     :  +- Relation[o_shippriority_prf#4376,rid#4377,o_orderdate_prf#4378,o_custkey_prf#4379,o_orderpriority_prf#4380,o_clerk_prf#4381,o_orderstatus_prf#4382,o_totalprice_prf#4383,o_orderkey_prf#4384,o_comment_prf#4385] JDBCRelation(orders_prf) [numPartitions=1]
+         :  :     +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#4396]
+         :  :        +- DexRidFilter orders~o_orderstatus~F
+         :  :           +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#4408]
+         :     +- 'DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#4407]
+         :        :  +- Relation[o_shippriority_prf#4397,rid#4398,o_orderdate_prf#4399,o_custkey_prf#4400,o_orderpriority_prf#4401,o_clerk_prf#4402,o_orderstatus_prf#4403,o_totalprice_prf#4404,o_orderkey_prf#4405,o_comment_prf#4406] JDBCRelation(orders_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [l_returnflag_prf#4409 AS l_returnflag_prf_2#4428, l_orderkey_and_l_linenumber_prf#4410 AS l_orderkey_and_l_linenumber_prf_2#4429, l_comment_prf#4411 AS l_comment_prf_2#4430, l_linestatus_prf#4412 AS l_linestatus_prf_2#4431, rid#4413 AS rid_2#4432, l_shipmode_prf#4414 AS l_shipmode_prf_2#4433, l_shipinstruct_prf#4415 AS l_shipinstruct_prf_2#4434, l_quantity_prf#4416 AS l_quantity_prf_2#4435, l_receiptdate_prf#4417 AS l_receiptdate_prf_2#4436, l_linenumber_prf#4418 AS l_linenumber_prf_2#4437, l_tax_prf#4419 AS l_tax_prf_2#4438, l_shipdate_prf#4420 AS l_shipdate_prf_2#4439, l_extendedprice_prf#4421 AS l_extendedprice_prf_2#4440, l_partkey_prf#4422 AS l_partkey_prf_2#4441, l_discount_prf#4423 AS l_discount_prf_2#4442, l_partkey_and_l_suppkey_prf#4424 AS l_partkey_and_l_suppkey_prf_2#4443, l_commitdate_prf#4425 AS l_commitdate_prf_2#4444, l_suppkey_prf#4426 AS l_suppkey_prf_2#4445, l_orderkey_prf#4427 AS l_orderkey_prf_2#4446]
+            +- Relation[l_returnflag_prf#4409,l_orderkey_and_l_linenumber_prf#4410,l_comment_prf#4411,l_linestatus_prf#4412,rid#4413,l_shipmode_prf#4414,l_shipinstruct_prf#4415,l_quantity_prf#4416,l_receiptdate_prf#4417,l_linenumber_prf#4418,l_tax_prf#4419,l_shipdate_prf#4420,l_extendedprice_prf#4421,l_partkey_prf#4422,l_discount_prf#4423,l_partkey_and_l_suppkey_prf#4424,l_commitdate_prf#4425,l_suppkey_prf#4426,l_orderkey_prf#4427] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=2901744
+Elapsed time: 207938ms
+
+ft1c=
+select * from supplier, nation, customer where s_nationkey = n_nationkey and c_nationkey = n_nationkey and n_name = 'FRANCE'
+19/10/16 07:08:10 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:08:10 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#4507L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (c_nationkey#293L = n_nationkey#108L)
+         :- Project [c_nationkey#293L]
+         :  +- Filter isnotnull(c_nationkey#293L)
+         :     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         +- Project [n_nationkey#108L]
+            +- Join Inner, (s_nationkey#21L = n_nationkey#108L)
+               :- Project [s_nationkey#21L]
+               :  +- Filter isnotnull(s_nationkey#21L)
+               :     +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+               +- Project [n_nationkey#108L]
+                  +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+                     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+
+19/10/16 07:08:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:08:10 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:08:10 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:08:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:08:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:08:10 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:08:10 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#4507L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['c_acctbal_prf_0, 'rid_0, 'c_name_prf_0, 'c_nationkey_prf_0, 'c_custkey_prf_0, 'c_comment_prf_0, 'c_address_prf_0, 'c_mktsegment_prf_0, 'c_phone_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#4527]
+         :  +- DexRidCorrelatedJoin customer~c_nationkey~nation~n_nationkey, rid_0#4519: string
+         :     :- Project [c_acctbal_prf#4509 AS c_acctbal_prf_0#4518, rid#4510 AS rid_0#4519, c_name_prf#4511 AS c_name_prf_0#4520, c_nationkey_prf#4512 AS c_nationkey_prf_0#4521, c_custkey_prf#4513 AS c_custkey_prf_0#4522, c_comment_prf#4514 AS c_comment_prf_0#4523, c_address_prf#4515 AS c_address_prf_0#4524, c_mktsegment_prf#4516 AS c_mktsegment_prf_0#4525, c_phone_prf#4517 AS c_phone_prf_0#4526]
+         :     :  +- Relation[c_acctbal_prf#4509,rid#4510,c_name_prf#4511,c_nationkey_prf#4512,c_custkey_prf#4513,c_comment_prf#4514,c_address_prf#4515,c_mktsegment_prf#4516,c_phone_prf#4517] JDBCRelation(customer_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['s_phone_prf_1, 'rid_1, 's_address_prf_1, 's_nationkey_prf_1, 's_suppkey_prf_1, 's_name_prf_1, 's_acctbal_prf_1, 's_comment_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#4544]
+            :  +- DexRidCorrelatedJoin supplier~s_nationkey~nation~n_nationkey, rid_1#4537: string
+            :     :- Project [s_phone_prf#4528 AS s_phone_prf_1#4536, rid#4529 AS rid_1#4537, s_address_prf#4530 AS s_address_prf_1#4538, s_nationkey_prf#4531 AS s_nationkey_prf_1#4539, s_suppkey_prf#4532 AS s_suppkey_prf_1#4540, s_name_prf#4533 AS s_name_prf_1#4541, s_acctbal_prf#4534 AS s_acctbal_prf_1#4542, s_comment_prf#4535 AS s_comment_prf_1#4543]
+            :     :  +- Relation[s_phone_prf#4528,rid#4529,s_address_prf#4530,s_nationkey_prf#4531,s_suppkey_prf#4532,s_name_prf#4533,s_acctbal_prf#4534,s_comment_prf#4535] JDBCRelation(supplier_prf) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- 'Join UsingJoin(LeftSemi,List(rid_2))
+               :- Project [rid#4545 AS rid_2#4550, n_regionkey_prf#4546 AS n_regionkey_prf_2#4551, n_nationkey_prf#4547 AS n_nationkey_prf_2#4552, n_name_prf#4548 AS n_name_prf_2#4553, n_comment_prf#4549 AS n_comment_prf_2#4554]
+               :  +- Relation[rid#4545,n_regionkey_prf#4546,n_nationkey_prf#4547,n_name_prf#4548,n_comment_prf#4549] JDBCRelation(nation_prf) [numPartitions=1]
+               +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_2#4555]
+                  +- DexRidFilter nation~n_name~FRANCE
+                     +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+
+DexCorr$ result size=2452200
+Elapsed time: 33623ms
+
+ft2c=
+select * from part, supplier, partsupp where p_partkey = ps_partkey and (p_size = 15 and s_suppkey = ps_suppkey)
+19/10/16 07:08:43 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:08:43 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#4602L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (s_suppkey#18L = ps_suppkey#33L)
+         :- Project [s_suppkey#18L]
+         :  +- Filter isnotnull(s_suppkey#18L)
+         :     +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+         +- Project [ps_suppkey#33L]
+            +- Join Inner, (p_partkey#360L = ps_partkey#32L)
+               :- Project [p_partkey#360L]
+               :  +- Filter ((isnotnull(p_size#364) && (p_size#364 = 15)) && isnotnull(p_partkey#360L))
+               :     +- Relation[p_partkey#360L,p_name#361,p_mfgr#362,p_type#363,p_size#364,p_container#365,p_retailprice#366,p_comment#367,p_brand#368] parquet
+               +- Project [ps_partkey#32L, ps_suppkey#33L]
+                  +- Filter (isnotnull(ps_partkey#32L) && isnotnull(ps_suppkey#33L))
+                     +- Relation[ps_partkey#32L,ps_suppkey#33L,ps_availqty#34,ps_supplycost#35,ps_comment#36] parquet
+
+19/10/16 07:08:43 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:08:43 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:08:43 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 07:08:43 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 07:08:43 WARN DexPlanner: InMemoryFileIndex=partsupp
+19/10/16 07:08:43 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#4602L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['s_phone_prf_0, 'rid_0, 's_address_prf_0, 's_nationkey_prf_0, 's_suppkey_prf_0, 's_name_prf_0, 's_acctbal_prf_0, 's_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#4620]
+         :  +- DexRidCorrelatedJoin supplier~s_suppkey~partsupp~ps_suppkey, rid_0#4613: string
+         :     :- Project [s_phone_prf#4604 AS s_phone_prf_0#4612, rid#4605 AS rid_0#4613, s_address_prf#4606 AS s_address_prf_0#4614, s_nationkey_prf#4607 AS s_nationkey_prf_0#4615, s_suppkey_prf#4608 AS s_suppkey_prf_0#4616, s_name_prf#4609 AS s_name_prf_0#4617, s_acctbal_prf#4610 AS s_acctbal_prf_0#4618, s_comment_prf#4611 AS s_comment_prf_0#4619]
+         :     :  +- Relation[s_phone_prf#4604,rid#4605,s_address_prf#4606,s_nationkey_prf#4607,s_suppkey_prf#4608,s_name_prf#4609,s_acctbal_prf#4610,s_comment_prf#4611] JDBCRelation(supplier_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['p_comment_prf_1, 'p_name_prf_1, 'rid_1, 'p_type_prf_1, 'p_retailprice_prf_1, 'p_mfgr_prf_1, 'p_container_prf_1, 'p_brand_prf_1, 'p_size_prf_1, 'p_partkey_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#4642]
+            :  +- 'DexRidCorrelatedJoin part~p_partkey~partsupp~ps_partkey, rid_1#4633: string
+            :     :- 'Join UsingJoin(LeftSemi,List(rid_1))
+            :     :  :- Project [p_comment_prf#4621 AS p_comment_prf_1#4631, p_name_prf#4622 AS p_name_prf_1#4632, rid#4623 AS rid_1#4633, p_type_prf#4624 AS p_type_prf_1#4634, p_retailprice_prf#4625 AS p_retailprice_prf_1#4635, p_mfgr_prf#4626 AS p_mfgr_prf_1#4636, p_container_prf#4627 AS p_container_prf_1#4637, p_brand_prf#4628 AS p_brand_prf_1#4638, p_size_prf#4629 AS p_size_prf_1#4639, p_partkey_prf#4630 AS p_partkey_prf_1#4640]
+            :     :  :  +- Relation[p_comment_prf#4621,p_name_prf#4622,rid#4623,p_type_prf#4624,p_retailprice_prf#4625,p_mfgr_prf#4626,p_container_prf#4627,p_brand_prf#4628,p_size_prf#4629,p_partkey_prf#4630] JDBCRelation(part_prf) [numPartitions=1]
+            :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#4641]
+            :     :     +- DexRidFilter part~p_size~15
+            :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [ps_partkey_and_ps_suppkey_prf#4643 AS ps_partkey_and_ps_suppkey_prf_2#4650, rid#4644 AS rid_2#4651, ps_availqty_prf#4645 AS ps_availqty_prf_2#4652, ps_comment_prf#4646 AS ps_comment_prf_2#4653, ps_partkey_prf#4647 AS ps_partkey_prf_2#4654, ps_supplycost_prf#4648 AS ps_supplycost_prf_2#4655, ps_suppkey_prf#4649 AS ps_suppkey_prf_2#4656]
+               +- Relation[ps_partkey_and_ps_suppkey_prf#4643,rid#4644,ps_availqty_prf#4645,ps_comment_prf#4646,ps_partkey_prf#4647,ps_supplycost_prf#4648,ps_suppkey_prf#4649] JDBCRelation(partsupp_prf) [numPartitions=1]
+
+DexCorr$ result size=15628
+Elapsed time: 7687ms
+
+fq1e=
+
+select *
+from nation, customer, orders, lineitem
+where
+  n_name = 'FRANCE' and n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey
+        
+19/10/16 07:08:51 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:08:51 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#4722L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (o_custkey#343L = c_custkey#290L)
+         :- Project [o_custkey#343L]
+         :  +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :     :- Project [l_orderkey#306L]
+         :     :  +- Filter isnotnull(l_orderkey#306L)
+         :     :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         :     +- Project [o_orderkey#342L, o_custkey#343L]
+         :        +- Filter (isnotnull(o_orderkey#342L) && isnotnull(o_custkey#343L))
+         :           +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         +- Project [c_custkey#290L]
+            +- Join Inner, (n_nationkey#108L = c_nationkey#293L)
+               :- Project [n_nationkey#108L]
+               :  +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+               :     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+               +- Project [c_custkey#290L, c_nationkey#293L]
+                  +- Filter (isnotnull(c_nationkey#293L) && isnotnull(c_custkey#290L))
+                     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+19/10/16 07:08:51 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:08:51 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:08:51 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:08:51 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#4722L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#4762]
+         :  :  :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#4747: string
+         :  :  :     :- Project [l_returnflag_prf#4724 AS l_returnflag_prf_0#4743, l_orderkey_and_l_linenumber_prf#4725 AS l_orderkey_and_l_linenumber_prf_0#4744, l_comment_prf#4726 AS l_comment_prf_0#4745, l_linestatus_prf#4727 AS l_linestatus_prf_0#4746, rid#4728 AS rid_0#4747, l_shipmode_prf#4729 AS l_shipmode_prf_0#4748, l_shipinstruct_prf#4730 AS l_shipinstruct_prf_0#4749, l_quantity_prf#4731 AS l_quantity_prf_0#4750, l_receiptdate_prf#4732 AS l_receiptdate_prf_0#4751, l_linenumber_prf#4733 AS l_linenumber_prf_0#4752, l_tax_prf#4734 AS l_tax_prf_0#4753, l_shipdate_prf#4735 AS l_shipdate_prf_0#4754, l_extendedprice_prf#4736 AS l_extendedprice_prf_0#4755, l_partkey_prf#4737 AS l_partkey_prf_0#4756, l_discount_prf#4738 AS l_discount_prf_0#4757, l_partkey_and_l_suppkey_prf#4739 AS l_partkey_and_l_suppkey_prf_0#4758, l_commitdate_prf#4740 AS l_commitdate_prf_0#4759, l_suppkey_prf#4741 AS l_suppkey_prf_0#4760, l_orderkey_prf#4742 AS l_orderkey_prf_0#4761]
+         :  :  :     :  +- Relation[l_returnflag_prf#4724,l_orderkey_and_l_linenumber_prf#4725,l_comment_prf#4726,l_linestatus_prf#4727,rid#4728,l_shipmode_prf#4729,l_shipinstruct_prf#4730,l_quantity_prf#4731,l_receiptdate_prf#4732,l_linenumber_prf#4733,l_tax_prf#4734,l_shipdate_prf#4735,l_extendedprice_prf#4736,l_partkey_prf#4737,l_discount_prf#4738,l_partkey_and_l_suppkey_prf#4739,l_commitdate_prf#4740,l_suppkey_prf#4741,l_orderkey_prf#4742] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- Project [o_shippriority_prf#4763 AS o_shippriority_prf_1#4773, rid#4764 AS rid_1#4774, o_orderdate_prf#4765 AS o_orderdate_prf_1#4775, o_custkey_prf#4766 AS o_custkey_prf_1#4776, o_orderpriority_prf#4767 AS o_orderpriority_prf_1#4777, o_clerk_prf#4768 AS o_clerk_prf_1#4778, o_orderstatus_prf#4769 AS o_orderstatus_prf_1#4779, o_totalprice_prf#4770 AS o_totalprice_prf_1#4780, o_orderkey_prf#4771 AS o_orderkey_prf_1#4781, o_comment_prf#4772 AS o_comment_prf_1#4782]
+         :  :     +- Relation[o_shippriority_prf#4763,rid#4764,o_orderdate_prf#4765,o_custkey_prf#4766,o_orderpriority_prf#4767,o_clerk_prf#4768,o_orderstatus_prf#4769,o_totalprice_prf#4770,o_orderkey_prf#4771,o_comment_prf#4772] JDBCRelation(orders_prf) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_3#4794]
+         :     +- 'DexRidCorrelatedJoin orders~o_custkey~customer~c_custkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#4793]
+         :        :  +- Relation[o_shippriority_prf#4783,rid#4784,o_orderdate_prf#4785,o_custkey_prf#4786,o_orderpriority_prf#4787,o_clerk_prf#4788,o_orderstatus_prf#4789,o_totalprice_prf#4790,o_orderkey_prf#4791,o_comment_prf#4792] JDBCRelation(orders_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['rid_2, 'n_regionkey_prf_2, 'n_nationkey_prf_2, 'n_name_prf_2, 'n_comment_prf_2, dexdecrypt('value_dec_key, value#1836) AS rid_3#4806]
+            :  +- 'DexRidCorrelatedJoin nation~n_nationkey~customer~c_nationkey, rid_2#4800: string
+            :     :- 'Join UsingJoin(LeftSemi,List(rid_2))
+            :     :  :- Project [rid#4795 AS rid_2#4800, n_regionkey_prf#4796 AS n_regionkey_prf_2#4801, n_nationkey_prf#4797 AS n_nationkey_prf_2#4802, n_name_prf#4798 AS n_name_prf_2#4803, n_comment_prf#4799 AS n_comment_prf_2#4804]
+            :     :  :  +- Relation[rid#4795,n_regionkey_prf#4796,n_nationkey_prf#4797,n_name_prf#4798,n_comment_prf#4799] JDBCRelation(nation_prf) [numPartitions=1]
+            :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_2#4805]
+            :     :     +- DexRidFilter nation~n_name~FRANCE
+            :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [c_acctbal_prf#4807 AS c_acctbal_prf_3#4816, rid#4808 AS rid_3#4817, c_name_prf#4809 AS c_name_prf_3#4818, c_nationkey_prf#4810 AS c_nationkey_prf_3#4819, c_custkey_prf#4811 AS c_custkey_prf_3#4820, c_comment_prf#4812 AS c_comment_prf_3#4821, c_address_prf#4813 AS c_address_prf_3#4822, c_mktsegment_prf#4814 AS c_mktsegment_prf_3#4823, c_phone_prf#4815 AS c_phone_prf_3#4824]
+               +- Relation[c_acctbal_prf#4807,rid#4808,c_name_prf#4809,c_nationkey_prf#4810,c_custkey_prf#4811,c_comment_prf#4812,c_address_prf#4813,c_mktsegment_prf#4814,c_phone_prf#4815] JDBCRelation(customer_prf) [numPartitions=1]
+
+DexCorr$ result size=246415
+Elapsed time: 181875ms
+
+fr2e=
+select * from customer, orders, lineitem where o_orderkey = l_orderkey and o_orderstatus = 'F' and c_custkey = o_custkey
+19/10/16 07:11:53 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:11:53 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#4904L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (c_custkey#290L = o_custkey#343L)
+         :- Project [c_custkey#290L]
+         :  +- Filter isnotnull(c_custkey#290L)
+         :     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         +- Project [o_custkey#343L]
+            +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+               :- Project [o_orderkey#342L, o_custkey#343L]
+               :  +- Filter (((isnotnull(o_orderstatus#344) && (o_orderstatus#344 = F)) && isnotnull(o_orderkey#342L)) && isnotnull(o_custkey#343L))
+               :     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+               +- Project [l_orderkey#306L]
+                  +- Filter isnotnull(l_orderkey#306L)
+                     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 07:11:53 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#4904L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['c_acctbal_prf_0, 'rid_0, 'c_name_prf_0, 'c_nationkey_prf_0, 'c_custkey_prf_0, 'c_comment_prf_0, 'c_address_prf_0, 'c_mktsegment_prf_0, 'c_phone_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#4924]
+         :  +- DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, rid_0#4916: string
+         :     :- Project [c_acctbal_prf#4906 AS c_acctbal_prf_0#4915, rid#4907 AS rid_0#4916, c_name_prf#4908 AS c_name_prf_0#4917, c_nationkey_prf#4909 AS c_nationkey_prf_0#4918, c_custkey_prf#4910 AS c_custkey_prf_0#4919, c_comment_prf#4911 AS c_comment_prf_0#4920, c_address_prf#4912 AS c_address_prf_0#4921, c_mktsegment_prf#4913 AS c_mktsegment_prf_0#4922, c_phone_prf#4914 AS c_phone_prf_0#4923]
+         :     :  +- Relation[c_acctbal_prf#4906,rid#4907,c_name_prf#4908,c_nationkey_prf#4909,c_custkey_prf#4910,c_comment_prf#4911,c_address_prf#4912,c_mktsegment_prf#4913,c_phone_prf#4914] JDBCRelation(customer_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['o_shippriority_prf_1, 'rid_1, 'o_orderdate_prf_1, 'o_custkey_prf_1, 'o_orderpriority_prf_1, 'o_clerk_prf_1, 'o_orderstatus_prf_1, 'o_totalprice_prf_1, 'o_orderkey_prf_1, 'o_comment_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#4946]
+            :  +- 'DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, rid_1#4936: string
+            :     :- 'Join UsingJoin(LeftSemi,List(rid_1))
+            :     :  :- Project [o_shippriority_prf#4925 AS o_shippriority_prf_1#4935, rid#4926 AS rid_1#4936, o_orderdate_prf#4927 AS o_orderdate_prf_1#4937, o_custkey_prf#4928 AS o_custkey_prf_1#4938, o_orderpriority_prf#4929 AS o_orderpriority_prf_1#4939, o_clerk_prf#4930 AS o_clerk_prf_1#4940, o_orderstatus_prf#4931 AS o_orderstatus_prf_1#4941, o_totalprice_prf#4932 AS o_totalprice_prf_1#4942, o_orderkey_prf#4933 AS o_orderkey_prf_1#4943, o_comment_prf#4934 AS o_comment_prf_1#4944]
+            :     :  :  +- Relation[o_shippriority_prf#4925,rid#4926,o_orderdate_prf#4927,o_custkey_prf#4928,o_orderpriority_prf#4929,o_clerk_prf#4930,o_orderstatus_prf#4931,o_totalprice_prf#4932,o_orderkey_prf#4933,o_comment_prf#4934] JDBCRelation(orders_prf) [numPartitions=1]
+            :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#4945]
+            :     :     +- DexRidFilter orders~o_orderstatus~F
+            :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [l_returnflag_prf#4947 AS l_returnflag_prf_2#4966, l_orderkey_and_l_linenumber_prf#4948 AS l_orderkey_and_l_linenumber_prf_2#4967, l_comment_prf#4949 AS l_comment_prf_2#4968, l_linestatus_prf#4950 AS l_linestatus_prf_2#4969, rid#4951 AS rid_2#4970, l_shipmode_prf#4952 AS l_shipmode_prf_2#4971, l_shipinstruct_prf#4953 AS l_shipinstruct_prf_2#4972, l_quantity_prf#4954 AS l_quantity_prf_2#4973, l_receiptdate_prf#4955 AS l_receiptdate_prf_2#4974, l_linenumber_prf#4956 AS l_linenumber_prf_2#4975, l_tax_prf#4957 AS l_tax_prf_2#4976, l_shipdate_prf#4958 AS l_shipdate_prf_2#4977, l_extendedprice_prf#4959 AS l_extendedprice_prf_2#4978, l_partkey_prf#4960 AS l_partkey_prf_2#4979, l_discount_prf#4961 AS l_discount_prf_2#4980, l_partkey_and_l_suppkey_prf#4962 AS l_partkey_and_l_suppkey_prf_2#4981, l_commitdate_prf#4963 AS l_commitdate_prf_2#4982, l_suppkey_prf#4964 AS l_suppkey_prf_2#4983, l_orderkey_prf#4965 AS l_orderkey_prf_2#4984]
+               +- Relation[l_returnflag_prf#4947,l_orderkey_and_l_linenumber_prf#4948,l_comment_prf#4949,l_linestatus_prf#4950,rid#4951,l_shipmode_prf#4952,l_shipinstruct_prf#4953,l_quantity_prf#4954,l_receiptdate_prf#4955,l_linenumber_prf#4956,l_tax_prf#4957,l_shipdate_prf#4958,l_extendedprice_prf#4959,l_partkey_prf#4960,l_discount_prf#4961,l_partkey_and_l_suppkey_prf#4962,l_commitdate_prf#4963,l_suppkey_prf#4964,l_orderkey_prf#4965] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=2901744
+Elapsed time: 97922ms
+
+fr1e=
+select * from customer, orders, lineitem where c_mktsegment = 'BUILDING' and (o_orderkey = l_orderkey and c_custkey = o_custkey)
+19/10/16 07:13:31 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:13:31 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#5059L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (c_custkey#290L = o_custkey#343L)
+         :- Project [c_custkey#290L]
+         :  +- Filter ((isnotnull(c_mktsegment#297) && (c_mktsegment#297 = BUILDING)) && isnotnull(c_custkey#290L))
+         :     +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+         +- Project [o_custkey#343L]
+            +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+               :- Project [o_orderkey#342L, o_custkey#343L]
+               :  +- Filter (isnotnull(o_orderkey#342L) && isnotnull(o_custkey#343L))
+               :     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+               +- Project [l_orderkey#306L]
+                  +- Filter isnotnull(l_orderkey#306L)
+                     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 07:13:31 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 07:13:31 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 07:13:31 WARN DexPlanner: InMemoryFileIndex=customer
+19/10/16 07:13:31 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#5059L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['c_acctbal_prf_0, 'rid_0, 'c_name_prf_0, 'c_nationkey_prf_0, 'c_custkey_prf_0, 'c_comment_prf_0, 'c_address_prf_0, 'c_mktsegment_prf_0, 'c_phone_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#5080]
+         :  +- 'DexRidCorrelatedJoin customer~c_custkey~orders~o_custkey, rid_0#5071: string
+         :     :- 'Join UsingJoin(LeftSemi,List(rid_0))
+         :     :  :- Project [c_acctbal_prf#5061 AS c_acctbal_prf_0#5070, rid#5062 AS rid_0#5071, c_name_prf#5063 AS c_name_prf_0#5072, c_nationkey_prf#5064 AS c_nationkey_prf_0#5073, c_custkey_prf#5065 AS c_custkey_prf_0#5074, c_comment_prf#5066 AS c_comment_prf_0#5075, c_address_prf#5067 AS c_address_prf_0#5076, c_mktsegment_prf#5068 AS c_mktsegment_prf_0#5077, c_phone_prf#5069 AS c_phone_prf_0#5078]
+         :     :  :  +- Relation[c_acctbal_prf#5061,rid#5062,c_name_prf#5063,c_nationkey_prf#5064,c_custkey_prf#5065,c_comment_prf#5066,c_address_prf#5067,c_mktsegment_prf#5068,c_phone_prf#5069] JDBCRelation(customer_prf) [numPartitions=1]
+         :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_0#5079]
+         :     :     +- DexRidFilter customer~c_mktsegment~BUILDING
+         :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['o_shippriority_prf_1, 'rid_1, 'o_orderdate_prf_1, 'o_custkey_prf_1, 'o_orderpriority_prf_1, 'o_clerk_prf_1, 'o_orderstatus_prf_1, 'o_totalprice_prf_1, 'o_orderkey_prf_1, 'o_comment_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#5101]
+            :  +- DexRidCorrelatedJoin orders~o_orderkey~lineitem~l_orderkey, rid_1#5092: string
+            :     :- Project [o_shippriority_prf#5081 AS o_shippriority_prf_1#5091, rid#5082 AS rid_1#5092, o_orderdate_prf#5083 AS o_orderdate_prf_1#5093, o_custkey_prf#5084 AS o_custkey_prf_1#5094, o_orderpriority_prf#5085 AS o_orderpriority_prf_1#5095, o_clerk_prf#5086 AS o_clerk_prf_1#5096, o_orderstatus_prf#5087 AS o_orderstatus_prf_1#5097, o_totalprice_prf#5088 AS o_totalprice_prf_1#5098, o_orderkey_prf#5089 AS o_orderkey_prf_1#5099, o_comment_prf#5090 AS o_comment_prf_1#5100]
+            :     :  +- Relation[o_shippriority_prf#5081,rid#5082,o_orderdate_prf#5083,o_custkey_prf#5084,o_orderpriority_prf#5085,o_clerk_prf#5086,o_orderstatus_prf#5087,o_totalprice_prf#5088,o_orderkey_prf#5089,o_comment_prf#5090] JDBCRelation(orders_prf) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [l_returnflag_prf#5102 AS l_returnflag_prf_2#5121, l_orderkey_and_l_linenumber_prf#5103 AS l_orderkey_and_l_linenumber_prf_2#5122, l_comment_prf#5104 AS l_comment_prf_2#5123, l_linestatus_prf#5105 AS l_linestatus_prf_2#5124, rid#5106 AS rid_2#5125, l_shipmode_prf#5107 AS l_shipmode_prf_2#5126, l_shipinstruct_prf#5108 AS l_shipinstruct_prf_2#5127, l_quantity_prf#5109 AS l_quantity_prf_2#5128, l_receiptdate_prf#5110 AS l_receiptdate_prf_2#5129, l_linenumber_prf#5111 AS l_linenumber_prf_2#5130, l_tax_prf#5112 AS l_tax_prf_2#5131, l_shipdate_prf#5113 AS l_shipdate_prf_2#5132, l_extendedprice_prf#5114 AS l_extendedprice_prf_2#5133, l_partkey_prf#5115 AS l_partkey_prf_2#5134, l_discount_prf#5116 AS l_discount_prf_2#5135, l_partkey_and_l_suppkey_prf#5117 AS l_partkey_and_l_suppkey_prf_2#5136, l_commitdate_prf#5118 AS l_commitdate_prf_2#5137, l_suppkey_prf#5119 AS l_suppkey_prf_2#5138, l_orderkey_prf#5120 AS l_orderkey_prf_2#5139]
+               +- Relation[l_returnflag_prf#5102,l_orderkey_and_l_linenumber_prf#5103,l_comment_prf#5104,l_linestatus_prf#5105,rid#5106,l_shipmode_prf#5107,l_shipinstruct_prf#5108,l_quantity_prf#5109,l_receiptdate_prf#5110,l_linenumber_prf#5111,l_tax_prf#5112,l_shipdate_prf#5113,l_extendedprice_prf#5114,l_partkey_prf#5115,l_discount_prf#5116,l_partkey_and_l_suppkey_prf#5117,l_commitdate_prf#5118,l_suppkey_prf#5119,l_orderkey_prf#5120] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=1214743
+Elapsed time: 204532ms
+
+ft3c=
+select * from part, supplier, lineitem where p_partkey = l_partkey and (p_size = 15 and s_suppkey = l_suppkey)
+19/10/16 07:16:55 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:16:55 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#5213L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (s_suppkey#18L = l_suppkey#308L)
+         :- Project [s_suppkey#18L]
+         :  +- Filter isnotnull(s_suppkey#18L)
+         :     +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+         +- Project [l_suppkey#308L]
+            +- Join Inner, (p_partkey#360L = l_partkey#307L)
+               :- Project [p_partkey#360L]
+               :  +- Filter ((isnotnull(p_size#364) && (p_size#364 = 15)) && isnotnull(p_partkey#360L))
+               :     +- Relation[p_partkey#360L,p_name#361,p_mfgr#362,p_type#363,p_size#364,p_container#365,p_retailprice#366,p_comment#367,p_brand#368] parquet
+               +- Project [l_partkey#307L, l_suppkey#308L]
+                  +- Filter (isnotnull(l_partkey#307L) && isnotnull(l_suppkey#308L))
+                     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+
+19/10/16 07:16:55 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:16:55 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:16:55 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#5213L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['s_phone_prf_0, 'rid_0, 's_address_prf_0, 's_nationkey_prf_0, 's_suppkey_prf_0, 's_name_prf_0, 's_acctbal_prf_0, 's_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_2#5231]
+         :  +- DexRidCorrelatedJoin supplier~s_suppkey~lineitem~l_suppkey, rid_0#5224: string
+         :     :- Project [s_phone_prf#5215 AS s_phone_prf_0#5223, rid#5216 AS rid_0#5224, s_address_prf#5217 AS s_address_prf_0#5225, s_nationkey_prf#5218 AS s_nationkey_prf_0#5226, s_suppkey_prf#5219 AS s_suppkey_prf_0#5227, s_name_prf#5220 AS s_name_prf_0#5228, s_acctbal_prf#5221 AS s_acctbal_prf_0#5229, s_comment_prf#5222 AS s_comment_prf_0#5230]
+         :     :  +- Relation[s_phone_prf#5215,rid#5216,s_address_prf#5217,s_nationkey_prf#5218,s_suppkey_prf#5219,s_name_prf#5220,s_acctbal_prf#5221,s_comment_prf#5222] JDBCRelation(supplier_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Project ['p_comment_prf_1, 'p_name_prf_1, 'rid_1, 'p_type_prf_1, 'p_retailprice_prf_1, 'p_mfgr_prf_1, 'p_container_prf_1, 'p_brand_prf_1, 'p_size_prf_1, 'p_partkey_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#5253]
+            :  +- 'DexRidCorrelatedJoin part~p_partkey~lineitem~l_partkey, rid_1#5244: string
+            :     :- 'Join UsingJoin(LeftSemi,List(rid_1))
+            :     :  :- Project [p_comment_prf#5232 AS p_comment_prf_1#5242, p_name_prf#5233 AS p_name_prf_1#5243, rid#5234 AS rid_1#5244, p_type_prf#5235 AS p_type_prf_1#5245, p_retailprice_prf#5236 AS p_retailprice_prf_1#5246, p_mfgr_prf#5237 AS p_mfgr_prf_1#5247, p_container_prf#5238 AS p_container_prf_1#5248, p_brand_prf#5239 AS p_brand_prf_1#5249, p_size_prf#5240 AS p_size_prf_1#5250, p_partkey_prf#5241 AS p_partkey_prf_1#5251]
+            :     :  :  +- Relation[p_comment_prf#5232,p_name_prf#5233,rid#5234,p_type_prf#5235,p_retailprice_prf#5236,p_mfgr_prf#5237,p_container_prf#5238,p_brand_prf#5239,p_size_prf#5240,p_partkey_prf#5241] JDBCRelation(part_prf) [numPartitions=1]
+            :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#5252]
+            :     :     +- DexRidFilter part~p_size~15
+            :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+            :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [l_returnflag_prf#5254 AS l_returnflag_prf_2#5273, l_orderkey_and_l_linenumber_prf#5255 AS l_orderkey_and_l_linenumber_prf_2#5274, l_comment_prf#5256 AS l_comment_prf_2#5275, l_linestatus_prf#5257 AS l_linestatus_prf_2#5276, rid#5258 AS rid_2#5277, l_shipmode_prf#5259 AS l_shipmode_prf_2#5278, l_shipinstruct_prf#5260 AS l_shipinstruct_prf_2#5279, l_quantity_prf#5261 AS l_quantity_prf_2#5280, l_receiptdate_prf#5262 AS l_receiptdate_prf_2#5281, l_linenumber_prf#5263 AS l_linenumber_prf_2#5282, l_tax_prf#5264 AS l_tax_prf_2#5283, l_shipdate_prf#5265 AS l_shipdate_prf_2#5284, l_extendedprice_prf#5266 AS l_extendedprice_prf_2#5285, l_partkey_prf#5267 AS l_partkey_prf_2#5286, l_discount_prf#5268 AS l_discount_prf_2#5287, l_partkey_and_l_suppkey_prf#5269 AS l_partkey_and_l_suppkey_prf_2#5288, l_commitdate_prf#5270 AS l_commitdate_prf_2#5289, l_suppkey_prf#5271 AS l_suppkey_prf_2#5290, l_orderkey_prf#5272 AS l_orderkey_prf_2#5291]
+               +- Relation[l_returnflag_prf#5254,l_orderkey_and_l_linenumber_prf#5255,l_comment_prf#5256,l_linestatus_prf#5257,rid#5258,l_shipmode_prf#5259,l_shipinstruct_prf#5260,l_quantity_prf#5261,l_receiptdate_prf#5262,l_linenumber_prf#5263,l_tax_prf#5264,l_shipdate_prf#5265,l_extendedprice_prf#5266,l_partkey_prf#5267,l_discount_prf#5268,l_partkey_and_l_suppkey_prf#5269,l_commitdate_prf#5270,l_suppkey_prf#5271,l_orderkey_prf#5272] JDBCRelation(lineitem_prf) [numPartitions=1]
+
+DexCorr$ result size=117754
+Elapsed time: 60144ms
+
+fq1d=
+
+select *
+from nation, customer, orders, lineitem
+where
+  n_name = 'FRANCE' and n_nationkey = c_nationkey and c_custkey = o_custkey and o_orderkey = l_orderkey
+        
+19/10/16 07:17:55 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:17:55 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#5369L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (l_orderkey#306L = o_orderkey#342L)
+         :- Project [l_orderkey#306L]
+         :  +- Filter isnotnull(l_orderkey#306L)
+         :     +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         +- Project [o_orderkey#342L]
+            +- Join Inner, (c_custkey#290L = o_orderkey#342L)
+               :- Project [c_custkey#290L]
+               :  +- Join Inner, (n_nationkey#108L = c_nationkey#293L)
+               :     :- Project [n_nationkey#108L]
+               :     :  +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+               :     :     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+               :     +- Project [c_custkey#290L, c_nationkey#293L]
+               :        +- Filter (isnotnull(c_nationkey#293L) && isnotnull(c_custkey#290L))
+               :           +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+               +- Project [o_orderkey#342L]
+                  +- Filter isnotnull(o_orderkey#342L)
+                     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+
+19/10/16 07:17:55 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:55 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:55 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:55 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#5369L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Project ['l_returnflag_prf_0, 'l_orderkey_and_l_linenumber_prf_0, 'l_comment_prf_0, 'l_linestatus_prf_0, 'rid_0, 'l_shipmode_prf_0, 'l_shipinstruct_prf_0, 'l_quantity_prf_0, 'l_receiptdate_prf_0, 'l_linenumber_prf_0, 'l_tax_prf_0, 'l_shipdate_prf_0, 'l_extendedprice_prf_0, 'l_partkey_prf_0, 'l_discount_prf_0, 'l_partkey_and_l_suppkey_prf_0, 'l_commitdate_prf_0, 'l_suppkey_prf_0, 'l_orderkey_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_3#5409]
+         :  +- DexRidCorrelatedJoin lineitem~l_orderkey~orders~o_orderkey, rid_0#5394: string
+         :     :- Project [l_returnflag_prf#5371 AS l_returnflag_prf_0#5390, l_orderkey_and_l_linenumber_prf#5372 AS l_orderkey_and_l_linenumber_prf_0#5391, l_comment_prf#5373 AS l_comment_prf_0#5392, l_linestatus_prf#5374 AS l_linestatus_prf_0#5393, rid#5375 AS rid_0#5394, l_shipmode_prf#5376 AS l_shipmode_prf_0#5395, l_shipinstruct_prf#5377 AS l_shipinstruct_prf_0#5396, l_quantity_prf#5378 AS l_quantity_prf_0#5397, l_receiptdate_prf#5379 AS l_receiptdate_prf_0#5398, l_linenumber_prf#5380 AS l_linenumber_prf_0#5399, l_tax_prf#5381 AS l_tax_prf_0#5400, l_shipdate_prf#5382 AS l_shipdate_prf_0#5401, l_extendedprice_prf#5383 AS l_extendedprice_prf_0#5402, l_partkey_prf#5384 AS l_partkey_prf_0#5403, l_discount_prf#5385 AS l_discount_prf_0#5404, l_partkey_and_l_suppkey_prf#5386 AS l_partkey_and_l_suppkey_prf_0#5405, l_commitdate_prf#5387 AS l_commitdate_prf_0#5406, l_suppkey_prf#5388 AS l_suppkey_prf_0#5407, l_orderkey_prf#5389 AS l_orderkey_prf_0#5408]
+         :     :  +- Relation[l_returnflag_prf#5371,l_orderkey_and_l_linenumber_prf#5372,l_comment_prf#5373,l_linestatus_prf#5374,rid#5375,l_shipmode_prf#5376,l_shipinstruct_prf#5377,l_quantity_prf#5378,l_receiptdate_prf#5379,l_linenumber_prf#5380,l_tax_prf#5381,l_shipdate_prf#5382,l_extendedprice_prf#5383,l_partkey_prf#5384,l_discount_prf#5385,l_partkey_and_l_suppkey_prf#5386,l_commitdate_prf#5387,l_suppkey_prf#5388,l_orderkey_prf#5389] JDBCRelation(lineitem_prf) [numPartitions=1]
+         :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- 'Join NaturalJoin(Inner)
+            :- 'Join UsingJoin(Inner,List(rid_2))
+            :  :- 'Join NaturalJoin(Inner)
+            :  :  :- 'Project ['rid_1, 'n_regionkey_prf_1, 'n_nationkey_prf_1, 'n_name_prf_1, 'n_comment_prf_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#5421]
+            :  :  :  +- 'DexRidCorrelatedJoin nation~n_nationkey~customer~c_nationkey, rid_1#5415: string
+            :  :  :     :- 'Join UsingJoin(LeftSemi,List(rid_1))
+            :  :  :     :  :- Project [rid#5410 AS rid_1#5415, n_regionkey_prf#5411 AS n_regionkey_prf_1#5416, n_nationkey_prf#5412 AS n_nationkey_prf_1#5417, n_name_prf#5413 AS n_name_prf_1#5418, n_comment_prf#5414 AS n_comment_prf_1#5419]
+            :  :  :     :  :  +- Relation[rid#5410,n_regionkey_prf#5411,n_nationkey_prf#5412,n_name_prf#5413,n_comment_prf#5414] JDBCRelation(nation_prf) [numPartitions=1]
+            :  :  :     :  +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#5420]
+            :  :  :     :     +- DexRidFilter nation~n_name~FRANCE
+            :  :  :     :        +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+            :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            :  :  +- Project [c_acctbal_prf#5422 AS c_acctbal_prf_2#5431, rid#5423 AS rid_2#5432, c_name_prf#5424 AS c_name_prf_2#5433, c_nationkey_prf#5425 AS c_nationkey_prf_2#5434, c_custkey_prf#5426 AS c_custkey_prf_2#5435, c_comment_prf#5427 AS c_comment_prf_2#5436, c_address_prf#5428 AS c_address_prf_2#5437, c_mktsegment_prf#5429 AS c_mktsegment_prf_2#5438, c_phone_prf#5430 AS c_phone_prf_2#5439]
+            :  :     +- Relation[c_acctbal_prf#5422,rid#5423,c_name_prf#5424,c_nationkey_prf#5425,c_custkey_prf#5426,c_comment_prf#5427,c_address_prf#5428,c_mktsegment_prf#5429,c_phone_prf#5430] JDBCRelation(customer_prf) [numPartitions=1]
+            :  +- 'Project ['rid_2, dexdecrypt('value_dec_key, value#1836) AS rid_3#5450]
+            :     +- 'DexRidCorrelatedJoin customer~c_custkey~orders~o_orderkey, 'rid_2
+            :        :- 'Project ['rid AS rid_2#5449]
+            :        :  +- Relation[c_acctbal_prf#5440,rid#5441,c_name_prf#5442,c_nationkey_prf#5443,c_custkey_prf#5444,c_comment_prf#5445,c_address_prf#5446,c_mktsegment_prf#5447,c_phone_prf#5448] JDBCRelation(customer_prf) [numPartitions=1]
+            :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+            +- Project [o_shippriority_prf#5451 AS o_shippriority_prf_3#5461, rid#5452 AS rid_3#5462, o_orderdate_prf#5453 AS o_orderdate_prf_3#5463, o_custkey_prf#5454 AS o_custkey_prf_3#5464, o_orderpriority_prf#5455 AS o_orderpriority_prf_3#5465, o_clerk_prf#5456 AS o_clerk_prf_3#5466, o_orderstatus_prf#5457 AS o_orderstatus_prf_3#5467, o_totalprice_prf#5458 AS o_totalprice_prf_3#5468, o_orderkey_prf#5459 AS o_orderkey_prf_3#5469, o_comment_prf#5460 AS o_comment_prf_3#5470]
+               +- Relation[o_shippriority_prf#5451,rid#5452,o_orderdate_prf#5453,o_custkey_prf#5454,o_orderpriority_prf#5455,o_clerk_prf#5456,o_orderstatus_prf#5457,o_totalprice_prf#5458,o_orderkey_prf#5459,o_comment_prf#5460] JDBCRelation(orders_prf) [numPartitions=1]
+
+DexCorr$ result size=0
+Elapsed time: 1021ms
+
+ft1a=
+select * from supplier, nation, customer where s_nationkey = n_nationkey and n_name = 'FRANCE' and n_nationkey = c_nationkey
+19/10/16 07:17:56 WARN DexPlanner: dexPlan=DexCorrelationPlan
+19/10/16 07:17:56 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#5536L]
++- DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+   +- Project
+      +- Join Inner, (n_nationkey#108L = c_nationkey#293L)
+         :- Project [n_nationkey#108L]
+         :  +- Join Inner, (s_nationkey#21L = n_nationkey#108L)
+         :     :- Project [s_nationkey#21L]
+         :     :  +- Filter isnotnull(s_nationkey#21L)
+         :     :     +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+         :     +- Project [n_nationkey#108L]
+         :        +- Filter ((isnotnull(n_name#109) && (n_name#109 = FRANCE)) && isnotnull(n_nationkey#108L))
+         :           +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+         +- Project [c_nationkey#293L]
+            +- Filter isnotnull(c_nationkey#293L)
+               +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+19/10/16 07:17:56 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:17:56 WARN DexPlanner: InMemoryFileIndex=supplier
+19/10/16 07:17:56 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:56 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:56 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:56 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:56 WARN DexPlanner: InMemoryFileIndex=nation
+19/10/16 07:17:56 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#5536L]
++- 'Project
+   +- 'DexCorrelationPlan {ps_partkey_and_ps_suppkey, l_orderkey_and_l_linenumber, l_partkey_and_l_suppkey}
+      +- 'Join NaturalJoin(Inner)
+         :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :- 'Join NaturalJoin(Inner)
+         :  :  :- 'Project ['s_phone_prf_0, 'rid_0, 's_address_prf_0, 's_nationkey_prf_0, 's_suppkey_prf_0, 's_name_prf_0, 's_acctbal_prf_0, 's_comment_prf_0, dexdecrypt('value_dec_key, value#1836) AS rid_1#5554]
+         :  :  :  +- DexRidCorrelatedJoin supplier~s_nationkey~nation~n_nationkey, rid_0#5547: string
+         :  :  :     :- Project [s_phone_prf#5538 AS s_phone_prf_0#5546, rid#5539 AS rid_0#5547, s_address_prf#5540 AS s_address_prf_0#5548, s_nationkey_prf#5541 AS s_nationkey_prf_0#5549, s_suppkey_prf#5542 AS s_suppkey_prf_0#5550, s_name_prf#5543 AS s_name_prf_0#5551, s_acctbal_prf#5544 AS s_acctbal_prf_0#5552, s_comment_prf#5545 AS s_comment_prf_0#5553]
+         :  :  :     :  +- Relation[s_phone_prf#5538,rid#5539,s_address_prf#5540,s_nationkey_prf#5541,s_suppkey_prf#5542,s_name_prf#5543,s_acctbal_prf#5544,s_comment_prf#5545] JDBCRelation(supplier_prf) [numPartitions=1]
+         :  :  :     +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         :  :  +- 'Join UsingJoin(LeftSemi,List(rid_1))
+         :  :     :- Project [rid#5555 AS rid_1#5560, n_regionkey_prf#5556 AS n_regionkey_prf_1#5561, n_nationkey_prf#5557 AS n_nationkey_prf_1#5562, n_name_prf#5558 AS n_name_prf_1#5563, n_comment_prf#5559 AS n_comment_prf_1#5564]
+         :  :     :  +- Relation[rid#5555,n_regionkey_prf#5556,n_nationkey_prf#5557,n_name_prf#5558,n_comment_prf#5559] JDBCRelation(nation_prf) [numPartitions=1]
+         :  :     +- 'Project [dexdecrypt('value_dec_key, 'value) AS rid_1#5565]
+         :  :        +- DexRidFilter nation~n_name~FRANCE
+         :  :           +- Relation[label#1877,value#1878] JDBCRelation(t_filter) [numPartitions=1]
+         :  +- 'Project ['rid_1, dexdecrypt('value_dec_key, value#1836) AS rid_2#5572]
+         :     +- 'DexRidCorrelatedJoin nation~n_nationkey~customer~c_nationkey, 'rid_1
+         :        :- 'Project ['rid AS rid_1#5571]
+         :        :  +- Relation[rid#5566,n_regionkey_prf#5567,n_nationkey_prf#5568,n_name_prf#5569,n_comment_prf#5570] JDBCRelation(nation_prf) [numPartitions=1]
+         :        +- Relation[label#1835,value#1836] JDBCRelation(t_correlated_join) [numPartitions=1]
+         +- Project [c_acctbal_prf#5573 AS c_acctbal_prf_2#5582, rid#5574 AS rid_2#5583, c_name_prf#5575 AS c_name_prf_2#5584, c_nationkey_prf#5576 AS c_nationkey_prf_2#5585, c_custkey_prf#5577 AS c_custkey_prf_2#5586, c_comment_prf#5578 AS c_comment_prf_2#5587, c_address_prf#5579 AS c_address_prf_2#5588, c_mktsegment_prf#5580 AS c_mktsegment_prf_2#5589, c_phone_prf#5581 AS c_phone_prf_2#5590]
+            +- Relation[c_acctbal_prf#5573,rid#5574,c_name_prf#5575,c_nationkey_prf#5576,c_custkey_prf#5577,c_comment_prf#5578,c_address_prf#5579,c_mktsegment_prf#5580,c_phone_prf#5581] JDBCRelation(customer_prf) [numPartitions=1]
+
+DexCorr$ result size=2452200
+Elapsed time: 1472ms
+query=fq1a, count=246415, duration=163654
+query=fq1b, count=246415, duration=225286
+query=fq1c, count=246415, duration=228877
+query=fq1d, count=0, duration=1021
+query=fq1e, count=246415, duration=181875
+query=fq1f, count=246415, duration=183260
+query=fr1a, count=1214743, duration=139067
+query=fr1b, count=1214743, duration=143380
+query=fr1c, count=1214743, duration=99163
+query=fr1d, count=1214743, duration=152874
+query=fr1e, count=1214743, duration=204532
+query=fr2a, count=2901744, duration=173507
+query=fr2b, count=2901744, duration=120922
+query=fr2d, count=2901744, duration=207938
+query=fr2e, count=2901744, duration=97922
+query=fr2f, count=2901744, duration=216300
+query=ft1a, count=2452200, duration=1472
+query=ft1b, count=2452200, duration=2625
+query=ft1c, count=2452200, duration=33623
+query=ft2a, count=15628, duration=101977
+query=ft2b, count=15628, duration=45887
+query=ft2c, count=15628, duration=7687
+query=ft3a, count=6001215, duration=222143
+query=ft3b, count=117754, duration=53025
+query=ft3c, count=117754, duration=60144
