@@ -258,11 +258,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |ON (${j.condition.get.dialectSql(dialect.quoteIdentifier)})
               """.stripMargin
           case x if x == LeftSemi && j.condition.isDefined =>
-            val (leftRid, rightRid) = ridOrdersFromJoin(j)
+            val (leftRids, rightRids) = ridOrdersFromJoin(j)
             s"""
                |($leftSubquery) AS ${generateSubqueryName()}
-               |WHERE $leftRid IN (
-               |  SELECT $rightRid
+               |WHERE ($leftRids) IN (
+               |  SELECT $rightRids
                |  FROM ($rightSubquery) AS ${generateSubqueryName()}
                |)
              """.stripMargin
@@ -601,8 +601,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       }.isEmpty
     }
 
-    private def ridOrdersFromJoin(j: Join): (String, String) = j.condition.get match {
-      case EqualTo(left, right) => (left.dialectSql(dialect.quoteIdentifier), right.dialectSql(dialect.quoteIdentifier))
+    private def ridOrdersFromJoin(j: Join): (String, String) = {
+      val lefts = j.condition.get.collect {
+        case EqualTo(left, right) => left
+      }
+      val rights = j.condition.get.collect {
+        case EqualTo(left, right) => right
+      }
+      (lefts.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", "), rights.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", "))
     }
 
     private def emmKeysFromDomainValueColumn(prfKey: String, domainValueCol: String, predicate: String): (String, String) = {
@@ -1098,7 +1104,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
-      val hasJoinOnChildView = childView.find(_.isInstanceOf[DexRidCorrelatedJoin]).nonEmpty
+      //val hasJoinOnChildView = childView.find(_.isInstanceOf[DexRidCorrelatedJoin]).nonEmpty
+      val hasFilterOnChildView = childView.find(_.isInstanceOf[DexRidFilter]).nonEmpty
 
       def predicateOf(joinAttrs: JoinAttrs, reverse: Boolean): String = {
         if (reverse)
@@ -1129,14 +1136,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       joinAttrs.ridOrderAttrsGiven(childView) match {
         case (Some(l), None) =>
-          if (hasJoinOnChildView) {
+          if (hasFilterOnChildView) {
+            newRidJoinOf(l, childView, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false))
+          } else {
             val leftSubquery = tableEncOf(joinAttrs.leftTableRel).select(col("rid").as(joinAttrs.leftRidOrder).expr)
+            val leftSubqueryRidOrder = leftSubquery.outputSet.find(_.name == joinAttrs.leftRidOrder).get
             childView.join(
-              newRidJoinOf(l, leftSubquery, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false)),
+              newRidJoinOf(leftSubqueryRidOrder, leftSubquery, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false)),
               UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
             )
-          } else {
-            newRidJoinOf(l, childView, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false))
           }
 
         case (Some(l), Some(r)) if l == r =>
@@ -1152,14 +1160,40 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           val ridJoinProject = childView.output
           ridJoin.select(ridJoinProject: _*)
 
+          if (hasFilterOnChildView) {
+            val ridJoin = DexRidCorrelatedJoin(predicateOf(joinAttrs, reverse = false), childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
+            val ridJoinProject = ridJoin.output.collect {
+              case x: Attribute if x.name != "value_dec_key" && x.name != "value" => // remove extra value_dec_key column
+                // Unresolve all but the emm attributes.  This is overshooting a bit, because we only care about
+                // the case for natural joining the base table for joining attributes (rid_1#33, rid_1#90),
+                // but the optimizer will insert a new project node on top of this join and only takes one of the
+                // join columns, say rid_1#33.  This step happens AFTER DexPlan translation, so to go around this
+                // we need to unresolve all the output attributes from the existing projection to allow
+                // later on resolution onto the new project.
+                UnresolvedAttribute(x.name)
+            }
+            // Need to deduplicate ridJoinProject because left subquery might have the same attribute name
+            // as the right subquery, such as simple one filter one join case where rid_0 are from both
+            // the filter operator and the join operator.
+            ridJoin.select(ridJoinProject.distinct: _*)
+          } else {
+            val leftSubquery = tableEncOf(joinAttrs.leftTableRel).select(col("rid").as(joinAttrs.leftRidOrder).expr)
+            val leftSubqueryRidOrder = leftSubquery.outputSet.find(_.name == joinAttrs.leftRidOrder).get
+            childView.join(
+              newRidJoinOf(leftSubqueryRidOrder, leftSubquery, joinAttrs.rightRidOrder, predicateOf(joinAttrs, reverse = false)),
+              UsingJoin(LeftSemi, Seq(joinAttrs.leftRidOrder, joinAttrs.rightRidOrder))
+            )
+          }
+
         case (None, Some(r)) =>
           // "left" relation is a new relation to join
-          if (hasJoinOnChildView) {
-            val rightSubquery = tableEncOf(joinAttrs.rightTableRel).select(col("rid").as(joinAttrs.rightRidOrder).expr)
-            newRidJoinOf(r, rightSubquery, joinAttrs.leftRidOrder, predicateOf(joinAttrs, reverse = true))
-              .join(childView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
-          } else {
+          if (hasFilterOnChildView) {
             newRidJoinOf(r, childView, joinAttrs.leftRidOrder, predicateOf(joinAttrs, reverse = true))
+          } else {
+            val rightSubquery = tableEncOf(joinAttrs.rightTableRel).select(col("rid").as(joinAttrs.rightRidOrder).expr)
+            val rightSubqueryRidOrder = rightSubquery.outputSet.find(_.name == joinAttrs.rightRidOrder).get
+            newRidJoinOf(rightSubqueryRidOrder, rightSubquery, joinAttrs.leftRidOrder, predicateOf(joinAttrs, reverse = true))
+              .join(childView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
           }
 
 

@@ -81,6 +81,14 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
             .join(nation).where("s_nationkey = n_nationkey and n_name = 'FRANCE'")
           ).where("c_nationkey = n_nationkey")),
 
+      // F -F => F - (f(P) - F), small P, without filter its the same as t1a, but with filter it's different, one less chaining
+      BenchQuery("ft1d", "select * from supplier, nation, customer where s_nationkey = n_nationkey and c_nationkey = n_nationkey and n_name = 'FRANCE'",
+        customer
+          .join(nation.where("n_name = 'FRANCE'")
+            .join(supplier).where("n_nationkey = s_nationkey"))
+          .where("c_nationkey = n_nationkey")
+      ),
+
       //   P
       //  /
       // CP
@@ -114,7 +122,7 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
       // F - f(P) - P
       BenchQuery("ft3a", "select * from lineitem, part, supplier where l_partkey = p_partkey and p_size = 15 and l_suppkey = s_suppkey",
         lineitem
-          .join(part).where("l_partkey = p_partkey")
+          .join(part).where("l_partkey = p_partkey and p_size = 15")
           .join(supplier).where("l_suppkey = s_suppkey")),
 
       // f(P) - F - P
@@ -130,7 +138,7 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
             .join(lineitem).where("p_partkey = l_partkey")
           ).where("s_suppkey = l_suppkey")),
 
-      // f(N) - C - O - L: {f(N) - C - O - [L]} join L.  Chain = 3
+      // f(N) - C - O - L: {f(N) - C - O - [L]} join L.  Chain = 3.  Using filtered reuslts in chaining fashion.
       BenchQuery("fq1a",
         """
           |select *
@@ -159,7 +167,7 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
           .where("c_custkey = o_custkey")
       ),
 
-      // f(N) - (C - O - L): {f(N) - [C]} join {C - [O]} - O join {O - [L]} - L.  Chain = 1
+      // f(N) - (C - O - L): {f(N) - [C]} join {C - [O]} - O join {O - [L]} - L.  Chain = 1.  Not joining filtered results until late
       BenchQuery("fq1c",
         """
           |select *
@@ -185,11 +193,11 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
         lineitem
           .join(nation.where("n_name = 'FRANCE'")
             .join(customer).where("n_nationkey = c_nationkey")
-            .join(orders).where("c_custkey = o_orderkey")
+            .join(orders).where("c_custkey = o_custkey")
           ).where("l_orderkey = o_orderkey")
       ),
 
-      // L - O - (f(N) - C): {L - [O]} - O join {O - [C]} join {f(N) - [C}} - C.  Close to fq1c.  Chain = 1
+      // L - O - (f(N) - C): {L - [O]} - O join {O - [C]} join {f(N) - [C}} - C.  Close to fq1c but less intermediate data due to joining filtered subtree.  Chain = 1
       BenchQuery("fq1e",
         """
           |select *
@@ -204,7 +212,7 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
           .where("o_custkey = c_custkey")
       ),
 
-      // L - O - C - f(N): Chain = 0.
+      // L - O - C - f(N): Chain = 0.  Similar to fq1e but purely using join to use filtered resutls.
       BenchQuery("fq1f",
         """
           |select *
@@ -255,7 +263,27 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
         orders.where("o_orderstatus = 'F'")
           .join(customer).where("o_custkey = c_custkey")
           .join(lineitem).where("o_orderkey = l_orderkey")
-      )
+      ),
+
+      // snowflake: further filter on dimension P
+      // f(C) - O - L - P
+      BenchQuery("fs1a",
+        """
+          |select *
+          |from
+          |  customer, orders, lineitem, part
+          |where
+          |  c_mktsegment = 'BUILDING' and c_custkey = o_custkey and o_orderkey = l_orderkey and l_partkey = p_partkey
+        """.stripMargin,
+        customer.where("c_mktsegment = 'BUILDING'")
+          .join(orders).where("c_custkey = o_custkey")
+          .join(lineitem).where("o_orderkey = l_orderkey")
+          .join(part).where("l_partkey = p_partkey")
+      ),
+
+      // snowflake: closer filter on dimension P
+
+      // snowflake: filter on fact-dimension
     )
 
     require(queries.map(_.name).toSet.size == queries.size, "unique query name")

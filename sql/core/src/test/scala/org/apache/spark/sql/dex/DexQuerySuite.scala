@@ -116,6 +116,11 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query, query.dexCorr(cks))
   }
 
+  test("two joins one filter: same tables") {
+    val query = data2.join(data3).where("a == 1 and a == c and b == d")
+    checkDexFor(query, query.dexCorr(cks))
+  }
+
   test("two joins: same tables, transitive attributes") {
     // inferred a == b same-table filter (not a join!)
     val query = data2.join(data3).where("a == c and b == c")
