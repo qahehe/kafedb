@@ -35,7 +35,7 @@ import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
 import org.apache.spark.sql.dex.DexConstants.{TableAttribute, TableAttributeAtom, TableAttributeCompound}
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD, JDBCRelation, JdbcRelationProvider}
-import org.apache.spark.sql.execution.datasources.{CatalogFileIndex, DataSource, HadoopFsRelation, InMemoryFileIndex, LogicalRelation}
+import org.apache.spark.sql.execution.datasources.{CatalogFileIndex, DataSource, HadoopFsRelation, InMemoryFileIndex, LogicalRelation, PartitionSpec}
 import org.apache.spark.sql.execution.{BinaryExecNode, SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.jdbc.JdbcDialects
@@ -877,7 +877,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           case c: CatalogFileIndex =>
             c.table.identifier.table
           case i: InMemoryFileIndex =>
-            val rootPathSet = i.rootPaths.map(_.getParent.getName).toSet
+            val rootPathSet: Set[String] = i.partitionSpec() match {
+              case p if p == PartitionSpec.emptySpec => i.rootPaths.map(_.getName).toSet
+              case _ => i.rootPaths.map(_.getParent.getName).toSet
+            }
             require(rootPathSet.size == 1)
             log.warn(s"InMemoryFileIndex=${rootPathSet.head}")
             rootPathSet.head
