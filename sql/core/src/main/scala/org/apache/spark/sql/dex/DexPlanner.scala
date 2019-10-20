@@ -278,7 +278,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             val (leftRid, rightRid) = ridOrdersFromJoin(j)
             s"""
                |($leftSubquery) AS ${generateSubqueryName()}
-               |WHERE $leftRid NOT IN (
+               |WHERE ($leftRid) NOT IN (
                |  SELECT $rightRid
                |  FROM ($rightSubquery) AS ${generateSubqueryName()}
                |)
@@ -887,11 +887,17 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                 joinView.join(rightView, NaturalJoin(Inner))
               case LeftSemi =>
                 leftView.join(
-                  joinView.join(rightView, NaturalJoin(Inner)),
+                  joinView.join(rightView, NaturalJoin(LeftSemi)),
                   NaturalJoin(LeftSemi)) // less efficient than RightSemi by having more joins on leftviews
               case RightSemi =>
                 //joinView.join(rightView, NaturalJoin(RightSemi))
                 rightView.join(joinView, NaturalJoin(LeftSemi))
+              case LeftAnti =>
+                leftView.join(
+                  joinView.join(rightView, NaturalJoin(LeftSemi)),
+                  NaturalJoin(LeftAnti)) // less efficient than RightSemi by having more joins on leftviews
+              case RightAnti =>
+                rightView.join(joinView, NaturalJoin(LeftAnti))
               case RightOuter =>
                 joinView.join(rightView, NaturalJoin(RightOuter))
               case x => throw DexException("unsupported: " + x.getClass.getName)

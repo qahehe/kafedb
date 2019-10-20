@@ -1219,7 +1219,7 @@ object PushPredicateThroughJoin extends Rule[LogicalPlan] with PredicateHelper {
           val newJoinCond = commonJoinCondition.reduceLeftOption(And)
 
           Join(newLeft, newRight, joinType, newJoinCond)
-        case RightOuter =>
+        case RightOuter | RightAnti =>
           // push down the left side only join filter for left side sub query
           val newLeft = leftJoinConditions.
             reduceLeftOption(And).map(Filter(_, left)).getOrElse(left)

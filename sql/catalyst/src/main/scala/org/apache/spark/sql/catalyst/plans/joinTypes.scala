@@ -30,6 +30,7 @@ object JoinType {
     case "leftsemi" => LeftSemi
     case "rightsemi" => RightSemi
     case "leftanti" => LeftAnti
+    case "rightanti" => RightAnti
     case "cross" => Cross
     case _ =>
       val supported = Seq(
@@ -38,7 +39,9 @@ object JoinType {
         "leftouter", "left", "left_outer",
         "rightouter", "right", "right_outer",
         "leftsemi", "left_semi",
+        "rightsemi", "right_semi",
         "leftanti", "left_anti",
+        "rightanti", "right_anti",
         "cross")
 
       throw new IllegalArgumentException(s"Unsupported join type '$typ'. " +
@@ -92,6 +95,10 @@ case object LeftAnti extends JoinType {
   override def sql: String = "LEFT ANTI"
 }
 
+case object RightAnti extends JoinType {
+  override def sql: String = "RIGHT ANTI"
+}
+
 case class ExistenceJoin(exists: Attribute) extends JoinType {
   override def sql: String = {
     // This join type is only used in the end of optimizer and physical plans, we will not
@@ -101,7 +108,9 @@ case class ExistenceJoin(exists: Attribute) extends JoinType {
 }
 
 case class NaturalJoin(tpe: JoinType) extends JoinType {
-  require(Seq(Inner, LeftOuter, RightOuter, FullOuter, LeftSemi, RightSemi).contains(tpe),
+  require(Seq(Inner, LeftOuter, RightOuter, FullOuter,
+    LeftSemi, RightSemi,
+    LeftAnti, RightAnti).contains(tpe),
     "Unsupported natural join type " + tpe)
   override def sql: String = "NATURAL " + tpe.sql
 }
@@ -122,7 +131,7 @@ object LeftExistence {
 
 object RightExistence {
   def unapply(joinType: JoinType): Option[JoinType] = joinType match {
-    case RightSemi => Some(joinType)
+    case RightSemi | RightAnti => Some(joinType)
     case _ => None
   }
 }

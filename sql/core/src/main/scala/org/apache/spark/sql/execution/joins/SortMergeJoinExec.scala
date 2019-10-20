@@ -368,6 +368,47 @@ case class SortMergeJoinExec(
             override def getRow: InternalRow = currentLeftRow
           }.toScala
 
+        case RightAnti =>
+          new RowIterator {
+            private[this] var currentRightRow: InternalRow = _
+            private[this] val smjScanner = new SortMergeJoinScanner(
+              createRightKeyGenerator(),
+              createLeftKeyGenerator(),
+              newNaturalAscendingOrdering(rightKeys.map(_.dataType)),
+              RowIterator.fromScala(rightIter),
+              RowIterator.fromScala(leftIter),
+              inMemoryThreshold,
+              spillThreshold
+            )
+            private[this] val joinRow = new JoinedRow
+
+            override def advanceNext(): Boolean = {
+              while (smjScanner.findNextOuterJoinRows()) {
+                currentRightRow = smjScanner.getStreamedRow
+                val currentLeftMatches = smjScanner.getBufferedMatches
+                if (currentLeftMatches == null || currentLeftMatches.length == 0) {
+                  numOutputRows += 1
+                  return true
+                }
+                var found = false
+                val leftMatchesIterator = currentLeftMatches.generateIterator()
+                while (!found && leftMatchesIterator.hasNext) {
+                  joinRow(currentRightRow, leftMatchesIterator.next())
+                  if (boundCondition(joinRow)) {
+                    found = true
+                  }
+                }
+                if (!found) {
+                  numOutputRows += 1
+                  return true
+                }
+              }
+              false
+            }
+
+            override def getRow: InternalRow = currentRightRow
+          }.toScala
+
         case j: ExistenceJoin =>
           new RowIterator {
             private[this] var currentLeftRow: InternalRow = _

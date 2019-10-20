@@ -78,6 +78,16 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query, query.dexCorr(cks))
   }
 
+  test("NOT EXISTS: left anti join") {
+    val query = data2.join(data3, col("b") === col("c"), "left_anti")
+    checkDexFor(query, query.dexCorr(cks))
+  }
+
+  test("NOT EXISTS: right anti join") {
+    val query = data2.join(data3, col("b") === col("c"), "right_anti")
+    checkDexFor(query, query.dexCorr(cks))
+  }
+
   test("Outer join") {
     val query = data2.join(data3, col("b") === col("c"), "right_outer")
     checkDexFor(query, query.dexCorr(cks))
