@@ -866,8 +866,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             val leftView = translatePlan(j.left)
             val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView), isNegated = false)
             val rightView = translatePlan(j.right)
-            // todo: optimize the case wehn rightView is just a table, merge the join with joinView without doing explicit join afterwards. Same for filter
-            joinView.join(rightView, NaturalJoin(Inner))
+            j.joinType match {
+              case Inner =>
+                joinView.join(rightView, NaturalJoin(Inner))
+              case LeftSemi =>
+                leftView.join(
+                  joinView.join(rightView, NaturalJoin(Inner)),
+                  NaturalJoin(LeftSemi))
+            }
+
           }
 
         case x => throw DexException("unsupported: " + x.toString)

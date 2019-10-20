@@ -19,7 +19,9 @@ package org.apache.spark.sql.dex
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.plans.LeftSemi
 import org.apache.spark.sql.functions
+import org.apache.spark.sql.functions.col
 
 class DexQuerySuite extends DexQueryTest {
 
@@ -63,6 +65,11 @@ class DexQuerySuite extends DexQueryTest {
 
   test("NOT filter") {
     val query = data2.where("a != 2")
+    checkDexFor(query, query.dexCorr(cks))
+  }
+
+  test("IN subquery") {
+    val query = data2.join(data3, col("b") === col("c"), "left_semi")
     checkDexFor(query, query.dexCorr(cks))
   }
 

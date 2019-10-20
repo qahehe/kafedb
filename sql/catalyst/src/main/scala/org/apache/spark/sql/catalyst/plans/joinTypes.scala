@@ -96,7 +96,7 @@ case class ExistenceJoin(exists: Attribute) extends JoinType {
 }
 
 case class NaturalJoin(tpe: JoinType) extends JoinType {
-  require(Seq(Inner, LeftOuter, RightOuter, FullOuter).contains(tpe),
+  require(Seq(Inner, LeftOuter, RightOuter, FullOuter, LeftSemi).contains(tpe),
     "Unsupported natural join type " + tpe)
   override def sql: String = "NATURAL " + tpe.sql
 }
