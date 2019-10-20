@@ -227,7 +227,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |WHERE ${f.condition.dialectSql(dialect.quoteIdentifier)}
          """.stripMargin
       case j: Join =>
-        // todo: turn left semi join to a subquery
         val leftSubquery = convertToSQL(j.left)
         val rightSubquery = convertToSQL(j.right)
         j.joinType match {
@@ -264,6 +263,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |WHERE ($leftRids) IN (
                |  SELECT $rightRids
                |  FROM ($rightSubquery) AS ${generateSubqueryName()}
+               |)
+             """.stripMargin
+          case x if x == RightSemi && j.condition.isDefined =>
+            val (leftRids, rightRids) = ridOrdersFromJoin(j)
+            s"""
+               |($rightSubquery) AS ${generateSubqueryName()}
+               |WHERE ($rightRids) IN (
+               |  SELECT $leftRids
+               |  FROM ($leftSubquery) AS ${generateSubqueryName()}
                |)
              """.stripMargin
           case x if x == LeftAnti && j.condition.isDefined =>
@@ -880,7 +888,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
               case LeftSemi =>
                 leftView.join(
                   joinView.join(rightView, NaturalJoin(Inner)),
-                  NaturalJoin(LeftSemi))
+                  NaturalJoin(LeftSemi)) // less efficient than RightSemi by having more joins on leftviews
+              case RightSemi =>
+                //joinView.join(rightView, NaturalJoin(RightSemi))
+                rightView.join(joinView, NaturalJoin(LeftSemi))
               case RightOuter =>
                 joinView.join(rightView, NaturalJoin(RightOuter))
               case x => throw DexException("unsupported: " + x.getClass.getName)

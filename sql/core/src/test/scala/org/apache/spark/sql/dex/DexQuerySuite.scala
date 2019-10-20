@@ -73,6 +73,11 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query, query.dexCorr(cks))
   }
 
+  test("In subquery: right semi join") {
+    val query = data2.join(data3, col("b") === col("c"), "right_semi")
+    checkDexFor(query, query.dexCorr(cks))
+  }
+
   test("Outer join") {
     val query = data2.join(data3, col("b") === col("c"), "right_outer")
     checkDexFor(query, query.dexCorr(cks))

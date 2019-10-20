@@ -28,6 +28,7 @@ object JoinType {
     case "leftouter" | "left" => LeftOuter
     case "rightouter" | "right" => RightOuter
     case "leftsemi" => LeftSemi
+    case "rightsemi" => RightSemi
     case "leftanti" => LeftAnti
     case "cross" => Cross
     case _ =>
@@ -83,6 +84,10 @@ case object LeftSemi extends JoinType {
   override def sql: String = "LEFT SEMI"
 }
 
+case object RightSemi extends JoinType {
+  override def sql: String = "RIGHT SEMI"
+}
+
 case object LeftAnti extends JoinType {
   override def sql: String = "LEFT ANTI"
 }
@@ -96,7 +101,7 @@ case class ExistenceJoin(exists: Attribute) extends JoinType {
 }
 
 case class NaturalJoin(tpe: JoinType) extends JoinType {
-  require(Seq(Inner, LeftOuter, RightOuter, FullOuter, LeftSemi).contains(tpe),
+  require(Seq(Inner, LeftOuter, RightOuter, FullOuter, LeftSemi, RightSemi).contains(tpe),
     "Unsupported natural join type " + tpe)
   override def sql: String = "NATURAL " + tpe.sql
 }
@@ -111,6 +116,13 @@ object LeftExistence {
   def unapply(joinType: JoinType): Option[JoinType] = joinType match {
     case LeftSemi | LeftAnti => Some(joinType)
     case j: ExistenceJoin => Some(joinType)
+    case _ => None
+  }
+}
+
+object RightExistence {
+  def unapply(joinType: JoinType): Option[JoinType] = joinType match {
+    case RightSemi => Some(joinType)
     case _ => None
   }
 }

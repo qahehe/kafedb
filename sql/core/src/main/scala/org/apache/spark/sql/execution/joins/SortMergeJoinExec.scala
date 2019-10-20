@@ -58,6 +58,8 @@ case class SortMergeJoinExec(
         left.output :+ j.exists
       case LeftExistence(_) =>
         left.output
+      case RightExistence(_) =>
+        right.output
       case x =>
         throw new IllegalArgumentException(
           s"${getClass.getSimpleName} should not take $x as the JoinType")
@@ -288,6 +290,41 @@ case class SortMergeJoinExec(
             }
 
             override def getRow: InternalRow = currentLeftRow
+          }.toScala
+
+        case RightSemi =>
+          new RowIterator {
+            private[this] var currentRightRow: InternalRow = _
+            private[this] val smjScanner = new SortMergeJoinScanner(
+              createRightKeyGenerator(),
+              createLeftKeyGenerator(),
+              newNaturalAscendingOrdering(rightKeys.map(_.dataType)),
+              RowIterator.fromScala(rightIter),
+              RowIterator.fromScala(leftIter),
+              inMemoryThreshold,
+              spillThreshold
+            )
+            private[this] val joinRow = new JoinedRow
+
+            override def advanceNext(): Boolean = {
+              while (smjScanner.findNextInnerJoinRows()) {
+                val currentLeftMatches = smjScanner.getBufferedMatches
+                currentRightRow = smjScanner.getStreamedRow
+                if (currentLeftMatches != null && currentLeftMatches.length > 0) {
+                  val leftMatchesIterator = currentLeftMatches.generateIterator()
+                  while (leftMatchesIterator.hasNext) {
+                    joinRow(currentRightRow, leftMatchesIterator.next())
+                    if (boundCondition(joinRow)) {
+                      numOutputRows += 1
+                      return true
+                    }
+                  }
+                }
+              }
+              false
+            }
+
+            override def getRow: InternalRow = currentRightRow
           }.toScala
 
         case LeftAnti =>

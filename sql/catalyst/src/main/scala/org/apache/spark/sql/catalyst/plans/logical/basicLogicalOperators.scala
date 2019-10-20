@@ -318,6 +318,8 @@ case class Join(
         left.output :+ j.exists
       case LeftExistence(_) =>
         left.output
+      case RightExistence(_) =>
+        right.output
       case LeftOuter =>
         left.output ++ right.output.map(_.withNullability(true))
       case RightOuter =>

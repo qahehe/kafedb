@@ -2358,6 +2358,8 @@ class Analyzer(
         leftKeys ++ lUniqueOutput ++ rUniqueOutput.map(_.withNullability(true))
       case LeftExistence(_) =>
         leftKeys ++ lUniqueOutput
+      case RightExistence(_) =>
+        rightKeys ++ rUniqueOutput
       case RightOuter =>
         rightKeys ++ lUniqueOutput.map(_.withNullability(true)) ++ rUniqueOutput
       case FullOuter =>
