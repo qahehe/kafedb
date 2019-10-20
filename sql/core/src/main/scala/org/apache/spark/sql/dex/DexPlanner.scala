@@ -239,7 +239,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |
                |($rightSubquery) AS ${generateSubqueryName()}
               """.stripMargin
-          case x if x == Inner && isNaturalInnerJoin(j) =>
+          case x if x == Inner && isNaturalJoin(j) =>
             s"""
                |($leftSubquery) AS ${generateSubqueryName()}
                |
@@ -275,6 +275,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |  FROM ($rightSubquery) AS ${generateSubqueryName()}
                |)
              """.stripMargin
+          case x if x == RightOuter && isNaturalJoin(j) =>
+            s"""
+               |($leftSubquery) AS ${generateSubqueryName()}
+               |
+               |NATURAL RIGHT OUTER JOIN
+               |
+               |($rightSubquery) AS ${generateSubqueryName()}
+              """.stripMargin
           case x => throw DexException("unsupported: " + x.getClass.getName + " in join: " + j.toString)
         }
 
@@ -582,7 +590,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
-    private def isNaturalInnerJoin(join: Join) = {
+    private def isNaturalJoin(join: Join) = {
       join.condition.exists(isConjunctionOnly) &&
         join.condition.exists(hasEquiJoinConditionOnly) &&
         join.condition.collectFirst {
@@ -873,6 +881,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                 leftView.join(
                   joinView.join(rightView, NaturalJoin(Inner)),
                   NaturalJoin(LeftSemi))
+              case RightOuter =>
+                joinView.join(rightView, NaturalJoin(RightOuter))
+              case x => throw DexException("unsupported: " + x.getClass.getName)
             }
 
           }
