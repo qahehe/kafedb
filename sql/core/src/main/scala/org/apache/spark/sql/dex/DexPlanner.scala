@@ -886,16 +886,30 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
               case Inner =>
                 joinView.join(rightView, NaturalJoin(Inner))
               case LeftSemi =>
-                leftView.join(
-                  joinView.join(rightView, NaturalJoin(LeftSemi)),
-                  NaturalJoin(LeftSemi)) // less efficient than RightSemi by having more joins on leftviews
+                /*if (j.right.isInstanceOf[LogicalRelation]) {
+                  // rightview is useless
+                  leftView.join(
+                    joinView,
+                    NaturalJoin(LeftSemi))
+                } else {*/
+                  leftView.join(
+                    joinView.join(rightView, NaturalJoin(LeftSemi)),
+                    NaturalJoin(LeftSemi)) // less efficient than RightSemi by having more joins on leftviews
+                //}
               case RightSemi =>
                 //joinView.join(rightView, NaturalJoin(RightSemi))
                 rightView.join(joinView, NaturalJoin(LeftSemi))
               case LeftAnti =>
-                leftView.join(
-                  joinView.join(rightView, NaturalJoin(LeftSemi)),
-                  NaturalJoin(LeftAnti)) // less efficient than RightSemi by having more joins on leftviews
+                /*if (j.right.isInstanceOf[LogicalRelation]) {
+                  leftView.join(
+                    joinView,
+                    NaturalJoin(LeftAnti)) // less efficient than RightSemi by having more joins on leftviews
+                } else {*/
+                  leftView.join(
+                    joinView.join(rightView, NaturalJoin(LeftSemi)),
+                    NaturalJoin(LeftAnti)) // less efficient than RightSemi by having more joins on leftviews
+                //}
+
               case RightAnti =>
                 rightView.join(joinView, NaturalJoin(LeftAnti))
               case RightOuter =>
