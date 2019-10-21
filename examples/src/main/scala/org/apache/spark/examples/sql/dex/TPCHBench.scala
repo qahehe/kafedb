@@ -506,7 +506,7 @@ object TPCHBench extends DexTPCHBenchCommon {
       //                    / \
       //            f(N) - S  f(O)
       // self-join
-      BenchQuery("q21b",
+      /*BenchQuery("q21b",
         """
           |select
           |  s_name
@@ -533,7 +533,7 @@ object TPCHBench extends DexTPCHBenchCommon {
             .join(nation).where("s_nationkey = n_nationkey and n_name = 'SAUDI ARABIA'"),
             expr("l3.l_orderkey") === col("o_orderkey"), "right_anti")
           .select("s_name")
-      ),
+      ),*/
 
       // C left-anti-join O
       BenchQuery("q22",
