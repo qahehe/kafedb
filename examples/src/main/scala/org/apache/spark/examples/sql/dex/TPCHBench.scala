@@ -33,7 +33,7 @@ object TPCHBench extends DexTPCHBenchCommon {
         """
           |select
           |  l_returnflag,
-          |  l_linestatus,
+          |  l_linestatus
           |from
           |  lineitem
         """.stripMargin,
