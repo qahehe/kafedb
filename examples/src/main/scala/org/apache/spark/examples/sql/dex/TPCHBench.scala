@@ -38,8 +38,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           |  lineitem
         """.stripMargin,
         lineitem.selectExpr(
-          "l_returnflag",
-          "l_linestatus")
+          "l_returnflag", "l_linestatus")
       ),
 
       BenchQuery("q2",
@@ -64,7 +63,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           .join(nation).where("r_regionkey = n_regionkey")
           .join(supplier).where("n_nationkey = s_nationkey")
           .join(part.where("p_size = 15")
-            .join(partsupp).where("p_patkey = ps_partkey"))
+            .join(partsupp).where("p_partkey = ps_partkey"))
           .where("s_suppkey = ps_suppkey")
           .select("ps_supplycost")
       ),
@@ -502,6 +501,7 @@ object TPCHBench extends DexTPCHBenchCommon {
               .join(supplier).where("l1.l_suppkey = s_suppkey")
               .join(nation).where("s_nationkey = n_nationkey and n_name = 'SAUDI ARABIA'"),
               expr("l2.l_orderkey") === col("o_orderkey"), "right_semi")
+            .select("s_name")
       ),
 
       //   L3 join-anti-left L1
@@ -534,6 +534,7 @@ object TPCHBench extends DexTPCHBenchCommon {
             .join(supplier).where("l1.l_suppkey = s_suppkey")
             .join(nation).where("s_nationkey = n_nationkey and n_name = 'SAUDI ARABIA'"),
             expr("l3.l_orderkey") === col("o_orderkey"), "right_anti")
+          .select("s_name")
       ),
 
       // C left-anti-join O
@@ -550,6 +551,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           |)
         """.stripMargin,
         orders.join(customer, col("o_custkey") === col("c_custkey"), "right_anti")
+          .select("c_phone", "c_acctbal")
       )
     )
 
