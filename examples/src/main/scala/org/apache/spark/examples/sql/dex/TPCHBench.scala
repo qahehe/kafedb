@@ -60,7 +60,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           |  and r_name = 'EUROPE'
           |  and p_size = 15
         """.stripMargin,
-        region.where("r_name = 'EUROPE")
+        region.where("r_name = 'EUROPE'")
           .join(nation).where("r_regionkey = n_regionkey")
           .join(supplier).where("n_nationkey = s_nationkey")
           .join(part.where("p_size = 15")
@@ -87,7 +87,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           |  and c_custkey = o_custkey
           |  and l_orderkey = o_orderkey
         """.stripMargin,
-        customer.where("c_mktsegment = 'BUILDING")
+        customer.where("c_mktsegment = 'BUILDING'")
           .join(orders).where("c_custkey = o_custkey")
           .join(lineitem).where("o_orderkey = l_orderkey")
           .select("l_orderkey", "l_extendedprice", "l_discount", "o_orderdate", "o_shippriority")
@@ -131,7 +131,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           |  and r_name = 'ASIA'
         """.stripMargin,
 
-        region.where("r_name = 'ASIA")
+        region.where("r_name = 'ASIA'")
           .join(nation).where("r_regionkey = n_regionkey")
           .join(customer).where("n_nationkey = s_nationkey")
           .join(orders).where("c_custkey = o_custkey")
@@ -173,10 +173,10 @@ object TPCHBench extends DexTPCHBenchCommon {
           |  )
         """.stripMargin,
 
-        nation.as("n1").where("n1.n_name = 'FRANCE")
+        nation.as("n1").where("n1.n_name = 'FRANCE'")
           .join(supplier).where("n1.nationkey = s_nationkey")
           .join(lineitem).where("s_suppkey = l_suppkey")
-          .join(nation.as("n2").where("n2.n_name = 'GERMANY")
+          .join(nation.as("n2").where("n2.n_name = 'GERMANY'")
             .join(customer).where("n2.n_nationkey = c_nationkey")
             .join(orders).where("c_custkey = o_custkey")
           ).where("l_orderkey = o_orderkey")
@@ -209,7 +209,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           .join(lineitem).where("p_partkey = l_partkey")
           .join(supplier).where("l_suppkey = s_suppkey")
           .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
-          .join(region.where("r_name = 'AMERICA")
+          .join(region.where("r_name = 'AMERICA'")
               .join(nation.as("n1")).where("r_regionkey = n1.n_nationkey")
               .join(customer).where("n1.n_nationkey = c_nationkey")
               .join(orders).where("c_custkey = o_custkey")
