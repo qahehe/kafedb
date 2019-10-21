@@ -130,6 +130,15 @@ object TPCHBench extends DexTPCHBenchCommon {
           |  and r_name = 'ASIA'
         """.stripMargin,
 
+        /*region.where("r_name = 'ASIA'")
+          .join(nation).where("r_regionkey = n_regionkey")
+          .join(customer
+            .join(orders).where("c_custkey = o_custkey")
+            .join(lineitem).where("o_orderkey = l_orderkey")
+            .join(supplier).where("l_suppkey = s_suppkey")
+          ).where("n_nationkey = c_nationkey and n_nationkey = s_nationkey")
+        // cut down memory usage from 77G to 59G.*/
+
         region.where("r_name = 'ASIA'")
           .join(nation).where("r_regionkey = n_regionkey")
           .join(customer).where("n_nationkey = c_nationkey")

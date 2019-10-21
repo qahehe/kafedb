@@ -64,7 +64,7 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
         PushDownPredicate,
         LimitPushDown,
         ColumnPruning,
-        InferFiltersFromConstraints,
+        // InferFiltersFromConstraints,
         // Operator combine
         CollapseRepartition,
         CollapseProject,
@@ -101,8 +101,8 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
         operatorOptimizationRuleSet.filterNot(_ == InferFiltersFromConstraints)
       Batch("Operator Optimization before Inferring Filters", fixedPoint,
         rulesWithoutInferFiltersFromConstraints: _*) ::
-      Batch("Infer Filters", Once,
-        InferFiltersFromConstraints) ::
+      // Batch("Infer Filters", Once,
+      //   InferFiltersFromConstraints) ::
       Batch("Operator Optimization after Inferring Filters", fixedPoint,
         rulesWithoutInferFiltersFromConstraints: _*) :: Nil
     }
