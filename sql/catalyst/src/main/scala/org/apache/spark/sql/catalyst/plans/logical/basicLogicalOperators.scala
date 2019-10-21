@@ -316,9 +316,9 @@ case class Join(
     joinType match {
       case j: ExistenceJoin =>
         left.output :+ j.exists
-      case LeftExistence(_) =>
+      case LeftExistence(_) | NaturalJoin(LeftSemi) | NaturalJoin(LeftAnti) =>
         left.output
-      case RightExistence(_) =>
+      case RightExistence(_) | NaturalJoin(RightSemi) | NaturalJoin(RightAnti) =>
         right.output
       case LeftOuter =>
         left.output ++ right.output.map(_.withNullability(true))
