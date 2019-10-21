@@ -132,7 +132,7 @@ object TPCHBench extends DexTPCHBenchCommon {
 
         region.where("r_name = 'ASIA'")
           .join(nation).where("r_regionkey = n_regionkey")
-          .join(customer).where("n_nationkey = s_nationkey")
+          .join(customer).where("n_nationkey = c_nationkey")
           .join(orders).where("c_custkey = o_custkey")
           .join(lineitem).where("o_orderkey = l_orderkey")
           .join(supplier).where("l_suppkey = s_suppkey")
@@ -173,7 +173,7 @@ object TPCHBench extends DexTPCHBenchCommon {
         """.stripMargin,
 
         nation.as("n1").where("n1.n_name = 'FRANCE'")
-          .join(supplier).where("n1.nationkey = s_nationkey")
+          .join(supplier).where("n1.n_nationkey = s_nationkey")
           .join(lineitem).where("s_suppkey = l_suppkey")
           .join(nation.as("n2").where("n2.n_name = 'GERMANY'")
             .join(customer).where("n2.n_nationkey = c_nationkey")
@@ -456,10 +456,8 @@ object TPCHBench extends DexTPCHBenchCommon {
           |    from part
           |    where p_size = 15
           |  )
-          |)
-          |  and s_nationkey = n_nationkey
+          |) and s_nationkey = n_nationkey
           |  and n_name = 'CANADA'
-          |)
         """.stripMargin,
         part.where("p_size = 15")
           .join(partsupp, col("p_partkey") === col("ps_partkey"), "right_semi")
