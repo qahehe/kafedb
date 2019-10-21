@@ -135,7 +135,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           .join(customer).where("n_nationkey = c_nationkey")
           .join(orders).where("c_custkey = o_custkey")
           .join(lineitem).where("o_orderkey = l_orderkey")
-          .join(supplier).where("l_suppkey = s_suppkey")
+          .join(supplier).where("l_suppkey = s_suppkey and n_nationkey = s_nationkey")
           .select("n_name", "l_extendedprice", "l_discount")
       ),
 
@@ -209,7 +209,7 @@ object TPCHBench extends DexTPCHBenchCommon {
           .join(supplier).where("l_suppkey = s_suppkey")
           .join(nation.as("n2")).where("s_nationkey = n2.n_nationkey")
           .join(region.where("r_name = 'AMERICA'")
-              .join(nation.as("n1")).where("r_regionkey = n1.n_nationkey")
+              .join(nation.as("n1")).where("r_regionkey = n1.n_regionkey")
               .join(customer).where("n1.n_nationkey = c_nationkey")
               .join(orders).where("c_custkey = o_custkey")
           ).where("l_orderkey = o_orderkey")
