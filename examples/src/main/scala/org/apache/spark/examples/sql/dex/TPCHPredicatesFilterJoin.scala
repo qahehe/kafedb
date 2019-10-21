@@ -68,7 +68,7 @@ object TPCHPredicatesFilterJoin extends DexTPCHBenchCommon {
           .join(nation).where("s_nationkey = n_nationkey and n_name = 'FRANCE'")
           .join(customer).where("n_nationkey = c_nationkey")),
 
-      // F - F => f(P) - F - F, small P
+      // F - F => f(P) - F - F, small P.  Second join P - F chained with first join f(P) - F, sees lots of intermediate data amplified from f(P) by first F, so worse than just P - F
       BenchQuery("ft1b", "select * from nation, supplier, customer where n_name = 'FRANCE' and n_nationkey = s_nationkey and n_nationkey = c_nationkey",
         nation.where("n_name = 'FRANCE'")
           .join(supplier).where("n_nationkey = s_nationkey")
