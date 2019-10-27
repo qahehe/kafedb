@@ -17,15 +17,19 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import org.apache.spark.sql.dex.DexConstants.TableAttributeCompound
+import org.apache.spark.sql.dex.DexPrimitives.dexTableNameOf
+import org.apache.spark.sql.dex.DexConstants.{TableAttributeCompound, tCorrJoinName, tDomainName, tFilterName, tUncorrJoinName}
 
 trait DexQueryTest extends DexTest {
-  lazy val data2 = spark.read.jdbc(url, "testdata2", properties)
-  lazy val data3 = spark.read.jdbc(url, "testdata3", properties)
-  lazy val data4 = spark.read.jdbc(url, "testdata4", properties)
+  val data2Name = "testdata2"
+  val data3Name = "testdata3"
+  val data4Name = "testdata4"
+  lazy val data2 = spark.read.jdbc(url, data2Name, properties)
+  lazy val data3 = spark.read.jdbc(url, data3Name, properties)
+  lazy val data4 = spark.read.jdbc(url, data4Name, properties)
 
   lazy val compoundKeys = Set(
-    TableAttributeCompound("testdata4", Seq("e", "f")), TableAttributeCompound("testdata2", Seq("a", "b"))
+    TableAttributeCompound(data4Name, Seq("e", "f")), TableAttributeCompound(data2Name, Seq("a", "b"))
   )
   lazy val cks = compoundKeys.map(_.attr)
 
@@ -42,12 +46,12 @@ trait DexQueryTest extends DexTest {
   protected override def beforeAll(): Unit = {
     super.beforeAll()
 
-    conn.prepareStatement("drop table if exists testdata2").executeUpdate()
-    conn.prepareStatement("drop table if exists testdata3").executeUpdate()
-    conn.prepareStatement("drop table if exists testdata4").executeUpdate()
-    connEnc.prepareStatement("drop table if exists testdata2_prf").executeUpdate()
-    connEnc.prepareStatement("drop table if exists testdata3_prf").executeUpdate()
-    connEnc.prepareStatement("drop table if exists testdata4_prf").executeUpdate()
+    conn.prepareStatement(s"drop table if exists ${data2Name}").executeUpdate()
+    conn.prepareStatement(s"drop table if exists ${data3Name}").executeUpdate()
+    conn.prepareStatement(s"drop table if exists ${data4Name}").executeUpdate()
+    connEnc.prepareStatement(s"drop table if exists ${dexTableNameOf(data2Name)}").executeUpdate()
+    connEnc.prepareStatement(s"drop table if exists ${dexTableNameOf(data3Name)}").executeUpdate()
+    connEnc.prepareStatement(s"drop table if exists ${dexTableNameOf(data4Name)}").executeUpdate()
     connEnc.prepareStatement("drop table if exists t_filter").executeUpdate()
     connEnc.prepareStatement("drop table if exists t_correlated_join").executeUpdate()
     connEnc.prepareStatement("drop table if exists t_uncorrelated_join").executeUpdate()
@@ -55,11 +59,11 @@ trait DexQueryTest extends DexTest {
     conn.commit()
     connEnc.commit()
 
-    conn.prepareStatement("create table testdata2 (a int, b int)")
+    conn.prepareStatement(s"create table ${data2Name} (a int, b int)")
       .executeUpdate()
     conn.prepareStatement(
-      """
-        |insert into testdata2 values
+      s"""
+        |insert into ${data2Name} values
         |(1, 1),
         |(1, 2),
         |(2, 1),
@@ -70,11 +74,11 @@ trait DexQueryTest extends DexTest {
         .executeUpdate()
     conn.commit()
 
-    conn.prepareStatement("create table testdata3 (c int, d int)")
+    conn.prepareStatement(s"create table ${data3Name} (c int, d int)")
       .executeUpdate()
     conn.prepareStatement(
-      """
-        |insert into testdata3 values
+      s"""
+        |insert into ${data3Name} values
         |(1, 1),
         |(1, 2),
         |(2, 3)
@@ -82,11 +86,11 @@ trait DexQueryTest extends DexTest {
       .executeUpdate()
     conn.commit()
 
-    conn.prepareStatement("create table testdata4 (e int, f int, g int, h int)")
+    conn.prepareStatement(s"create table ${data4Name} (e int, f int, g int, h int)")
       .executeUpdate()
     conn.prepareStatement(
-      """
-        |insert into testdata4 values
+      s"""
+        |insert into ${data4Name} values
         |(2, 1, 10, 100),
         |(2, 2, 10, 200),
         |(2, 3, 20, 300),
@@ -145,11 +149,11 @@ trait DexQueryTest extends DexTest {
 
     if (provideEncryptedData) {
       // todo: make rid start from 0, to be conssitent with DexBuilder
-      connEnc.prepareStatement("create table testdata2_prf (rid varchar, a_prf varchar, b_prf varchar)")
+      connEnc.prepareStatement(s"create table ${dexTableNameOf(data2Name)} (rid varchar, a_prf varchar, b_prf varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
-        """
-          |insert into testdata2_prf values
+        s"""
+          |insert into ${dexTableNameOf(data2Name)} values
           |('1', '1_enc', '1_enc'),
           |('2', '1_enc', '2_enc'),
           |('3', '2_enc', '1_enc'),
@@ -160,11 +164,11 @@ trait DexQueryTest extends DexTest {
         .executeUpdate()
       connEnc.commit()
 
-      connEnc.prepareStatement("create table testdata3_prf (rid varchar, c_prf varchar, d_prf varchar)")
+      connEnc.prepareStatement(s"create table ${dexTableNameOf(data3Name)} (rid varchar, c_prf varchar, d_prf varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
-        """
-          |insert into testdata3_prf values
+        s"""
+          |insert into ${dexTableNameOf(data3Name)} values
           |('1', '1_enc', '1_enc'),
           |('2', '1_enc', '2_enc'),
           |('3', '2_enc', '3_enc')
@@ -172,11 +176,11 @@ trait DexQueryTest extends DexTest {
         .executeUpdate()
       connEnc.commit()
 
-      connEnc.prepareStatement("create table testdata4_prf (rid varchar, e_prf varchar, f_prf varchar, g_prf varchar, h_prf varchar)")
+      connEnc.prepareStatement(s"create table ${dexTableNameOf(data4Name)} (rid varchar, e_prf varchar, f_prf varchar, g_prf varchar, h_prf varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
-        """
-          |insert into testdata4_prf values
+        s"""
+          |insert into ${dexTableNameOf(data4Name)} values
           |('1', '2_enc', '1_enc', '10_enc', '100_enc'),
           |('2', '2_enc', '2_enc', '10_enc', '200_enc'),
           |('3', '2_enc', '3_enc', '20_enc', '300_enc'),
@@ -187,11 +191,11 @@ trait DexQueryTest extends DexTest {
       connEnc.commit()
 
       // encrypted multi-map of attr -> domain value
-      connEnc.prepareStatement("create table t_domain(label varchar, value varchar)")
+      connEnc.prepareStatement(s"create table ${tDomainName}(label varchar, value varchar)")
           .executeUpdate()
       connEnc.prepareStatement(
-        """
-          |insert into t_domain values
+        s"""
+          |insert into ${tDomainName} values
           |('testdata2~a~0', '1_enc'),
           |('testdata2~a~1', '2_enc'),
           |('testdata2~a~2', '3_enc'),
@@ -263,11 +267,11 @@ trait DexQueryTest extends DexTest {
       //   Choice 2: t_e(domain_join(a, b), t_domain(c)) (retain t_domain(c)) join t_filter(retained t_domain(c))
 
       // encrypted multi-map of (attr, domain value) -> rid
-      connEnc.prepareStatement("create table t_filter (label varchar, value varchar)")
+      connEnc.prepareStatement(s"create table ${tFilterName} (label varchar, value varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
-        """
-          |insert into t_filter values
+        s"""
+          |insert into ${tFilterName} values
           |('testdata2~a~1~0', '1_enc'),
           |('testdata2~a~1~1', '2_enc'),
           |('testdata2~a~2~0', '3_enc'),
@@ -308,11 +312,11 @@ trait DexQueryTest extends DexTest {
       )*/
 
       // encrypted multi-map of (attr, attr, rid) -> rid
-      connEnc.prepareStatement("create table t_correlated_join (label varchar, value varchar)")
+      connEnc.prepareStatement(s"create table ${tCorrJoinName} (label varchar, value varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
-        """
-          |insert into t_correlated_join values
+        s"""
+          |insert into ${tCorrJoinName} values
           |('testdata2~a~testdata4~e~3~0', '1_enc'),
           |('testdata2~a~testdata4~e~3~1', '2_enc'),
           |('testdata2~a~testdata4~e~3~2', '3_enc'),
@@ -367,11 +371,11 @@ trait DexQueryTest extends DexTest {
       connEnc.commit()
 
       // encrypted multi-map of (attr, attr) -> (rid, rid)
-      connEnc.prepareStatement("create table t_uncorrelated_join (label varchar, value_left varchar, value_right varchar)")
+      connEnc.prepareStatement(s"create table ${tUncorrJoinName} (label varchar, value_left varchar, value_right varchar)")
         .executeUpdate()
       connEnc.prepareStatement(
-        """
-          |insert into t_uncorrelated_join values
+        s"""
+          |insert into ${tUncorrJoinName} values
           |('testdata2~a~testdata4~e~0', '3_enc', '1_enc'),
           |('testdata2~a~testdata4~e~1', '3_enc', '2_enc'),
           |('testdata2~a~testdata4~e~2', '3_enc', '3_enc'),

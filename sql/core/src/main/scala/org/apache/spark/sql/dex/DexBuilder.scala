@@ -21,15 +21,14 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createHashIndex, createTreeIndex}
-import org.apache.spark.sql.dex.DexConstants.{AttrName, JoinableAttrs, TableAttribute, TableAttributeAtom, TableAttributeCompound, TableName}
+import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
+import org.apache.spark.sql.dex.DexConstants._
+import org.apache.spark.sql.dex.DexPrimitives._
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.{col, collect_list, lit, monotonically_increasing_id, posexplode, row_number, udf}
-import org.apache.spark.util.Utils
-import org.apache.spark.sql.functions.{col, concat, lit}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.LongType
-import org.apache.spark.util.collection.BitSet
+import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
+import org.apache.spark.util.Utils
 
 object DexVariant {
   def from(str: String): DexVariant = str.toLowerCase match {
@@ -82,19 +81,18 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     p
   }
 
-  private val encKey: String = "enc"
-  private val prfKey: String = "prf"
+  private val udfCell = udf(dexCellOf _)
 
-  private val udfCell = udf(encryptCell(encKey) _)
-
-  private val udfLabel = udf { (predicate: String, counter: Int) =>
-    labelFrom(prfKey)(predicate, counter)
+  private val udfEmmLabel = udf { (dexPredicate: String, counter: Int) =>
+    dexEmmLabelOf(dexPredicate, counter)
   }
-  private val udfValue = udf(encryptCell(encKey) _)
+  private val udfEmmValue = udf { (dexPredicate: String, rid: Number) =>
+    dexEmmValueOf(dexPredicate, rid)
+  }
 
-  private val udfRandPred = udf(randomPredicate(prfKey) _)
-
-  private val udfRid = udf((rid: Number) => s"$rid")
+  private val udfRid = udf { rid: Number =>
+    dexRidOf(rid)
+  }
 
   private def pibasCounterOn(c: Column): Column = row_number().over(Window.partitionBy(c).orderBy(c)) - 1
 
@@ -290,13 +288,11 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       val tFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
         val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
         r.columns.filter(c => nonKey(pk, fks, c) && c != DexConstants.ridCol).map { c =>
-          val udfPredicate = udf(filterPredicateOf(n, c) _)
+          val udfFilterPredicate = udf(dexPredicatesConcat(dexFilterPredicatePrefixOf(n, c)) _)
           r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
-            //.groupBy(c).agg(collect_list($"rid").as("rids"))
-            //.select(col(c), posexplode($"rids").as("counter" :: "rid" :: Nil))
-            .withColumn("predicate", udfRandPred(udfPredicate(col(c))))
-            .withColumn("label", udfLabel($"predicate", $"counter"))
-            .withColumn("value", udfValue($"rid"))
+            .withColumn("predicate", udfFilterPredicate(col(c)))
+            .withColumn("label", udfEmmLabel($"predicate", $"counter"))
+            .withColumn("value", udfEmmValue($"predicate", $"rid"))
             .select("label", "value")
         }
       }
@@ -327,13 +323,14 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         (attrLeft, attrRight) = if (attr.qualifiedName <= attrRef.qualifiedName) (attr, attrRef) else (attrRef, attr)
       } yield {
         val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
+        val uncorrJoinPredicate = dexUncorrJoinPredicateOf(attrLeft, attrRight)
         dfLeft.withColumnRenamed("rid", "rid_left")
           .join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
           .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition($"counter")
-          .withColumn("predicate", lit(uncorrJoinPredicateOf(attrLeft, attrRight)))
-          .withColumn("label", udfLabel($"predicate", $"counter"))
-          .withColumn("value_left", udfValue($"rid_left"))
-          .withColumn("value_right", udfValue($"rid_right"))
+          .withColumn("predicate", lit(uncorrJoinPredicate))
+          .withColumn("label", udfEmmLabel($"predicate", $"counter"))
+          .withColumn("value_left", udfEmmValue($"predicate", $"rid_left"))
+          .withColumn("value_right", udfEmmValue($"predicate", $"rid_right"))
           .select("label", "value_left", "value_right")
       }
       val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)
@@ -346,16 +343,16 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         ForeignKey(attr, attrRef) <- foreignKeys
       } yield {
         def joinFor(attrLeft: TableAttribute, attrRight: TableAttribute): DataFrame = {
-          val udfJoinPred = udf(joinPredicateOf(attrLeft, attrRight) _)
+          val udfJoinPred = udf(dexPredicatesConcat(dexCorrJoinPredicatePrefixOf(attrLeft, attrRight)) _)
           val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
           require(dfLeft.columns.contains(attrLeft.attr) && dfRight.columns.contains(attrRight.attr), s"${attrLeft.attr} and ${attrRight.attr}")
           dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
             //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
             //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
             .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
-            .withColumn("predicate", udfRandPred(udfJoinPred($"rid_left")))
-            .withColumn("label", udfLabel($"predicate", $"counter"))
-            .withColumn("value", udfValue($"rid_right"))
+            .withColumn("predicate", udfJoinPred($"rid_left"))
+            .withColumn("label", udfEmmLabel($"predicate", $"counter"))
+            .withColumn("value", udfEmmValue($"predicate", $"rid_right"))
             .select("label", "value")
         }
         joinFor(attr, attrRef) union joinFor(attrRef, attr)
@@ -403,66 +400,16 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     require(ridDf.columns.contains("rid"))
     val colToRandCol = ridDf.columns.collect {
       case c if c == "rid" => "rid" -> "rid"
-      case c => c -> randomId(prfKey, c)
+      case c => c -> dexColNameOf(c)
     }.toMap
     val ridDfProject = colToRandCol.values.map(col).toSeq
 
-    (randomId(prfKey, table),
+    (dexTableNameOf(table),
       ridDf.columns.foldLeft(ridDf) {
         case (d, c) if c == "rid" =>
           d.withColumn(colToRandCol(c), udfRid(col(c)))
         case (d, c) =>
           d.withColumn(colToRandCol(c), udfCell(col(c)))
       }.select(ridDfProject: _*))
-  }
-
-  private def tFilterPartForTable(table: TableName, ridDf: DataFrame): Seq[DataFrame] = {
-    ridDf.columns.filterNot(_ == "rid").map { c =>
-      val udfPredicate = udf(filterPredicateOf(table, c) _)
-
-      ridDf.groupBy(c).agg(collect_list($"rid").as("rids"))
-        .select(col(c), posexplode($"rids").as("counter" :: "rid" :: Nil))
-        .withColumn("predicate", udfRandPred(udfPredicate(col(c))))
-        .withColumn("label", udfLabel($"predicate", $"counter"))
-        .withColumn("value", udfValue($"rid"))
-        .select("label", "value")
-    }
-  }
-
-  private def randomId(prfKey: String, ident: String): String = {
-    s"${ident}_$prfKey"
-  }
-
-  private def encryptId(encKey: String, ident: String): String = {
-    s"${ident}_$encKey"
-  }
-
-  private def randomPredicate(prfKey: String)(predicate: String): String = {
-    // todo: use prfkey
-    predicate
-  }
-
-  private def joinPredicateOf(attrLeft: TableAttribute, attrRight: TableAttribute)(ridLeft: String): String = {
-    s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}~$ridLeft"
-  }
-
-  private def uncorrJoinPredicateOf(attrLeft: TableAttribute, attrRight: TableAttribute): String = {
-    s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}"
-  }
-
-  private def filterPredicateOf(table: String, column: String)(value: String): String = {
-    s"$table~$column~$value"
-  }
-
-  private def domainPredicateOf(table: String, column: String): String = {
-    s"$table~$column"
-  }
-
-  private def labelFrom(prfKey: String)(predicate: String, counter: Int): String = {
-    s"$predicate~$counter"
-  }
-
-  private def encryptCell(key: String)(cell: String): String = {
-    s"${cell}_$key"
   }
 }

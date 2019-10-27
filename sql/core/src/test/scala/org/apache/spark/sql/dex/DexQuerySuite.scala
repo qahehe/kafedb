@@ -223,7 +223,7 @@ class DexQuerySuite extends DexQueryTest {
     checkDexFor(query7, query7.dexCorr(cks))
   }
 
-  test("dex domain") {
+  ignore("dex domain") {
     val query1 = data2.join(data3).where("a == c and b == 2")
     checkDexFor(query1, query1.dexDom)
 
@@ -239,6 +239,13 @@ class DexQuerySuite extends DexQueryTest {
   test("dex table alias") {
     val query1 = data2.as("d2").join(data3).where("d2.a = c")
     checkDexFor(query1, query1.dexCorr(cks))
+  }
+
+  test("insert") {
+    val s = spark
+    import s.implicits._
+    //val query = Seq((10, 11)).toDF.write.insertInto("testdata2")
+
   }
 
   test("jdbc rdd internal rows are unmaterialized cursors") {
