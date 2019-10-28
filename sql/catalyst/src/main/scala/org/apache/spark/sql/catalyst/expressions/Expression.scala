@@ -245,19 +245,13 @@ abstract class Expression extends TreeNode[Expression] {
     val childrenSQL = children.map(_.sql).mkString(", ")
     s"$prettyName($childrenSQL)"
   }
-
-  def dialectSql(quoteIdent: String => String): String = {
-    val childrenSQL = children.map(_.dialectSql(quoteIdent)).mkString(", ")
-    s"$prettyName($childrenSQL)"
-  }
 }
-
 
 /**
  * An expression that cannot be evaluated. Some expressions don't live past analysis or optimization
  * time (e.g. Star). This trait is used by those expressions.
  */
-trait Unevaluable extends Expression {
+trait Unevaluable extends Expression with DialectSQLTranslatable {
 
   final override def eval(input: InternalRow = null): Any =
     throw new UnsupportedOperationException(s"Cannot evaluate expression: $this")
@@ -301,11 +295,29 @@ trait NonSQLExpression extends Expression {
   }
 }
 
+trait SqlDialect {
+  def quoteIdentifier(colName: String): String
+}
+
+trait DialectSQLTranslatable extends Expression {
+  protected def dialectSqlName: String = prettyName
+
+  final def dialectSql(dialect: SqlDialect): String = {
+    require(children.forall(_.isInstanceOf[DialectSQLTranslatable]))
+    dialectSqlExpr(dialect)
+  }
+
+  protected def dialectSqlExpr(dialect: SqlDialect): String = {
+    val childrenSQL = children.map(
+      _.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)).mkString(", ")
+    s"$dialectSqlName($childrenSQL)"
+  }
+}
 
 /**
  * An expression that is nondeterministic.
  */
-trait Nondeterministic extends Expression {
+trait Nondeterministic extends Expression with DialectSQLTranslatable {
   final override lazy val deterministic: Boolean = false
   final override def foldable: Boolean = false
 
@@ -367,7 +379,7 @@ trait Stateful extends Nondeterministic {
 /**
  * A leaf expression, i.e. one without any child expressions.
  */
-abstract class LeafExpression extends Expression {
+abstract class LeafExpression extends Expression with DialectSQLTranslatable {
 
   override final def children: Seq[Expression] = Nil
 }
@@ -377,7 +389,7 @@ abstract class LeafExpression extends Expression {
  * An expression with one input and one output. The output is by default evaluated to null
  * if the input is evaluated to null.
  */
-abstract class UnaryExpression extends Expression {
+abstract class UnaryExpression extends Expression with DialectSQLTranslatable {
 
   def child: Expression
 
@@ -462,7 +474,7 @@ abstract class UnaryExpression extends Expression {
  * An expression with two inputs and one output. The output is by default evaluated to null
  * if any input is evaluated to null.
  */
-abstract class BinaryExpression extends Expression {
+abstract class BinaryExpression extends Expression with DialectSQLTranslatable {
 
   def left: Expression
   def right: Expression
@@ -596,9 +608,11 @@ abstract class BinaryOperator extends BinaryExpression with ExpectsInputTypes {
 
   override def sql: String = s"(${left.sql} $sqlOperator ${right.sql})"
 
-  override def dialectSql(quoteIdent: String => String): String =
-    s"(${left.dialectSql(quoteIdent)} $sqlOperator ${right.dialectSql(quoteIdent)})"
-
+  override protected def dialectSqlExpr(dialect: SqlDialect): String = {
+    val leftDialect = left.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)
+    val rightDialect = right.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)
+    s"($leftDialect $sqlOperator $rightDialect)"
+  }
 }
 
 
@@ -610,7 +624,7 @@ object BinaryOperator {
  * An expression with three inputs and one output. The output is by default evaluated to null
  * if any input is evaluated to null.
  */
-abstract class TernaryExpression extends Expression {
+abstract class TernaryExpression extends Expression with DialectSQLTranslatable {
 
   override def foldable: Boolean = children.forall(_.foldable)
 
@@ -709,7 +723,7 @@ abstract class TernaryExpression extends Expression {
  * This logic is usually utilized by expressions combining data from multiple child expressions
  * of non-primitive types (e.g. [[CaseWhen]]).
  */
-trait ComplexTypeMergingExpression extends Expression {
+trait ComplexTypeMergingExpression extends Expression with DialectSQLTranslatable {
 
   /**
    * A collection of data types used for resolution the output type of the expression. By default,

@@ -119,6 +119,9 @@ abstract class Attribute extends LeafExpression with NamedExpression with NullIn
   override def toAttribute: Attribute = this
   def newInstance(): Attribute
 
+  override protected def dialectSqlExpr(dialect: SqlDialect): String = {
+    dialect.quoteIdentifier(name)
+  }
 }
 
 /**
@@ -208,14 +211,16 @@ case class Alias(child: Expression, name: String)(
     s"${child.sql} AS $qualifierPrefix${quoteIdentifier(name)}"
   }
 
-  override def dialectSql(quoteIdent: String => String): String = {
+  override protected def dialectSqlExpr(dialect: SqlDialect): String = {
+    require(child.isInstanceOf[DialectSQLTranslatable])
     val qualifierPrefix = if (qualifier.nonEmpty) {
-      qualifier.map(quoteIdent).mkString(".") + "."
+      qualifier.map(dialect.quoteIdentifier).mkString(".") + "."
     }
     else {
       ""
     }
-    s"${child.dialectSql(quoteIdent)} AS $qualifierPrefix${quoteIdent(name)}"
+    val childAttr = child.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)
+    s"$childAttr AS $qualifierPrefix${dialect.quoteIdentifier(name)}"
   }
 }
 
@@ -343,14 +348,14 @@ case class AttributeReference(
     s"$qualifierPrefix${quoteIdentifier(name)}"
   }
 
-  override def dialectSql(quoteIdent: String => String): String = {
+  override protected def dialectSqlExpr(dialect: SqlDialect): String = {
     val qualifierPrefix = if (qualifier.nonEmpty) {
-      qualifier.map(quoteIdent).mkString(".") + "."
+      qualifier.map(dialect.quoteIdentifier).mkString(".") + "."
     }
     else {
       ""
     }
-    s"$qualifierPrefix${quoteIdent(name)}"
+    s"$qualifierPrefix${dialect.quoteIdentifier(name)}"
   }
 }
 

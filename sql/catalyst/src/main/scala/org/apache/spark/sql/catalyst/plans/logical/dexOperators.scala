@@ -18,10 +18,10 @@
 package org.apache.spark.sql.catalyst.plans.logical
 // scalastyle:off
 
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet}
+import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet, Literal}
 import org.apache.spark.sql.catalyst.dsl.expressions._
 
-abstract class DexUnaryOperator(predicate: String, emm: LogicalPlan) extends UnaryNode {
+abstract class DexUnaryOperator(emm: LogicalPlan) extends UnaryNode {
   override def output: Seq[Attribute] = emm.output.collect {
     case x: Attribute if x.name == "label" => x.withName("value_dec_key")
     case x => x
@@ -39,13 +39,13 @@ abstract class DexUnaryOperator(predicate: String, emm: LogicalPlan) extends Una
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
-case class DexRidFilter(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+case class DexRidFilter(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(emm)
 
-case class SpxRidUncorrelatedJoin(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+case class SpxRidUncorrelatedJoin(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(emm)
 
-case class DexDomainValues(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+case class DexDomainValues(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(emm)
 
-case class DexCorrelatedDomainsValues(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(predicate, emm)
+case class DexCorrelatedDomainsValues(predicate: String, emm: LogicalPlan) extends DexUnaryOperator(emm)
 
 case class DexDomainFilter(predicate: String, predicateAttr: Attribute, childView: LogicalPlan) extends UnaryNode {
   override def child: LogicalPlan = childView
@@ -66,7 +66,7 @@ abstract class DexBinaryOperator(childView: LogicalPlan, emm: LogicalPlan) exten
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
-case class DexRidCorrelatedJoin(predicate: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends DexBinaryOperator(childView, emm)
+case class DexRidCorrelatedJoin(predicatePrefix: String, childView: LogicalPlan, emm: LogicalPlan, childViewRid: Attribute) extends DexBinaryOperator(childView, emm)
 
 case class DexDomainRids(predicatePrefix: String, domainValues: LogicalPlan, emm: LogicalPlan, domainValueAttr: Attribute) extends DexBinaryOperator(domainValues, emm)
 

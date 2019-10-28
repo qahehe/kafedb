@@ -119,6 +119,10 @@ case class UnresolvedAttribute(nameParts: Seq[String]) extends Attribute with Un
     case ParserUtils.escapedIdentifier(_) | ParserUtils.qualifiedEscapedIdentifier(_, _) => name
     case _ => quoteIdentifier(name)
   }
+
+  override protected def dialectSqlExpr(dialect: SqlDialect): String = {
+    nameParts.map(dialect.quoteIdentifier).mkString(".")
+  }
 }
 
 object UnresolvedAttribute {

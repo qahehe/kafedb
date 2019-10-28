@@ -24,12 +24,12 @@ import org.apache.spark.sql.catalyst.catalog.SessionCatalog
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, Concat, EqualTo, ExpectsInputTypes, ExprId, Expression, In, IsNotNull, Literal, NamedExpression, Not, Or, Predicate, PredicateHelper}
+import org.apache.spark.sql.catalyst.expressions.{Add, And, Attribute, AttributeSet, BinaryComparison, BinaryExpression, BindReferences, BoundReference, Concat, DialectSQLTranslatable, EqualTo, ExpectsInputTypes, ExprId, Expression, In, IsNotNull, Literal, NamedExpression, Not, Or, Predicate, PredicateHelper, PrettyAttribute, SqlDialect}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
-import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
+import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound, ridCol}
 import org.apache.spark.sql.dex.DexPrimitives._
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRelation, JdbcRelationProvider}
 import org.apache.spark.sql.execution.datasources._
@@ -48,7 +48,10 @@ object DexConstants {
   val tUncorrJoinName = "t_uncorrelated_join"
   val tDomainName = "t_domain"
   val emmLabelCol = "label"
+  val emmValueCol = "value"
+  val emmValueDecKeyCol = "value_dec_key"
   val ridCol = "rid"
+
 
   type TableName = String
   type AttrName = String
@@ -196,7 +199,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private def convertToSQL(plan: LogicalPlan): String = plan match {
       case p: DexPlan => convertToSQL(p.child)
       case p: Project =>
-        val projectList = p.projectList.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val projectList = p.projectList.map(_.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)).mkString(", ")
         s"""
            |SELECT $projectList
            |FROM ${convertToSQL(p.child)}
@@ -210,7 +213,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // This is a regular filter, added for example for the case of join partially coincide with filters
         s"""
            |${convertToSQL(f.child)}
-           |WHERE ${f.condition.dialectSql(dialect.quoteIdentifier)}
+           |WHERE ${f.condition.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)}
          """.stripMargin
       case j: Join =>
         val leftSubquery = convertToSQL(j.left)
@@ -240,7 +243,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |
                |($rightSubquery) AS ${generateSubqueryName()}
                |
-               |ON (${j.condition.get.dialectSql(dialect.quoteIdentifier)})
+               |ON (${j.condition.get.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)})
               """.stripMargin
           case x if x == LeftSemi && j.condition.isDefined =>
             val (leftRids, rightRids) = ridOrdersFromJoin(j)
@@ -304,54 +307,57 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       case f: DexRidFilter =>
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
-          dialect.compileValue(dexEmmLabelPrfKeyOf(f.predicate)).asInstanceOf[String],
-          dialect.compileValue(dexEmmValueEncKeyOf(f.predicate)).asInstanceOf[String]
+          Literal(dexEmmLabelPrfKeyOf(f.predicate)),
+          Literal(dexEmmValueEncKeyOf(f.predicate))
         )
-        val firstLabelExpr = dbEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")
-        val outputCols = f.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val firstLabelExpr = sqlEmmLabelExprOf(labelPrfKeyExpr, Literal(DexConstants.cashCounterStart)).dialectSql(dialect)
+        val nextLabelExpr = sqlEmmLabelExprOf(labelPrfKeyExpr, Add($"dex_rid_filter.counter", 1)).dialectSql(dialect)
+        val outputCols = f.output.map(_.dialectSql(dialect)).mkString(", ")
         val emm = dialect.quoteIdentifier(tFilter.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         s"""
            |(
            |  WITH RECURSIVE dex_rid_filter(value_dec_key, value, counter) AS (
-           |    SELECT $valueDecKeyExpr, $emm.value, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabelExpr
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabelExpr
            |    UNION ALL
-           |    SELECT $valueDecKeyExpr, $emm.value, dex_rid_filter.counter + 1 FROM $emm, dex_rid_filter
-           |    WHERE $emm.label = ${dbEmmLabelExprOf(labelPrfKeyExpr, "dex_rid_filter.counter + 1")}
+           |    SELECT ${valueDecKeyExpr.dialectSql{dialect}}, $emm.value, dex_rid_filter.counter + 1 FROM $emm, dex_rid_filter
+           |    WHERE $emm.label = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_rid_filter
            |) AS ${generateSubqueryName()}
          """.stripMargin
       case j: SpxRidUncorrelatedJoin =>
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
-          dialect.compileValue(dexEmmLabelPrfKeyOf(j.predicate)).asInstanceOf[String],
-          dialect.compileValue(dexEmmValueEncKeyOf(j.predicate)).asInstanceOf[String]
+          Literal(dexEmmLabelPrfKeyOf(j.predicate)),
+          Literal(dexEmmValueEncKeyOf(j.predicate))
         )
-        val firstLabel = dbEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")
-        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val firstLabelExpr = sqlEmmLabelExprOf(labelPrfKeyExpr, DexConstants.cashCounterStart).dialectSql(dialect)
+        val nextLabelExpr = sqlEmmLabelExprOf(labelPrfKeyExpr, Add($"spx_rid_uncorrelated_join.counter", 1)).dialectSql(dialect)
+        val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
         val emm = dialect.quoteIdentifier(tUncorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         s"""
            |(
            |  WITH RECURSIVE spx_rid_uncorrelated_join(value_dec_key, value_left, value_right, counter) AS (
-           |    SELECT $valueDecKeyExpr, $emm.value_left, $emm.value_right, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabel
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value_left, $emm.value_right, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabelExpr
            |    UNION ALL
-           |    SELECT $valueDecKeyExpr, $emm.value_left, $emm.value_right, spx_rid_uncorrelated_join.counter + 1 FROM $emm, spx_rid_uncorrelated_join
-           |    WHERE $emm.label = ${dbEmmLabelExprOf(labelPrfKeyExpr, "spx_rid_uncorrelated_join.counter + 1")}
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value_left, $emm.value_right, spx_rid_uncorrelated_join.counter + 1 FROM $emm, spx_rid_uncorrelated_join
+           |    WHERE $emm.label = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM spx_rid_uncorrelated_join
            |) AS ${generateSubqueryName()}
          """.stripMargin
       case j: DexRidCorrelatedJoin =>
         val leftSubquery = convertToSQL(j.left)
-        val leftRidExpr = j.childViewRid.dialectSql(dialect.quoteIdentifier)
-        val predPrefixExpr = dialect.compileValue(j.predicate).asInstanceOf[String]
-        val joinPredExpr = dbConcatPredicateExprsOf(predPrefixExpr, leftRidExpr)
+        val leftRidExpr = j.childViewRid
+        val joinPredExpr = sqlConcatPredicateExprsOf(j.predicatePrefix, leftRidExpr)
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
-          dbEmmLabelPrfKeyExprOf(joinPredExpr),
-          dbEmmValueEncKeyExprOf(joinPredExpr)
+          sqlEmmLabelPrfKeyExprOf(joinPredExpr),
+          sqlEmmValueEncKeyExprOf(joinPredExpr)
         )
+        val firstLabelExpr = sqlEmmLabelExprOf(labelPrfKeyExpr, DexConstants.cashCounterStart).dialectSql(dialect)
+        val nextLabelExpr = sqlEmmLabelExprOf(labelPrfKeyExpr, Add($"counter", 1)).dialectSql(dialect)
         val emm = dialect.quoteIdentifier(tCorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
-        val outputCols = j.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
-        val leftSubqueryOutputCols = j.left.outputSet.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val outputCols = j.outputSet.map(_.dialectSql(dialect)).mkString(", ")
+        val leftSubqueryOutputCols = j.left.outputSet.map(_.dialectSql(dialect)).mkString(", ")
 
         // Semantically what we want is that for each (unique) leftRidExpr to join in leftSubquery, find out what are the
         // rightRid to join in t_correlated_join, and for the rows that are already associated with leftRidExpr, copy
@@ -368,7 +374,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |   $leftSubquery
            |  ),
            |  left_subquery($leftRidExpr, label_prf_key, value_dec_key) AS(
-           |    SELECT distinct $leftRidExpr, $labelPrfKeyExpr, $valueDecKeyExpr FROM left_subquery_all_cols
+           |    SELECT distinct $leftRidExpr, $labelPrfKeyExpr, ${valueDecKeyExpr.dialectSql(dialect)} FROM left_subquery_all_cols
            |  ),
            |  dex_rid_correlated_join($leftRidExpr, label_prf_key, value_dec_key, value, counter) AS (
            |    SELECT left_subquery.*, $emm.value, ${DexConstants.cashCounterStart} AS counter
@@ -390,16 +396,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_rid_correlated_join AS (
-           |    SELECT $leftSubqueryOutputCols, $valueDecKeyExpr AS value_dec_key, $emm.value AS value, ${DexConstants.cashCounterStart} AS counter
+           |    SELECT $leftSubqueryOutputCols, ${valueDecKeyExpr.dialectSql(dialect)} AS value_dec_key, $emm.value AS value, ${DexConstants.cashCounterStart} AS counter
            |    FROM ($leftSubquery) AS ${generateSubqueryName()}, $emm
-           |    WHERE $emm.label =
-           |      ${dbEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")}
+           |    WHERE $emm.label = $firstLabelExpr
            |
            |    UNION ALL
            |
-           |    SELECT $leftSubqueryOutputCols, $valueDecKeyExpr AS value_dec_key, $emm.value AS value, counter + 1 AS counter
+           |    SELECT $leftSubqueryOutputCols, ${valueDecKeyExpr.dialectSql(dialect)} AS value_dec_key, $emm.value AS value, counter + 1 AS counter
            |    FROM dex_rid_correlated_join, $emm
-           |    WHERE $emm.label = ${dbEmmLabelExprOf(labelPrfKeyExpr, "counter + 1")}
+           |    WHERE $emm.label = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join
            |) AS ${generateSubqueryName()}
@@ -410,16 +415,16 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           dialect.compileValue(dexEmmLabelPrfKeyOf(v.predicate)).asInstanceOf[String],
           dialect.compileValue(dexEmmValueEncKeyOf(v.predicate)).asInstanceOf[String]
         )
-        val firstLabel = dbEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")
-        val outputCols = v.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val firstLabel = sqlEmmLabelExprOf(labelPrfKeyExpr, Literal(DexConstants.cashCounterStart))
+        val outputCols = v.output.map(_.dialectSql(dialect)).mkString(", ")
         val emm = dialect.quoteIdentifier(tDomain.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         s"""
            |(
            |  WITH RECURSIVE dex_domain_values(value_dec_key, value, counter) AS (
-           |    SELECT $valueDecKeyExpr, $emm.value, ${DexConstants.cashCounterStart} FROM $emm WHERE label = $firstLabel
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, ${DexConstants.cashCounterStart} FROM $emm WHERE label = $firstLabel
            |    UNION ALL
-           |    SELECT $valueDecKeyExpr, $emm.value, dex_domain_values.counter + 1 FROM dex_domain_values, $emm
-           |    WHERE ${dbEmmLabelExprOf(labelPrfKeyExpr, "dex_domain_values.counter + 1")} = $emm.label
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, dex_domain_values.counter + 1 FROM dex_domain_values, $emm
+           |    WHERE ${sqlEmmLabelExprOf(labelPrfKeyExpr, "dex_domain_values.counter + 1")} = $emm.label
            |  )
            |  SELECT $outputCols FROM dex_domain_values
            |) AS ${generateSubqueryName()}
@@ -440,7 +445,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_domain_values_keys($domainValueExpr, label_prf_key, value_dec_key) AS (
-           |    SELECT $domainValueExpr, $labelPrfKeyExpr, $valueDecKeyExpr FROM ($domainValueSubquery)
+           |    SELECT $domainValueExpr, $labelPrfKeyExpr, ${valueDecKeyExpr.dialectSql(dialect)} FROM ($domainValueSubquery)
            |  ),
            |  dex_domain_rids($domainValueExpr, label_prf_key, value_dec_key, value, counter) AS (
            |    SELECT dex_domain_values_keys.*, $emm.value, ${DexConstants.cashCounterStart} AS counter
@@ -460,7 +465,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val emm = dialect.quoteIdentifier(tFilter.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         // do not use outputSet, because dexOperators renaming columns using "withName" would still be distinguished
         // using the old names.
-        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
+        val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
 
         val intersectedDomainValueSubquery =
           s"""
@@ -471,24 +476,24 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         def ctePartFor(joinSide: String, predicatePrefix: String) = {
           val predicatePrefixExpr = dialect.compileValue(predicatePrefix).asInstanceOf[String]
-          val domainValuePredExpr = dbConcatPredicateExprsOf(predicatePrefixExpr, domainValueExpr)
+          val domainValuePredExpr = sqlConcatPredicateExprsOf(predicatePrefixExpr, domainValueExpr)
           val (labelPrfKeyExpr, valueDecKeyExpr) = (
-            dbEmmLabelPrfKeyExprOf(domainValuePredExpr),
-            dbEmmValueEncKeyExprOf(domainValuePredExpr)
+            sqlEmmLabelPrfKeyExprOf(domainValuePredExpr),
+            sqlEmmValueEncKeyExprOf(domainValuePredExpr)
           )
           s"""
              |  dex_domain_values_keys_$joinSide($domainValueExpr, label_prf_key_$joinSide, value_dec_key_$joinSide) AS (
-             |    SELECT $domainValueExpr, $labelPrfKeyExpr, $valueDecKeyExpr FROM dex_intersected_domain_values
+             |    SELECT $domainValueExpr, $labelPrfKeyExpr, ${valueDecKeyExpr.dialectSql(dialect)} FROM dex_intersected_domain_values
              |  ),
              |  dex_domain_rids_$joinSide($domainValueExpr, label_prf_key_$joinSide, value_dec_key_$joinSide, value_$joinSide, counter_$joinSide) AS (
              |    SELECT dex_domain_values_keys_$joinSide.*, $emm.value, ${DexConstants.cashCounterStart} AS counter_$joinSide
              |    FROM dex_domain_values_keys_$joinSide, $emm
              |    WHERE $emm.label =
-             |      ${dbEmmLabelExprOf(s"label_prf_key_$joinSide", s"${DexConstants.cashCounterStart}")}
+             |      ${sqlEmmLabelExprOf(s"label_prf_key_$joinSide", s"${DexConstants.cashCounterStart}")}
              |    UNION ALL
              |    SELECT $domainValueExpr, label_prf_key_$joinSide, value_dec_key_$joinSide, $emm.value, counter_$joinSide + 1 AS counter_$joinSide
              |    FROM dex_domain_rids_$joinSide, $emm
-             |    WHERE $emm.label = ${dbEmmLabelExprOf(s"label_prf_key_$joinSide", s"counter_$joinSide + 1")}
+             |    WHERE $emm.label = ${sqlEmmLabelExprOf(s"label_prf_key_$joinSide", s"counter_$joinSide + 1")}
              |  )
          """.stripMargin
         }
@@ -505,10 +510,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       case f: DexPseudoPrimaryKeyFilter =>
         val predExpr = dialect.compileValue(f.predicate).asInstanceOf[String]
-        val labelPrfKeyExpr = dbEmmLabelPrfKeyExprOf(predExpr)
+        val labelPrfKeyExpr = sqlEmmLabelPrfKeyExprOf(predExpr)
         val labelColExpr = dialect.quoteIdentifier(f.labelColumn)
-        val outputCols = f.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
-        val ridOrder = f.filterTableRid.dialectSql(dialect.quoteIdentifier)
+        val outputCols = f.output.map(_.dialectSql(dialect)).mkString(", ")
+        val ridOrder = f.filterTableRid.dialectSql(dialect)
         /*s"""
            |(
            |  WITH RECURSIVE child_view AS (
@@ -551,9 +556,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_ppk_filter($ridOrder, counter) AS (
-           |    SELECT ${f.filterTableName}.rid, ${DexConstants.cashCounterStart} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = ${dbEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")}
+           |    SELECT ${f.filterTableName}.rid, ${DexConstants.cashCounterStart} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = ${sqlEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")}
            |    UNION ALL
-           |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = ${dbEmmLabelExprOf(labelPrfKeyExpr, "dex_ppk_filter.counter + 1")}
+           |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = ${sqlEmmLabelExprOf(labelPrfKeyExpr, "dex_ppk_filter.counter + 1")}
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
            |)
@@ -561,8 +566,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       case j: DexPseudoPrimaryKeyJoin =>
         val labelColExpr = dialect.quoteIdentifier(j.labelColumn)
-        val outputCols = j.output.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", ")
-        val (leftRidExpr, rightRidExpr) = (j.leftTableRid.dialectSql(dialect.quoteIdentifier), j.rightTableRid.dialectSql(dialect.quoteIdentifier))
+        val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
+        val (leftRidExpr, rightRidExpr) = (j.leftTableRid.dialectSql(dialect), j.rightTableRid.dialectSql(dialect))
         val joinPredPrefixExpr = dialect.compileValue(j.predicate).asInstanceOf[String]
         // first generate labelPrfKeys for each primary key
         // Question 1: join left child view and right child view each recursion or join right child view after all recursions?
@@ -594,13 +599,13 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  WITH RECURSIVE dex_ppk_join($leftRidExpr, $rightRidExpr, counter) AS (
            |    SELECT ${j.leftTableName}.rid, ${j.rightTableName}.rid, ${DexConstants.cashCounterStart} AS counter
            |    FROM ${j.leftTableName}, ${j.rightTableName}
-           |    WHERE ${dbEmmLabelExprOf(dbEmmLabelPrfKeyExprOf(dbConcatPredicateExprsOf(joinPredPrefixExpr, s"${j.leftTableName}.rid")), s"${DexConstants.cashCounterStart}")} = $labelColExpr
+           |    WHERE ${sqlEmmLabelExprOf(sqlEmmLabelPrfKeyExprOf(sqlConcatPredicateExprsOf(joinPredPrefixExpr, s"${j.leftTableName}.rid")), s"${DexConstants.cashCounterStart}")} = $labelColExpr
            |
            |    UNION ALL
            |
            |    SELECT $leftRidExpr, ${j.rightTableName}.rid, counter + 1 AS counter
            |    FROM dex_ppk_join, ${j.rightTableName}
-           |    WHERE ${dbEmmLabelExprOf(dbEmmLabelPrfKeyExprOf(dbConcatPredicateExprsOf(joinPredPrefixExpr, leftRidExpr)), "counter + 1")} = $labelColExpr
+           |    WHERE ${sqlEmmLabelExprOf(sqlEmmLabelPrfKeyExprOf(sqlConcatPredicateExprsOf(joinPredPrefixExpr, leftRidExpr)), "counter + 1")} = $labelColExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_join
            |)
@@ -630,12 +635,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     private def ridOrdersFromJoin(j: Join): (String, String) = {
       val lefts = j.condition.get.collect {
-        case EqualTo(left, right) => left
+        case EqualTo(left, right) => left.asInstanceOf[DialectSQLTranslatable]
       }
       val rights = j.condition.get.collect {
-        case EqualTo(left, right) => right
+        case EqualTo(left, right) => right.asInstanceOf[DialectSQLTranslatable]
       }
-      (lefts.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", "), rights.map(_.dialectSql(dialect.quoteIdentifier)).mkString(", "))
+      (lefts.map(_.dialectSql(dialect)).mkString(", "), rights.map(_.dialectSql(dialect)).mkString(", "))
     }
 
     /*private def emmKeysFromDomainValueColumn(prfKey: String, domainValueCol: String, predicate: String): (String, String) = {
@@ -1061,7 +1066,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     protected def translateEquiJoin(joinAttrs: JoinAttrs, chidlViews: Seq[LogicalPlan]): LogicalPlan
 
-    protected def tableEncNameOf(tableName: String): String = s"${tableName}_prf"
+    protected def tableEncNameOf(tableName: String): String = dexTableNameOf(tableName)
 
     protected def tableEncWithRidOrderOf(tablePlain: LogicalRelation): LogicalPlan = {
       val tableEnc = tableEncOf(tablePlain)
@@ -1082,8 +1087,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val output = tableEnc.output
       val order = joinOrder(tablePlain)
       val columns = output.map { col =>
-        if (resolver(col.name, "rid")) {
-          Column(col).as(s"rid_$order").expr
+        if (resolver(col.name, ridCol)) {
+          Column(col).as(s"${ridCol}_$order").expr
         } else {
           Column(col).as(s"${col.name}_$order").expr
         }
@@ -1468,8 +1473,10 @@ case class DexDecrypt(key: Expression, value: Expression) extends BinaryExpressi
       """)
   }*/
 
-  override def dialectSql(quoteIdent: String => String): String = {
-    DexPrimitives.dbDecryptExpr(left.dialectSql(quoteIdent), right.dialectSql(quoteIdent))
+  override protected def dialectSqlExpr(dialect: SqlDialect): String = {
+    DexPrimitives.sqlDecryptExpr(
+      left.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect),
+      right.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect))
   }
 }
 

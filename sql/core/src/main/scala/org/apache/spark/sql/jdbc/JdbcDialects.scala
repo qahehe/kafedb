@@ -20,8 +20,8 @@ package org.apache.spark.sql.jdbc
 import java.sql.{Connection, Date, Timestamp}
 
 import org.apache.commons.lang3.StringUtils
-
 import org.apache.spark.annotation.{DeveloperApi, InterfaceStability, Since}
+import org.apache.spark.sql.catalyst.expressions.SqlDialect
 import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions
 import org.apache.spark.sql.types._
 
@@ -58,7 +58,7 @@ case class JdbcType(databaseTypeDefinition : String, jdbcNullType : Int)
  */
 @DeveloperApi
 @InterfaceStability.Evolving
-abstract class JdbcDialect extends Serializable {
+abstract class JdbcDialect extends SqlDialect with Serializable {
   /**
    * Check if this dialect instance can handle a certain jdbc url.
    * @param url the jdbc url.

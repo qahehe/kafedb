@@ -16,6 +16,7 @@
  */
 package org.apache.spark.sql.dex
 
+import org.apache.spark.sql.catalyst.expressions.{Concat, DialectSQLTranslatable, Expression, Literal}
 import org.apache.spark.sql.dex.DexConstants.TableAttribute
 // scalastyle:off
 
@@ -82,26 +83,29 @@ object DexPrimitives {
   def dexEmmLabelPrfKeyOf(dexPredicate: String): String = dexPredicate // todo: append 1 and apply F
   def dexEmmValueEncKeyOf(dexpredicate: String): String = "enc" // todo: append 2 and apply F
 
-  def dbEmmLabelPrfKeyExprOf(predicateExpr: String): String = {
+  def sqlEmmLabelPrfKeyExprOf(predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
     // todo: use Postgres PRF on key=client secret key append 1
     predicateExpr
   }
 
-  def dbEmmValueEncKeyExprOf(predicateExpr: String): String = {
+  def sqlEmmValueEncKeyExprOf(predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
     // todo: use Postgres PRF on key=client secret key append 2
-    "'enc'"
+    //"'enc'"
+    Literal("enc")
   }
 
-  def dbEmmLabelExprOf(dbEmmLabelPrfKeyExpr: String, counterExpr: String): String = {
-    // todo: use Postgres PRF on key=dbEmmLabelprfKeyExpr
-    s"$dbEmmLabelPrfKeyExpr || '~' || $counterExpr"
+  def sqlEmmLabelExprOf(dbEmmLabelPrfKeyExpr: DialectSQLTranslatable, counterExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
+    // todo: instead of concat, use Postgres PRF on key=dbEmmLabelprfKeyExpr
+    //s"$dbEmmLabelPrfKeyExpr || '~' || $counterExpr"
+    Concat(dbEmmLabelPrfKeyExpr :: Literal("~") :: counterExpr :: Nil)
   }
 
-  def dbConcatPredicateExprsOf(predicatePrefixExpr: String, predicateExpr: String): String = {
-    s"$predicatePrefixExpr || '~' || $predicateExpr"
+  def sqlConcatPredicateExprsOf(predicatePrefixExpr: DialectSQLTranslatable, predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
+    //s"$predicatePrefixExpr || '~' || $predicateExpr"
+    Concat(predicatePrefixExpr :: Literal("~") :: predicateExpr :: Nil)
   }
 
-  def dbDecryptExpr(encKeyExpr: String, colExpr: String): String =
+  def sqlDecryptExpr(encKeyExpr: String, colExpr: String): String =
   // todo: use SQL decrypt like s"decrypt($decKey, $col)"
     s"substring($colExpr, '(.+)_' || $encKeyExpr)"
 }
