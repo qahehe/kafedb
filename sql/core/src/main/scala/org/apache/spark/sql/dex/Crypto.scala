@@ -15,18 +15,92 @@
  * limitations under the License.
  */
 package org.apache.spark.sql.dex
-
-import org.apache.spark.sql.catalyst.expressions.{Concat, DialectSQLTranslatable, Expression, Literal}
-import org.apache.spark.sql.dex.DexConstants.TableAttribute
 // scalastyle:off
 
+import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.security.SecureRandom
+
+import javax.crypto.{Cipher, KeyGenerator, SecretKey, SecretKeyFactory}
+import javax.crypto.spec.{PBEKeySpec, PBEParameterSpec, SecretKeySpec}
+import org.apache.spark.sql.catalyst.expressions.{Concat, DialectSQLTranslatable, Expression, Literal}
+import org.apache.spark.sql.dex.DexConstants.TableAttribute
+
 object Crypto {
+  // dynamic installation of bouncy castle provider
+  java.security.Security.addProvider(
+    new org.bouncycastle.jce.provider.BouncyCastleProvider())
+
   def prf(k: String)(m: Any): String = {
     s"${m}_$k"
   }
 
   def symEnc(k: String)(m: Any): String = {
     s"${m}_$k"
+  }
+
+  val aesBlockByteSize: Int = 16
+  val ivBytesSize: Int = aesBlockByteSize
+  val saltByteSize: Int = 16
+  val iterationCount: Int = 1 << 17 // 131,072
+  val passphraseIterations: Int = 1 << 7 // 128
+  val aesKeyBitLength = 128
+
+  case class MasterSecret(key: SecretKey) {
+    def data: Seq[Byte] = key.getEncoded
+  }
+
+  def generateMasterSecret(): MasterSecret = {
+    MasterSecret(generateEncryptionSecret())
+  }
+
+  private def generateEncryptionSecret(): SecretKey = {
+    val keyGenerator = KeyGenerator.getInstance("AES", "BC")
+    keyGenerator.init(aesKeyBitLength)
+    keyGenerator.generateKey()
+  }
+
+  def save(passphrase: String, masterSecret: MasterSecret, filePath: String): Unit = {
+    val salt = generateSalt()
+    val encMasterKeyBytes = encryptFromPassphrase(passphrase, salt, masterSecret.data)
+    val oos = new ObjectOutputStream(new FileOutputStream(filePath))
+    oos.writeObject(salt)
+    oos.writeObject(encMasterKeyBytes)
+  }
+
+  def load(passphrase: String, filePath: String): MasterSecret = {
+    val ois = new ObjectInputStream(new FileInputStream(filePath))
+    val salt = ois.readObject().asInstanceOf[Seq[Byte]]
+    val encMasterKeyBytes = ois.readObject().asInstanceOf[Seq[Byte]]
+    val masterKeyBytes = decryptFromPassphrase(passphrase, salt, encMasterKeyBytes)
+    val masterKey = new SecretKeySpec(masterKeyBytes.toArray, "AES")
+    MasterSecret(masterKey)
+  }
+
+  private def encryptFromPassphrase(passphrase: String, salt: Seq[Byte], data: Seq[Byte]): Seq[Byte] = {
+    val key = deriveKeyFromPassphrase(passphrase, salt: Seq[Byte])
+    val cipher = Cipher.getInstance(key.getAlgorithm)
+    cipher.init(Cipher.ENCRYPT_MODE, key, new PBEParameterSpec(salt.toArray, iterationCount))
+    cipher.doFinal(data.toArray)
+  }
+
+  private def decryptFromPassphrase(passphrase: String, salt: Seq[Byte], data: Seq[Byte]): Seq[Byte] = {
+    val key = deriveKeyFromPassphrase(passphrase, salt: Seq[Byte])
+    val cipher = Cipher.getInstance(key.getAlgorithm)
+    cipher.init(Cipher.DECRYPT_MODE, key, new PBEParameterSpec(salt.toArray, iterationCount))
+    cipher.doFinal(data.toArray)
+  }
+
+  private def deriveKeyFromPassphrase(passphrase: String, salt: Seq[Byte]): SecretKey = {
+    val keyFactory = SecretKeyFactory.getInstance("PBEWITHSHA1AND128BITAES-CBC-BC")
+    val keySpec = new PBEKeySpec(passphrase.toCharArray, salt.toArray, iterationCount)
+    keyFactory.generateSecret(keySpec) //.getEncoded()
+  }
+
+  private def generateSalt(): Seq[Byte] = {
+    val random = SecureRandom.getInstance("DEFAULT", "BC")
+    val salt = Array.ofDim[Byte](saltByteSize)
+    random.nextBytes(salt)
+    salt
   }
 }
 

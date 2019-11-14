@@ -77,6 +77,8 @@ object BuildCommons {
 
   val testTempDir = s"$sparkHome/target/tmp"
 
+  val thirdPartyDir = s"${buildLocation.getPath}/third_party"
+
   val javacJVMVersion = settingKey[String]("source and target JVM version for javac")
   val scalacJVMVersion = settingKey[String]("source and target JVM version for scalac")
 }
@@ -370,13 +372,15 @@ object SparkBuild extends PomBuild {
   /* Spark SQL Core console settings */
   enable(SQL.settings)(sql)
 
+  enable(Crypto.settings)(sql)
+
   /* Hive console settings */
   enable(Hive.settings)(hive)
 
   enable(Flume.settings)(streamingFlumeSink)
 
   // SPARK-14738 - Remove docker tests from main Spark build
-  // enable(DockerIntegrationTests.settings)(dockerIntegrationTests)
+  // enable(DockerIntegrationTests.settings)(dockerIntegrationtests)
 
   /**
    * Adds the ability to run the spark shell directly from SBT without building an assembly
@@ -511,6 +515,14 @@ object Catalyst {
     antlr4GenListener in Antlr4 := true,
     antlr4GenVisitor in Antlr4 := true
   )
+}
+
+object Crypto {
+  lazy val settings = Seq(
+    libraryDependencies +=
+      "org.bouncycastle" % "bcprov-jdk15on" % "1.64",
+    unmanagedClasspath +=
+      new File(BuildCommons.thirdPartyDir) / "bcprov-jdk15on-164.jar")
 }
 
 object SQL {
