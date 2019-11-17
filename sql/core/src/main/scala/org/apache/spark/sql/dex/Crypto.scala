@@ -18,10 +18,10 @@ package org.apache.spark.sql.dex
 // scalastyle:off
 
 import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
-import java.security.SecureRandom
+import java.security.{MessageDigest, SecureRandom}
 
-import javax.crypto.{Cipher, KeyGenerator, SecretKey, SecretKeyFactory}
-import javax.crypto.spec.{PBEKeySpec, PBEParameterSpec, SecretKeySpec}
+import javax.crypto.{Cipher, KeyGenerator, Mac, SecretKey, SecretKeyFactory}
+import javax.crypto.spec.{IvParameterSpec, PBEKeySpec, PBEParameterSpec, SecretKeySpec}
 import org.apache.spark.sql.catalyst.expressions.{Concat, DialectSQLTranslatable, Expression, Literal}
 import org.apache.spark.sql.dex.DexConstants.TableAttribute
 
@@ -38,65 +38,111 @@ object Crypto {
     s"${m}_$k"
   }
 
-  val aesBlockByteSize: Int = 16
-  val ivBytesSize: Int = aesBlockByteSize
-  val saltByteSize: Int = 16
-  val iterationCount: Int = 1 << 17 // 131,072
-  val passphraseIterations: Int = 1 << 7 // 128
+/*  def prf(masterSecret: MasterSecret)(m: Any): Array[Byte] = {
+    //s"${m}_$k"
+    masterSecret.computeHmac(DataCodec.toByteArray(m))
+  }
+
+  def symEnc(masterSecret: MasterSecret)(m: Any): Array[Byte] = {
+    //s"${m}_$k"
+    masterSecret.encryptAesCbc(DataCodec.toByteArray(m))
+  }*/
+
+  val passphraseIterations: Int = 1 << 10 // 1024
   val aesKeyBitLength = 128
+  val aesAlgorithm = "AES"
+  val hmacKeyBitLength = 256
+  val hmacAlgorithm = "HmacSHA256"
 
-  case class MasterSecret(key: SecretKey) {
-    def data: Seq[Byte] = key.getEncoded
+  @SerialVersionUID(1L)
+  case class MasterSecret(aesKey: SecretKey, hmacKey: SecretKey) extends Serializable {
+    require(aesKey.getEncoded.length == aesKeyBitLength / 8)
+    require(aesKey.getAlgorithm.toLowerCase == aesAlgorithm.toLowerCase)
+    require(hmacKey.getEncoded.length == hmacKeyBitLength / 8)
+    require(hmacKey.getAlgorithm.toLowerCase == hmacAlgorithm.toLowerCase)
+
+    def computeHmac(data: Array[Byte]): Array[Byte] = {
+      val mac = Mac.getInstance(hmacAlgorithm, "BC")
+      mac.init(hmacKey)
+      mac.update(data)
+      mac.doFinal()
+    }
+
+    def encryptAesCbc(data: Array[Byte]): Array[Byte] = {
+      val cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC")
+      cipher.init(Cipher.ENCRYPT_MODE, aesKey)
+      val iv = cipher.getIV
+      val output = cipher.doFinal(data)
+      DataCodec.concatBytes(iv, output)
+    }
+
+    def decryptAesCbc(ciphertext: Array[Byte]): Array[Byte] = {
+      val cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC")
+      val iv = ciphertext.take(cipher.getBlockSize)
+      cipher.init(Cipher.DECRYPT_MODE, aesKey, new IvParameterSpec(iv))
+      cipher.doFinal(ciphertext)
+    }
   }
 
+  // Do not objectize this method to singleton of MasterSecret,
+  // because if so and if it is called before the Crypto, the bouncystle provider is not yet added
+  // the Crypto singleton object constructor.
   def generateMasterSecret(): MasterSecret = {
-    MasterSecret(generateEncryptionSecret())
+    val aesKey = generateSecret(aesAlgorithm, aesKeyBitLength)
+    val hmacKey = generateSecret(hmacAlgorithm, hmacKeyBitLength)
+    MasterSecret(aesKey, hmacKey)
   }
 
-  private def generateEncryptionSecret(): SecretKey = {
-    val keyGenerator = KeyGenerator.getInstance("AES", "BC")
-    keyGenerator.init(aesKeyBitLength)
+  private def decodeMasterSecret(masterSecretBytes: Array[Byte]): MasterSecret = {
+    require(masterSecretBytes.length == aesKeyBitLength / 8 + hmacKeyBitLength / 8)
+    val aesKey = new SecretKeySpec(masterSecretBytes.take(aesKeyBitLength / 8), aesAlgorithm)
+    val hmacKey = new SecretKeySpec(masterSecretBytes.drop(aesKeyBitLength / 8), hmacAlgorithm)
+    MasterSecret(aesKey, hmacKey)
+  }
+
+  private def encodeMasterSecret(masterSecret: MasterSecret): Array[Byte] = {
+    DataCodec.concatBytes(masterSecret.aesKey.getEncoded, masterSecret.hmacKey.getEncoded)
+  }
+
+  private def generateSecret(algorithm: String, keyBitLength: Int): SecretKey = {
+    val keyGenerator = KeyGenerator.getInstance(algorithm, "BC")
+    keyGenerator.init(keyBitLength)
     keyGenerator.generateKey()
   }
 
-  def save(passphrase: String, masterSecret: MasterSecret, filePath: String): Unit = {
+  def saveMasterSecret(passphrase: String, masterSecret: MasterSecret, filePath: String): Unit = {
     val salt = generateSalt()
-    val encMasterKeyBytes = encryptFromPassphrase(passphrase, salt, masterSecret.data)
+    val masterSecretBytes = encodeMasterSecret(masterSecret)
+    val encMasterSecretBytes = computeFromPassphrase(Cipher.ENCRYPT_MODE, passphrase, salt, masterSecretBytes)
     val oos = new ObjectOutputStream(new FileOutputStream(filePath))
     oos.writeObject(salt)
-    oos.writeObject(encMasterKeyBytes)
+    oos.writeObject(encMasterSecretBytes)
   }
 
-  def load(passphrase: String, filePath: String): MasterSecret = {
+  def loadMasterSecret(passphrase: String, filePath: String): MasterSecret = {
     val ois = new ObjectInputStream(new FileInputStream(filePath))
-    val salt = ois.readObject().asInstanceOf[Seq[Byte]]
-    val encMasterKeyBytes = ois.readObject().asInstanceOf[Seq[Byte]]
-    val masterKeyBytes = decryptFromPassphrase(passphrase, salt, encMasterKeyBytes)
-    val masterKey = new SecretKeySpec(masterKeyBytes.toArray, "AES")
-    MasterSecret(masterKey)
+    val salt = ois.readObject().asInstanceOf[Array[Byte]]
+    val encMasterSecretEncoded = ois.readObject().asInstanceOf[Array[Byte]]
+    val masterSecretEncoded = computeFromPassphrase(Cipher.DECRYPT_MODE, passphrase, salt, encMasterSecretEncoded)
+    decodeMasterSecret(masterSecretEncoded)
   }
 
-  private def encryptFromPassphrase(passphrase: String, salt: Seq[Byte], data: Seq[Byte]): Seq[Byte] = {
-    val key = deriveKeyFromPassphrase(passphrase, salt: Seq[Byte])
-    val cipher = Cipher.getInstance(key.getAlgorithm)
-    cipher.init(Cipher.ENCRYPT_MODE, key, new PBEParameterSpec(salt.toArray, iterationCount))
-    cipher.doFinal(data.toArray)
+  private def computeFromPassphrase(cipherMode: Int, passphrase: String, salt: Array[Byte], data: Array[Byte]): Array[Byte] = {
+    val aesKey = deriveAesKeyFromPassphrase(passphrase, salt)
+    val cipher = Cipher.getInstance(aesKey.getAlgorithm)
+    cipher.init(cipherMode, aesKey, new PBEParameterSpec(salt, passphraseIterations))
+    cipher.doFinal(data)
   }
 
-  private def decryptFromPassphrase(passphrase: String, salt: Seq[Byte], data: Seq[Byte]): Seq[Byte] = {
-    val key = deriveKeyFromPassphrase(passphrase, salt: Seq[Byte])
-    val cipher = Cipher.getInstance(key.getAlgorithm)
-    cipher.init(Cipher.DECRYPT_MODE, key, new PBEParameterSpec(salt.toArray, iterationCount))
-    cipher.doFinal(data.toArray)
+  private def deriveAesKeyFromPassphrase(passphrase: String, salt: Array[Byte]): SecretKey = {
+    val keyFactory = SecretKeyFactory.getInstance("PBKDF2WITHHMACSHA256","BC")
+    val keySpec = new PBEKeySpec(passphrase.toCharArray, salt, passphraseIterations, hmacKeyBitLength)
+    val keyBytes = keyFactory.generateSecret(keySpec).getEncoded
+    new SecretKeySpec(keyBytes, aesAlgorithm)
   }
 
-  private def deriveKeyFromPassphrase(passphrase: String, salt: Seq[Byte]): SecretKey = {
-    val keyFactory = SecretKeyFactory.getInstance("PBEWITHSHA1AND128BITAES-CBC-BC")
-    val keySpec = new PBEKeySpec(passphrase.toCharArray, salt.toArray, iterationCount)
-    keyFactory.generateSecret(keySpec) //.getEncoded()
-  }
-
-  private def generateSalt(): Seq[Byte] = {
+  private def generateSalt(): Array[Byte] = {
+    val saltByteSize = hmacKeyBitLength / 8
     val random = SecureRandom.getInstance("DEFAULT", "BC")
     val salt = Array.ofDim[Byte](saltByteSize)
     random.nextBytes(salt)

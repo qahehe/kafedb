@@ -521,7 +521,7 @@ object Crypto {
   lazy val settings = Seq(
     libraryDependencies +=
       "org.bouncycastle" % "bcprov-jdk15on" % "1.64",
-    unmanagedClasspath +=
+    unmanagedClasspath in Compile +=
       new File(BuildCommons.thirdPartyDir) / "bcprov-jdk15on-164.jar")
 }
 

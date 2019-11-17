@@ -23,8 +23,8 @@ class CryptoSuite extends DexTest {
   test("save and load master secret") {
     val masterSecret = Crypto.generateMasterSecret()
     val filePath = "/tmp/dexkeystore"
-    Crypto.save("testPass", masterSecret, filePath)
-    val masterSecretLoaded = Crypto.load("testPass", filePath)
+    Crypto.saveMasterSecret("testPass", masterSecret, filePath)
+    val masterSecretLoaded = Crypto.loadMasterSecret("testPass", filePath)
     assert(masterSecret == masterSecretLoaded)
   }
 }

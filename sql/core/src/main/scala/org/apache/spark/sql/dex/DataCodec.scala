@@ -28,7 +28,7 @@ object DataCodec {
 
   val charsetName: Map[String, String] = Map("scala" -> "ISO-8859-1", "postgres" -> "iso_8859_1")
 
-  def toByteArray(value: Any): Seq[Byte] = value match {
+  def toByteArray(value: Any): Array[Byte] = value match {
     case x: Int =>
       val buf = new Array[Byte](java.lang.Integer.BYTES)
       ByteBuffer.wrap(buf).putInt(x)
@@ -42,6 +42,7 @@ object DataCodec {
       ByteBuffer.wrap(buf).putDouble(x)
       buf
     case x: Seq[Byte @unchecked] => x.toArray
+    case x: Array[Byte] => x
     case x: String => x.getBytes(charsetName("scala"))
     case x: java.sql.Date => toByteArray(x.getTime)
     case x: java.sql.Time => toByteArray(x.getTime)
@@ -63,9 +64,13 @@ object DataCodec {
   def withoutInitialValue(iv: Array[Byte], value: Array[Byte]): Seq[Byte] = util.Arrays.copyOfRange(value, iv.length, value.length)
 
   def concat(xs: Any*): Seq[Byte] = {
+    concatBytes(xs:_*)
+  }
+
+  def concatBytes(xs: Any*): Array[Byte] = {
     val ys = xs.map(x => toByteArray(x))
     val buf = ByteStreams.newDataOutput(ys.map(_.length).sum)
-    ys.foreach(y => buf.write(y.toArray))
+    ys.foreach(y => buf.write(y))
     buf.toByteArray
   }
 }
