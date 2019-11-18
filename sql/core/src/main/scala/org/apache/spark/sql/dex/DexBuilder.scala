@@ -86,11 +86,11 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   private val udfEmmLabel = udf { (dexPredicate: String, counter: Int) =>
     dexEmmLabelOf(dexPredicate, counter)
   }
-  private val udfEmmValue = udf { (dexPredicate: String, rid: Number) =>
+  private val udfEmmValue = udf { (dexPredicate: String, rid: Long) =>
     dexEmmValueOf(dexPredicate, rid)
   }
 
-  private val udfRid = udf { rid: Number =>
+  private val udfRid = udf { rid: Long =>
     dexRidOf(rid)
   }
 

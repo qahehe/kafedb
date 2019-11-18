@@ -22,66 +22,105 @@ import java.security.{MessageDigest, SecureRandom}
 
 import javax.crypto.{Cipher, KeyGenerator, Mac, SecretKey, SecretKeyFactory}
 import javax.crypto.spec.{IvParameterSpec, PBEKeySpec, PBEParameterSpec, SecretKeySpec}
-import org.apache.spark.sql.catalyst.expressions.{Concat, DialectSQLTranslatable, Expression, Literal}
+import org.apache.spark.sql.catalyst.expressions.{Attribute, Concat, DialectSQLTranslatable, Expression, Literal}
 import org.apache.spark.sql.dex.DexConstants.TableAttribute
+import org.bouncycastle.util.encoders.Hex
+
+import org.apache.spark.sql.catalyst.dsl.expressions._
 
 object Crypto {
   // dynamic installation of bouncy castle provider
   java.security.Security.addProvider(
     new org.bouncycastle.jce.provider.BouncyCastleProvider())
 
-  def prf(k: String)(m: Any): String = {
+/*  def prf(k: String)(m: Any): String = {
     s"${m}_$k"
   }
 
   def symEnc(k: String)(m: Any): String = {
     s"${m}_$k"
-  }
-
-/*  def prf(masterSecret: MasterSecret)(m: Any): Array[Byte] = {
-    //s"${m}_$k"
-    masterSecret.computeHmac(DataCodec.toByteArray(m))
-  }
-
-  def symEnc(masterSecret: MasterSecret)(m: Any): Array[Byte] = {
-    //s"${m}_$k"
-    masterSecret.encryptAesCbc(DataCodec.toByteArray(m))
   }*/
 
+  def prf(key: SecretKey, m: Any): Array[Byte] = {
+    //s"${m}_$k"
+    computeHmac(key, DataCodec.encode(m))
+  }
+
+  def symEnc(key: SecretKey, m: Any): Array[Byte] = {
+    //s"${m}_$k"
+    encryptAesCbc(key, DataCodec.encode(m))
+  }
+
+  def symDec(key: SecretKey, c: Array[Byte]): Array[Byte] = {
+    decryptAesCbc(key, c)
+  }
+
+  def example(): Unit = {
+    val keyBytes = Hex.decode("000102030405060708090a0b0c0d0e0f")
+    val  key = new SecretKeySpec(keyBytes, "AES")
+    val  cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC")
+    //val  input = Hex.decode("a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7" + "a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7")
+    val input = DataCodec.encode("a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7" + "a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7")
+    //System.out.println("input : " + Hex.toHexString(input))
+    System.out.println("input : " + DataCodec.decode[String](input))
+    cipher.init(Cipher.ENCRYPT_MODE, key)
+    val  iv = cipher.getIV()
+    val output = cipher.doFinal(input)
+    System.out.println("encrypted: " + Hex.toHexString(output))
+    cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv))
+    //System.out.println("decrypted: " + Hex.toHexString(cipher.doFinal(output)))
+    System.out.println("decrypted: " + DataCodec.decode[String](cipher.doFinal(output)))
+  }
+
   val passphraseIterations: Int = 1 << 10 // 1024
-  val aesKeyBitLength = 128
+  val aesKeyBitLength = 256
   val aesAlgorithm = "AES"
   val hmacKeyBitLength = 256
   val hmacAlgorithm = "HmacSHA256"
 
+  private def computeHmac(hmacKey: SecretKey, data: Array[Byte]): Array[Byte] = {
+    require(isHmacKey(hmacKey))
+    val mac = Mac.getInstance(hmacAlgorithm, "BC")
+    mac.init(hmacKey)
+    mac.update(data)
+    mac.doFinal()
+  }
+
+  private def encryptAesCbc(aesKey: SecretKey, data: Array[Byte]): Array[Byte] = {
+    require(isAesKey(aesKey))
+    val cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC")
+    cipher.init(Cipher.ENCRYPT_MODE, aesKey)
+    val iv = cipher.getIV
+    val output = cipher.doFinal(data)
+    DataCodec.concatBytes(iv, output)
+  }
+
+  private def decryptAesCbc(aesKey: SecretKey, ciphertext: Array[Byte]): Array[Byte] = {
+    require(isAesKey(aesKey))
+    val cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC")
+    val iv = ciphertext.take(cipher.getBlockSize)
+    val encData = ciphertext.drop(cipher.getBlockSize)
+    cipher.init(Cipher.DECRYPT_MODE, aesKey, new IvParameterSpec(iv))
+    cipher.doFinal(encData)
+  }
+
+  private def isAesKey(aesKey: SecretKey): Boolean = {
+    aesKey.getEncoded.length == aesKeyBitLength / 8 && aesKey.getAlgorithm.toLowerCase == aesAlgorithm.toLowerCase
+  }
+
+  private def isHmacKey(hmacKey: SecretKey): Boolean = {
+    hmacKey.getEncoded.length == hmacKeyBitLength / 8 && hmacKey.getAlgorithm.toLowerCase == hmacAlgorithm.toLowerCase
+  }
+
+  def aesKeyFrom(keyBytes: Array[Byte]): SecretKey = {
+    require(keyBytes.length == aesKeyBitLength / 8)
+    new SecretKeySpec(keyBytes, aesAlgorithm)
+  }
+
   @SerialVersionUID(1L)
   case class MasterSecret(aesKey: SecretKey, hmacKey: SecretKey) extends Serializable {
-    require(aesKey.getEncoded.length == aesKeyBitLength / 8)
-    require(aesKey.getAlgorithm.toLowerCase == aesAlgorithm.toLowerCase)
-    require(hmacKey.getEncoded.length == hmacKeyBitLength / 8)
-    require(hmacKey.getAlgorithm.toLowerCase == hmacAlgorithm.toLowerCase)
-
-    def computeHmac(data: Array[Byte]): Array[Byte] = {
-      val mac = Mac.getInstance(hmacAlgorithm, "BC")
-      mac.init(hmacKey)
-      mac.update(data)
-      mac.doFinal()
-    }
-
-    def encryptAesCbc(data: Array[Byte]): Array[Byte] = {
-      val cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC")
-      cipher.init(Cipher.ENCRYPT_MODE, aesKey)
-      val iv = cipher.getIV
-      val output = cipher.doFinal(data)
-      DataCodec.concatBytes(iv, output)
-    }
-
-    def decryptAesCbc(ciphertext: Array[Byte]): Array[Byte] = {
-      val cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC")
-      val iv = ciphertext.take(cipher.getBlockSize)
-      cipher.init(Cipher.DECRYPT_MODE, aesKey, new IvParameterSpec(iv))
-      cipher.doFinal(ciphertext)
-    }
+    require(isAesKey(aesKey))
+    require(isHmacKey(hmacKey))
   }
 
   // Do not objectize this method to singleton of MasterSecret,
@@ -90,6 +129,16 @@ object Crypto {
   def generateMasterSecret(): MasterSecret = {
     val aesKey = generateSecret(aesAlgorithm, aesKeyBitLength)
     val hmacKey = generateSecret(hmacAlgorithm, hmacKeyBitLength)
+    MasterSecret(aesKey, hmacKey)
+  }
+
+  // for debugging only
+  def getPseudoMasterSecret: MasterSecret = {
+    val sixteenBytes = Hex.decode("000102030405060708090a0b0c0d0e0f")
+    val aesKeyBytes = DataCodec.concatBytes(sixteenBytes, sixteenBytes)
+    val hmacKeyBytes = DataCodec.concatBytes(sixteenBytes, sixteenBytes)
+    val aesKey = new SecretKeySpec(aesKeyBytes, aesAlgorithm)
+    val hmacKey = new SecretKeySpec(hmacKeyBytes, hmacAlgorithm)
     MasterSecret(aesKey, hmacKey)
   }
 
@@ -152,12 +201,13 @@ object Crypto {
 
 object DexPrimitives {
 
-  val prfKey = "prf"
-  val symEncKey = "enc"
+  val masterSecret: Crypto.MasterSecret = Crypto.getPseudoMasterSecret
 
-  def dexTableNameOf(tableName: String): String = Crypto.prf(prfKey)(tableName)
+  def dexTableNameOf(tableName: String): String =
+    "t" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, tableName))
 
-  def dexColNameOf(colName: String): String = Crypto.prf(prfKey)(colName)
+  def dexColNameOf(colName: String): String =
+    "c" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, colName))
 
   def dexCorrJoinPredicatePrefixOf(attrLeft: TableAttribute, attrRight: TableAttribute): String = {
     s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}"
@@ -188,18 +238,29 @@ object DexPrimitives {
     s"${dexEmmLabelPrfKeyOf(dexPredicate)}~$counter"
   }
 
-  def dexEmmValueOf(dexPredicate: String, value: Number): String = {
-    Crypto.symEnc(dexEmmValueEncKeyOf(dexPredicate))(s"$value")
+  def dexEmmValueOf(dexPredicate: String, value: Long): Array[Byte] = {
+    //Crypto.symEnc(dexEmmValueEncKeyOf(dexPredicate))(s"$value")
+    val trapdoorBytes = Crypto.prf(masterSecret.hmacKey, dexPredicate)
+    val trapdoor = new SecretKeySpec(trapdoorBytes, Crypto.aesAlgorithm)
+    Crypto.symEnc(trapdoor, value)
   }
 
-  def dexCellOf(cell: String): String = {
-    Crypto.symEnc(symEncKey)(cell)
+  def dexCellOf(cell: String): Array[Byte] = {
+    Crypto.symEnc(masterSecret.aesKey, cell)
   }
 
-  def dexRidOf(rid: Number): String = {
-    Crypto.prf(prfKey)(rid)
+  def dexRidOf(rid: Long): Long = {
+    //Crypto.prf(masterSecret.hmacKey, rid)
+    rid
   }
 
+  def planDecryptAttribute(attr: Attribute): DexDecrypt = {
+    DexDecrypt(Literal(masterSecret.aesKey.getEncoded), attr)
+  }
+
+  //
+  // Used by translation
+  //
   def dexEmmLabelPrfKeyOf(dexPredicate: String): String = dexPredicate // todo: append 1 and apply F
   def dexEmmValueEncKeyOf(dexpredicate: String): String = "enc" // todo: append 2 and apply F
 

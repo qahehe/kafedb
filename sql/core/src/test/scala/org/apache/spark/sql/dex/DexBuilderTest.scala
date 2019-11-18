@@ -19,6 +19,7 @@ package org.apache.spark.sql.dex
 
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey}
 import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
+import org.apache.spark.sql.dex.DexPrimitives.dexTableNameOf
 
 
 class DexBuilderTest extends DexQueryTest {
@@ -55,11 +56,33 @@ class DexBuilderTest extends DexQueryTest {
 
   test("dex builder: corr") {
     dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
-    Seq("testdata2_prf", "testdata3_prf", "testdata4_prf", DexConstants.tFilterName, DexConstants.tCorrJoinName).foreach { t =>
+/*    Seq(dexTableNameOf("testdata2"),
+      dexTableNameOf("testdata3"),
+      dexTableNameOf("testdata4"),
+      DexConstants.tFilterName,
+      DexConstants.tCorrJoinName).foreach { t =>
       val df = spark.read.jdbc(urlEnc, t, properties)
       println(t + ": \n"
         + df.columns.mkString(",") + "\n"
         + df.collect().mkString("\n"))
+    }*/
+
+    Seq(dexTableNameOf("testdata2"),
+      dexTableNameOf("testdata3"),
+      dexTableNameOf("testdata4")).foreach { t =>
+      val df = spark.read.jdbc(urlEnc, t, properties)
+      println(t + ":")
+      println(df.columns.mkString(","))
+      println(
+        df.collect().map { x =>
+        Range(0, x.length).collect {
+          case i if df.columns(i) == "rid" =>
+            x.getLong(i)
+          case i =>
+            assert(df.dtypes(i)._2 == "BinaryType")
+            DataCodec.decode[String](Crypto.symDec(DexPrimitives.masterSecret.aesKey, x.get(i).asInstanceOf[Array[Byte]]))
+        }.mkString(",")
+      }.mkString("\n"))
     }
   }
 }

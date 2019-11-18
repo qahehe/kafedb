@@ -23,12 +23,14 @@ import java.util
 import com.google.common.io.ByteStreams
 import javax.xml.bind.DatatypeConverter
 
+import scala.reflect.runtime.universe._
 
 object DataCodec {
 
-  val charsetName: Map[String, String] = Map("scala" -> "ISO-8859-1", "postgres" -> "iso_8859_1")
+  val charsetName: Map[String, String] = Map("scala" -> "UTF-8", "postgres" -> "UTF8")
 
-  def toByteArray(value: Any): Array[Byte] = value match {
+  @scala.annotation.tailrec
+  def encode(value: Any): Array[Byte] = value match {
     case x: Int =>
       val buf = new Array[Byte](java.lang.Integer.BYTES)
       ByteBuffer.wrap(buf).putInt(x)
@@ -44,22 +46,33 @@ object DataCodec {
     case x: Seq[Byte @unchecked] => x.toArray
     case x: Array[Byte] => x
     case x: String => x.getBytes(charsetName("scala"))
-    case x: java.sql.Date => toByteArray(x.getTime)
-    case x: java.sql.Time => toByteArray(x.getTime)
+    case x: java.sql.Date => encode(x.getTime)
+    case x: java.sql.Time => encode(x.getTime)
     case _ => throw DexException("unsupported")
   }
 
-  def asString(value: Seq[Byte]): String = new String(value.toArray, "ISO-8859-1")
+  //def decodeString(value: Array[Byte]): String = new String(value.toArray, charsetName("scala"))
+
+  def decode[T: TypeTag](value: Array[Byte]): T = {
+    val v = typeOf[T] match {
+      case t if t =:= typeOf[String] => new String(value, charsetName("scala"))
+      case t if t =:= typeOf[Int] => ByteBuffer.wrap(value).getInt
+      case t if t =:= typeOf[Long] => ByteBuffer.wrap(value).getLong
+      case t if t =:= typeOf[Double] => ByteBuffer.wrap(value).getDouble
+      case t => throw DexException("unsupported: " + t.getClass.getName)
+    }
+    v.asInstanceOf[T]
+  }
+
+  //def decodeDouble(value: Seq[Byte]): Double = ByteBuffer.wrap(value.toArray).getDouble
+
+  //def decodeInt(value: Seq[Byte]): Int = ByteBuffer.wrap(value.toArray).getInt
+
+  //def decodeLong(value: Seq[Byte]): Long = ByteBuffer.wrap(value.toArray).getLong
 
   def asHexString(value: Seq[Byte]): String = DatatypeConverter.printHexBinary(value.toArray)
 
   def fromHexString(value: String): Seq[Byte] = DatatypeConverter.parseHexBinary(value)
-
-  def toDouble(value: Seq[Byte]): Double = ByteBuffer.wrap(value.toArray).getDouble
-
-  def toInt(value: Seq[Byte]): Int = ByteBuffer.wrap(value.toArray).getInt
-
-  def toLong(value: Seq[Byte]): Long = ByteBuffer.wrap(value.toArray).getLong
 
   def withoutInitialValue(iv: Array[Byte], value: Array[Byte]): Seq[Byte] = util.Arrays.copyOfRange(value, iv.length, value.length)
 
@@ -68,7 +81,7 @@ object DataCodec {
   }
 
   def concatBytes(xs: Any*): Array[Byte] = {
-    val ys = xs.map(x => toByteArray(x))
+    val ys = xs.map(x => encode(x))
     val buf = ByteStreams.newDataOutput(ys.map(_.length).sum)
     ys.foreach(y => buf.write(y))
     buf.toByteArray

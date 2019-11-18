@@ -856,7 +856,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     }
 
     private def translateAttribute(attr: Attribute): NamedExpression = {
-      DexDecrypt(DexPrimitives.symEncKey, dexColOrderOf(attr)).cast(attr.dataType).as(attr.name)
+      planDecryptAttribute(dexColOrderOf(attr)).cast(attr.dataType).as(attr.name)
     }
 
     private def dexColOrderOf(attr: Attribute): Attribute = $"${DexPrimitives.dexColNameOf(attr.name)}_${joinOrder(exprIdToTable(attr.exprId))}"
@@ -1450,33 +1450,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         case (taL, taR) => throw DexException("unsupported: " + taL.toString + ", " + taR.toString) // todo: handle nonkey join using t_domain
       }
     }
-  }
-}
-
-case class DexDecrypt(key: Expression, value: Expression) extends BinaryExpression with ExpectsInputTypes with CodegenFallback {
-
-  override def left: Expression = key
-  override def right: Expression = value
-  override def dataType: DataType = StringType
-  override def inputTypes: Seq[DataType] = Seq(StringType, StringType)
-
-  protected override def nullSafeEval(input1: Any, input2: Any): Any = {
-    //val fromCharset = input2.asInstanceOf[UTF8String].toString
-    //UTF8String.fromString(new String(input1.asInstanceOf[Array[Byte]], fromCharset))
-     UTF8String.fromString("""(.+)_enc""".r.findFirstMatchIn(input2.asInstanceOf[UTF8String].toString).get.group(1))
-  }
-
-  /*override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
-    nullSafeCodeGen(ctx, ev, (key, value) =>
-      s"""
-          ${ev.value} = $value.split(UTF8String.fromString("_enc"), 0)[0];
-      """)
-  }*/
-
-  override protected def dialectSqlExpr(dialect: SqlDialect): String = {
-    DexPrimitives.sqlDecryptExpr(
-      left.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect),
-      right.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect))
   }
 }
 
