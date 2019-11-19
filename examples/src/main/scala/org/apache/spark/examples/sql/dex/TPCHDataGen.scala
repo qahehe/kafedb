@@ -23,7 +23,7 @@ import java.util.Properties
 
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
-import org.apache.spark.sql.dex.DexConstants.{TableAttribute, TableAttributeAtom, TableAttributeCompound}
+import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttribute, TableAttributeAtom, TableAttributeCompound}
 import org.apache.spark.sql.dex.{DexCorr, DexPkFk, DexSpx, DexStandalone, DexVariant}
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.util.Utils

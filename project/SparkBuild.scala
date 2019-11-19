@@ -372,7 +372,7 @@ object SparkBuild extends PomBuild {
   /* Spark SQL Core console settings */
   enable(SQL.settings)(sql)
 
-  enable(Crypto.settings)(sql)
+  enable(Crypto.settings)(catalyst)
 
   /* Hive console settings */
   enable(Hive.settings)(hive)

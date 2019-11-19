@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.dex
+package org.apache.spark.sql.catalyst.dex
 // scalastyle:off
 
 import java.nio.ByteBuffer
@@ -22,8 +22,10 @@ import java.util
 
 import com.google.common.io.ByteStreams
 import javax.xml.bind.DatatypeConverter
+import org.apache.spark.sql.types.{AtomicType, DataType, IntegerType, StringType}
 
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe.typeOf
 
 object DataCodec {
 

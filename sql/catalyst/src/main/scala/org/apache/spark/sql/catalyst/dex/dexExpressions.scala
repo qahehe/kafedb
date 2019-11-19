@@ -14,21 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.dex
+
+package org.apache.spark.sql.catalyst.dex
 // scalastyle:off
 
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, DialectSQLTranslatable, ExpectsInputTypes, Expression, SqlDialect}
-import org.apache.spark.sql.types.{DataType, StringType}
-import org.apache.spark.unsafe.types.{ByteArray, UTF8String}
+import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, DialectSQLTranslatable, ExpectsInputTypes, Expression, SqlDialect, UnaryExpression}
+import org.apache.spark.sql.types.{AbstractDataType, AtomicType, BinaryType, DataType, StringType}
 
+import scala.reflect.runtime.universe.TypeTag
 
 case class DexDecrypt(key: Expression, value: Expression) extends BinaryExpression with ExpectsInputTypes with CodegenFallback {
 
   override def left: Expression = key
   override def right: Expression = value
-  override def dataType: DataType = StringType
-  override def inputTypes: Seq[DataType] = Seq(StringType, StringType)
+  override def inputTypes: Seq[AbstractDataType] = Seq(BinaryType, BinaryType)
+  override def dataType: DataType = BinaryType
 
   protected override def nullSafeEval(input1: Any, input2: Any): Any = {
     //val fromCharset = input2.asInstanceOf[UTF8String].toString
@@ -51,5 +52,35 @@ case class DexDecrypt(key: Expression, value: Expression) extends BinaryExpressi
     DexPrimitives.sqlDecryptExpr(
       left.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect),
       right.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect))
+  }
+}
+
+case class DexPrf(key: Expression, data: Expression)
+  extends BinaryExpression with ExpectsInputTypes with CodegenFallback {
+  override def left: Expression = key
+  override def right: Expression = data
+  override def inputTypes: Seq[AbstractDataType] = Seq(BinaryType, StringType)
+  override def dataType: DataType = BinaryType
+
+  protected override def nullSafeEval(input1: Any, input2: Any): Any = ???
+
+  protected override def dialectSqlExpr(dialect: SqlDialect): String = {
+    DexPrimitives.sqlPrfExpr(
+      key.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect),
+      right.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)
+    )
+  }
+}
+
+case class DexDecode(bin: Expression, decodeType: AtomicType)
+  extends UnaryExpression with ExpectsInputTypes with CodegenFallback {
+  override def child: Expression = bin
+  override def inputTypes: Seq[AbstractDataType] = Seq(BinaryType)
+  override def dataType: DataType = decodeType
+
+  protected override def nullSafeEval(input: Any): Any = {
+    val inputBytes = input.asInstanceOf[Array[Byte]]
+    val res = DataCodec.decode(inputBytes)(decodeType.tag)
+    res
   }
 }

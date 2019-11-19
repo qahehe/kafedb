@@ -14,19 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.dex
+package org.apache.spark.sql.catalyst.dex
 // scalastyle:off
 
 import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
-import java.security.{MessageDigest, SecureRandom}
+import java.security.SecureRandom
 
 import javax.crypto.{Cipher, KeyGenerator, Mac, SecretKey, SecretKeyFactory}
 import javax.crypto.spec.{IvParameterSpec, PBEKeySpec, PBEParameterSpec, SecretKeySpec}
-import org.apache.spark.sql.catalyst.expressions.{Attribute, Concat, DialectSQLTranslatable, Expression, Literal}
-import org.apache.spark.sql.dex.DexConstants.TableAttribute
 import org.bouncycastle.util.encoders.Hex
-
-import org.apache.spark.sql.catalyst.dsl.expressions._
 
 object Crypto {
   // dynamic installation of bouncy castle provider
@@ -40,6 +36,9 @@ object Crypto {
   def symEnc(k: String)(m: Any): String = {
     s"${m}_$k"
   }*/
+
+  val aesBlockByteSize: Int =
+    Cipher.getInstance("AES/CBC/PKCS7Padding", "BC").getBlockSize
 
   def prf(key: SecretKey, m: Any): Array[Byte] = {
     //s"${m}_$k"
@@ -64,7 +63,7 @@ object Crypto {
     //System.out.println("input : " + Hex.toHexString(input))
     System.out.println("input : " + DataCodec.decode[String](input))
     cipher.init(Cipher.ENCRYPT_MODE, key)
-    val  iv = cipher.getIV()
+    val iv = cipher.getIV
     val output = cipher.doFinal(input)
     System.out.println("encrypted: " + Hex.toHexString(output))
     cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv))
@@ -197,96 +196,4 @@ object Crypto {
     random.nextBytes(salt)
     salt
   }
-}
-
-object DexPrimitives {
-
-  val masterSecret: Crypto.MasterSecret = Crypto.getPseudoMasterSecret
-
-  def dexTableNameOf(tableName: String): String =
-    "t" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, tableName))
-
-  def dexColNameOf(colName: String): String =
-    "c" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, colName))
-
-  def dexCorrJoinPredicatePrefixOf(attrLeft: TableAttribute, attrRight: TableAttribute): String = {
-    s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}"
-  }
-
-  def dexUncorrJoinPredicateOf(attrLeft: TableAttribute, attrRight: TableAttribute): String = {
-    s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}"
-  }
-
-  def dexFilterPredicatePrefixOf(table: String, column: String): String = {
-    s"$table~$column"
-  }
-
-  def dexDomainPredicateOf(table: String, column: String): String = {
-    s"$table~$column"
-  }
-
-  def dexPkFKJoinPredicateOf(leftTableAttr: TableAttribute, rightTableAttr: TableAttribute): String = {
-    s"${leftTableAttr.table}~${rightTableAttr.table}"
-  }
-
-  def dexPredicatesConcat(predicatePrefix: String)(predicateTerm: String): String = {
-    s"$predicatePrefix~$predicateTerm"
-  }
-
-  def dexEmmLabelOf(dexPredicate: String, counter: Int): String = {
-    // todo: use dexEmmLabelPrfKey(dexPredicate) for k, return F_k(counter)
-    s"${dexEmmLabelPrfKeyOf(dexPredicate)}~$counter"
-  }
-
-  def dexEmmValueOf(dexPredicate: String, value: Long): Array[Byte] = {
-    //Crypto.symEnc(dexEmmValueEncKeyOf(dexPredicate))(s"$value")
-    val trapdoorBytes = Crypto.prf(masterSecret.hmacKey, dexPredicate)
-    val trapdoor = new SecretKeySpec(trapdoorBytes, Crypto.aesAlgorithm)
-    Crypto.symEnc(trapdoor, value)
-  }
-
-  def dexCellOf(cell: String): Array[Byte] = {
-    Crypto.symEnc(masterSecret.aesKey, cell)
-  }
-
-  def dexRidOf(rid: Long): Long = {
-    //Crypto.prf(masterSecret.hmacKey, rid)
-    rid
-  }
-
-  def planDecryptAttribute(attr: Attribute): DexDecrypt = {
-    DexDecrypt(Literal(masterSecret.aesKey.getEncoded), attr)
-  }
-
-  //
-  // Used by translation
-  //
-  def dexEmmLabelPrfKeyOf(dexPredicate: String): String = dexPredicate // todo: append 1 and apply F
-  def dexEmmValueEncKeyOf(dexpredicate: String): String = "enc" // todo: append 2 and apply F
-
-  def sqlEmmLabelPrfKeyExprOf(predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
-    // todo: use Postgres PRF on key=client secret key append 1
-    predicateExpr
-  }
-
-  def sqlEmmValueEncKeyExprOf(predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
-    // todo: use Postgres PRF on key=client secret key append 2
-    //"'enc'"
-    Literal("enc")
-  }
-
-  def sqlEmmLabelExprOf(dbEmmLabelPrfKeyExpr: DialectSQLTranslatable, counterExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
-    // todo: instead of concat, use Postgres PRF on key=dbEmmLabelprfKeyExpr
-    //s"$dbEmmLabelPrfKeyExpr || '~' || $counterExpr"
-    Concat(dbEmmLabelPrfKeyExpr :: Literal("~") :: counterExpr :: Nil)
-  }
-
-  def sqlConcatPredicateExprsOf(predicatePrefixExpr: DialectSQLTranslatable, predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
-    //s"$predicatePrefixExpr || '~' || $predicateExpr"
-    Concat(predicatePrefixExpr :: Literal("~") :: predicateExpr :: Nil)
-  }
-
-  def sqlDecryptExpr(encKeyExpr: String, colExpr: String): String =
-  // todo: use SQL decrypt like s"decrypt($decKey, $col)"
-    s"substring($colExpr, '(.+)_' || $encKeyExpr)"
 }

@@ -17,8 +17,8 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-import org.apache.spark.sql.dex.DexPrimitives.dexTableNameOf
-import org.apache.spark.sql.dex.DexConstants.{TableAttributeCompound, tCorrJoinName, tDomainName, tFilterName, tUncorrJoinName}
+import org.apache.spark.sql.catalyst.dex.DexPrimitives.dexTableNameOf
+import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttributeCompound, tCorrJoinName, tDomainName, tFilterName, tUncorrJoinName}
 
 trait DexQueryTest extends DexTest {
   val data2Name = "testdata2"

@@ -17,9 +17,12 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.dex.{Crypto, DataCodec, DexDecrypt, DexPrf, DexPrimitives}
 import org.bouncycastle.util.encoders.Hex
 
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.TypeTag
+import org.apache.spark.sql.catalyst.expressions.Literal
 
 // scalastyle:off
 
@@ -47,8 +50,24 @@ class CryptoSuite extends DexTest {
     testForTyped(1.23)
   }
 
+  test("symmetric encryption in catalyst") {
+    def testForTyped[T: TypeTag](message: T) = {
+      val masterSecret = Crypto.generateMasterSecret()
+      val ciphertext = Crypto.symEnc(masterSecret.aesKey, message)
+      val decExpr = DexDecrypt(Literal(masterSecret.aesKey.getEncoded), Literal(ciphertext))
+      val decBytes = decExpr.eval(InternalRow.empty).asInstanceOf[Array[Byte]]
+      val decMessage: T = DataCodec.decode(decBytes)
+      println(decBytes.length)
+      assert(message == decMessage)
+    }
+    testForTyped("abcdef")
+    testForTyped(123)
+    testForTyped(123L)
+    testForTyped(1.23)
+  }
+
   test("value encode byte length") {
-    def testForTyped[T: TypeTag](value: T) = {
+    def testForTyped[T: TypeTag](value: T): Unit = {
       println(DataCodec.encode(value).length)
     }
     testForTyped("12345")

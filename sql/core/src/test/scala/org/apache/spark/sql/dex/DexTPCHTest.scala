@@ -21,7 +21,7 @@ import java.sql.Connection
 
 import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey}
-import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
+import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
 
 trait DexTPCHTest extends QueryTest with DexTest {
 

@@ -18,7 +18,7 @@ package org.apache.spark.examples.sql.dex
 // scalastyle:off
 
 import org.apache.spark.examples.sql.dex.TPCHDataGen.time
-import org.apache.spark.sql.dex.DexConstants.AttrName
+import org.apache.spark.sql.catalyst.dex.DexConstants.AttrName
 import org.apache.spark.sql.dex.{DexCorr, DexPkFk, DexSpx, DexVariant}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 

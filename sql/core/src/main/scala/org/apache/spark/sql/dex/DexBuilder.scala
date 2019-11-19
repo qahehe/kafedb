@@ -21,9 +21,10 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.catalyst.dex.{DexConstants, DexException}
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
-import org.apache.spark.sql.dex.DexConstants._
-import org.apache.spark.sql.dex.DexPrimitives._
+import org.apache.spark.sql.catalyst.dex.DexConstants._
+import org.apache.spark.sql.catalyst.dex.DexPrimitives._
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.LongType

@@ -17,9 +17,10 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
+import org.apache.spark.sql.catalyst.dex.{Crypto, DataCodec, DexConstants, DexPrimitives}
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey}
-import org.apache.spark.sql.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
-import org.apache.spark.sql.dex.DexPrimitives.dexTableNameOf
+import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
+import org.apache.spark.sql.catalyst.dex.DexPrimitives.dexTableNameOf
 
 
 class DexBuilderTest extends DexQueryTest {
@@ -56,7 +57,7 @@ class DexBuilderTest extends DexQueryTest {
 
   test("dex builder: corr") {
     dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
-/*    Seq(dexTableNameOf("testdata2"),
+    Seq(dexTableNameOf("testdata2"),
       dexTableNameOf("testdata3"),
       dexTableNameOf("testdata4"),
       DexConstants.tFilterName,
@@ -65,14 +66,15 @@ class DexBuilderTest extends DexQueryTest {
       println(t + ": \n"
         + df.columns.mkString(",") + "\n"
         + df.collect().mkString("\n"))
-    }*/
+    }
 
     Seq(dexTableNameOf("testdata2"),
       dexTableNameOf("testdata3"),
       dexTableNameOf("testdata4")).foreach { t =>
       val df = spark.read.jdbc(urlEnc, t, properties)
       println(t + ":")
-      println(df.columns.mkString(","))
+      //println(df.columns.mkString(","))
+      println(df.dtypes.map(x => s"${x._1}:${x._2}").mkString(","))
       println(
         df.collect().map { x =>
         Range(0, x.length).collect {
@@ -80,9 +82,19 @@ class DexBuilderTest extends DexQueryTest {
             x.getLong(i)
           case i =>
             assert(df.dtypes(i)._2 == "BinaryType")
-            DataCodec.decode[String](Crypto.symDec(DexPrimitives.masterSecret.aesKey, x.get(i).asInstanceOf[Array[Byte]]))
+            DataCodec.decode[Int](Crypto.symDec(DexPrimitives.masterSecret.aesKey, x.get(i).asInstanceOf[Array[Byte]]))
         }.mkString(",")
       }.mkString("\n"))
     }
+  }
+
+  test("dex cor end to end") {
+    dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
+    val q1 = nameToDf("testdata2").select("a")
+    checkDexFor(q1, q1.dexCorr(cks))
+
+    //val df = spark.read.jdbc(urlEnc, dexTableNameOf("testdata2"), properties)
+    //val values = df.collect()
+
   }
 }
