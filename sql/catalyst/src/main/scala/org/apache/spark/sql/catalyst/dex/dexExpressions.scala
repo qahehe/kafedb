@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst.dex
 
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
 import org.apache.spark.sql.catalyst.expressions.{BinaryExpression, DialectSQLTranslatable, ExpectsInputTypes, Expression, SqlDialect, UnaryExpression}
-import org.apache.spark.sql.types.{AbstractDataType, AtomicType, BinaryType, DataType, StringType}
+import org.apache.spark.sql.types.{AbstractDataType, AtomicType, BinaryType, DataType, IntegerType, LongType, StringType}
 
 import scala.reflect.runtime.universe.TypeTag
 
@@ -82,5 +82,21 @@ case class DexDecode(bin: Expression, decodeType: AtomicType)
     val inputBytes = input.asInstanceOf[Array[Byte]]
     val res = DataCodec.decode(inputBytes)(decodeType.tag)
     res
+  }
+}
+
+case class DexEncode(expr: Expression, exprType: AtomicType)
+  extends UnaryExpression with ExpectsInputTypes with CodegenFallback {
+  require(exprType.isInstanceOf[LongType])
+  override def child: Expression = expr
+  override def inputTypes: Seq[AbstractDataType] = Seq(exprType)
+  override def dataType: DataType = BinaryType
+
+  protected override def nullSafeEval(input: Any): Any = {
+    DataCodec.encode(input)
+  }
+
+  protected override def dialectSqlExpr(dialect: SqlDialect): String = {
+    DexPrimitives.sqlEncodeExpr(expr.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect))
   }
 }

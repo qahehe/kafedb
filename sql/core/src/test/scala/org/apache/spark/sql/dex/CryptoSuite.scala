@@ -39,7 +39,7 @@ class CryptoSuite extends DexTest {
   test("symmetric encryption and decryption in scala") {
     def testForTyped[T: TypeTag](message: T) = {
       val masterSecret = Crypto.generateMasterSecret()
-      val ciphertext = Crypto.symEnc(masterSecret.aesKey, message)
+      val ciphertext = Crypto.symEnc(masterSecret.aesKey, DataCodec.encode(message))
       val decBytes = Crypto.symDec(masterSecret.aesKey, ciphertext)
       val decMessage: T = DataCodec.decode(decBytes)
       assert(message == decMessage)
@@ -53,7 +53,7 @@ class CryptoSuite extends DexTest {
   test("symmetric encryption in catalyst") {
     def testForTyped[T: TypeTag](message: T) = {
       val masterSecret = Crypto.generateMasterSecret()
-      val ciphertext = Crypto.symEnc(masterSecret.aesKey, message)
+      val ciphertext = Crypto.symEnc(masterSecret.aesKey, DataCodec.encode(message))
       val decExpr = DexDecrypt(Literal(masterSecret.aesKey.getEncoded), Literal(ciphertext))
       val decBytes = decExpr.eval(InternalRow.empty).asInstanceOf[Array[Byte]]
       val decMessage: T = DataCodec.decode(decBytes)
@@ -64,6 +64,37 @@ class CryptoSuite extends DexTest {
     testForTyped(123)
     testForTyped(123L)
     testForTyped(1.23)
+  }
+
+  test("hmac in dex and postgres only equals for string") {
+    val masterSecret = Crypto.generateMasterSecret()
+    val data = 10.toString
+    val dexHash = Crypto.prf(masterSecret.hmacKey, DataCodec.encode(data))
+    val postgresHash = {
+      val rs = connEnc.prepareStatement(s"select hmac('$data'::bytea, ${Literal(masterSecret.hmacKey.getEncoded).dialectSql(dialect)}, 'sha256')").executeQuery
+      assert(rs.next())
+      rs.getObject(1).asInstanceOf[Array[Byte]]
+    }
+    assert(dexHash === postgresHash)
+  }
+
+  test("aes in dex and postgres equals for bytes") {
+    val masterSecret = Crypto.getPseudoMasterSecret
+    val data = DataCodec.encode(123L)
+    val dexCiphertext = Crypto.symEnc(masterSecret.aesKey, data)
+    println(dexCiphertext.length)
+    println(Hex.toHexString(dexCiphertext))
+    println(Literal(dexCiphertext).dialectSql(dialect))
+    println(Hex.toHexString(masterSecret.aesKey.getEncoded))
+    println(Literal(masterSecret.aesKey.getEncoded).dialectSql(dialect))
+
+    val dataPostgres = {
+      val decFunPg = DexPrimitives.sqlDecryptExpr(Literal(masterSecret.aesKey.getEncoded).dialectSql(dialect), Literal(dexCiphertext).dialectSql(dialect))
+      val rs = connEnc.prepareStatement(s"select $decFunPg").executeQuery()
+      assert(rs.next())
+      rs.getObject(1).asInstanceOf[Array[Byte]]
+    }
+    assert(data === dataPostgres)
   }
 
   test("value encode byte length") {
@@ -95,5 +126,9 @@ class CryptoSuite extends DexTest {
     val dexColName = DexPrimitives.dexColNameOf("col1")
     println(dexColName)
     println(dexColName.length)
+  }
+
+  test("dex rid") {
+    println(DexPrimitives.dexRidOf(123L))
   }
 }

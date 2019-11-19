@@ -20,8 +20,10 @@ package org.apache.spark.sql.dex
 import java.sql.DriverManager
 import java.util.Properties
 
+import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions
 import org.apache.spark.sql.{DataFrame, QueryTest}
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.jdbc.JdbcDialects
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.util.Utils
 import org.scalatest.{BeforeAndAfter, PrivateMethodTester}
@@ -34,6 +36,8 @@ trait DexTest extends QueryTest with SharedSQLContext with BeforeAndAfter with P
   var connEnc: java.sql.Connection = null
   val properties = new Properties()
   properties.setProperty("Driver", "org.postgresql.Driver")
+
+  val dialect = JdbcDialects.get(JDBCOptions.JDBC_URL)
 
   protected override def sparkConf = super.sparkConf
     .set(SQLConf.DEX_ENCRYPTED_DATASOURCE_JDBC_URL, urlEnc)

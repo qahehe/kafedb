@@ -21,7 +21,7 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.catalyst.dex.{DexConstants, DexException}
+import org.apache.spark.sql.catalyst.dex.{DexConstants, DexException, DexPrimitives}
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
 import org.apache.spark.sql.catalyst.dex.DexConstants._
 import org.apache.spark.sql.catalyst.dex.DexPrimitives._
@@ -84,11 +84,19 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private val udfCell = udf(dexCellOf _)
 
-  private val udfEmmLabel = udf { (dexPredicate: String, counter: Int) =>
-    dexEmmLabelOf(dexPredicate, counter)
+  private val udfMasterTrapdoor = udf { (dexPredicate: String, j: Int) =>
+    dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate, j)
   }
-  private val udfEmmValue = udf { (dexPredicate: String, rid: Long) =>
-    dexEmmValueOf(dexPredicate, rid)
+
+  private val udfSecondaryTrapdoor = udf { (masterTrapdoor: Array[Byte], dexPredicate: String, j: Int) =>
+    dexTrapdoor(masterTrapdoor, dexPredicate, j)
+  }
+
+  private val udfEmmLabel = udf { (trapdoor: Array[Byte], counter: Int) =>
+    dexEmmLabelOf(trapdoor, counter)
+  }
+  private val udfEmmValue = udf { (trapdoor: Array[Byte], rid: Long) =>
+    dexEmmValueOf(trapdoor, rid)
   }
 
   private val udfRid = udf { rid: Long =>
@@ -292,8 +300,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           val udfFilterPredicate = udf(dexPredicatesConcat(dexFilterPredicatePrefixOf(n, c)) _)
           r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
             .withColumn("predicate", udfFilterPredicate(col(c)))
-            .withColumn("label", udfEmmLabel($"predicate", $"counter"))
-            .withColumn("value", udfEmmValue($"predicate", $"rid"))
+            .withColumn("master_trapdoor_1", udfMasterTrapdoor($"predicate", lit(1)))
+            .withColumn("master_trapdoor_2", udfMasterTrapdoor($"predicate", lit(2)))
+            .withColumn("label", udfEmmLabel($"master_trapdoor_1", $"counter"))
+            .withColumn("value", udfEmmValue($"master_trapdoor_2", $"rid"))
             .select("label", "value")
         }
       }
@@ -325,13 +335,15 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       } yield {
         val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
         val uncorrJoinPredicate = dexUncorrJoinPredicateOf(attrLeft, attrRight)
+        val masterTrapdoors = (
+          dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, uncorrJoinPredicate, 1),
+          dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, uncorrJoinPredicate, 2))
         dfLeft.withColumnRenamed("rid", "rid_left")
           .join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
           .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition($"counter")
-          .withColumn("predicate", lit(uncorrJoinPredicate))
-          .withColumn("label", udfEmmLabel($"predicate", $"counter"))
-          .withColumn("value_left", udfEmmValue($"predicate", $"rid_left"))
-          .withColumn("value_right", udfEmmValue($"predicate", $"rid_right"))
+          .withColumn("label", udfEmmLabel(lit(masterTrapdoors._1), $"counter"))
+          .withColumn("value_left", udfEmmValue(lit(masterTrapdoors._2), $"rid_left"))
+          .withColumn("value_right", udfEmmValue(lit(masterTrapdoors._2), $"rid_right"))
           .select("label", "value_left", "value_right")
       }
       val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)
@@ -344,16 +356,19 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         ForeignKey(attr, attrRef) <- foreignKeys
       } yield {
         def joinFor(attrLeft: TableAttribute, attrRight: TableAttribute): DataFrame = {
-          val udfJoinPred = udf(dexPredicatesConcat(dexCorrJoinPredicatePrefixOf(attrLeft, attrRight)) _)
+          //val udfJoinPred = udf(dexPredicatesConcat(dexCorrJoinPredicatePrefixOf(attrLeft, attrRight)) _)
+          val joinPred = dexCorrJoinPredicatePrefixOf(attrLeft, attrRight)
+          val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
           val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
           require(dfLeft.columns.contains(attrLeft.attr) && dfRight.columns.contains(attrRight.attr), s"${attrLeft.attr} and ${attrRight.attr}")
           dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
             //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
             //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
             .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
-            .withColumn("predicate", udfJoinPred($"rid_left"))
-            .withColumn("label", udfEmmLabel($"predicate", $"counter"))
-            .withColumn("value", udfEmmValue($"predicate", $"rid_right"))
+            .withColumn("secondary_trapdoor_1", udfSecondaryTrapdoor(lit(masterTrapdoor), $"rid_left", lit(1)))
+            .withColumn("secondary_trapdoor_2", udfSecondaryTrapdoor(lit(masterTrapdoor), $"rid_left", lit(2)))
+            .withColumn("label", udfEmmLabel($"secondary_trapdoor_1", $"counter"))
+            .withColumn("value", udfEmmValue($"secondary_trapdoor_2", $"rid_right"))
             .select("label", "value")
         }
         joinFor(attr, attrRef) union joinFor(attrRef, attr)

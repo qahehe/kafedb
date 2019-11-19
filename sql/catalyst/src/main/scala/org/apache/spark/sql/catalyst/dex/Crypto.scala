@@ -40,14 +40,20 @@ object Crypto {
   val aesBlockByteSize: Int =
     Cipher.getInstance("AES/CBC/PKCS7Padding", "BC").getBlockSize
 
-  def prf(key: SecretKey, m: Any): Array[Byte] = {
+  def prf(key: SecretKey, m: Array[Byte]): Array[Byte] = {
     //s"${m}_$k"
-    computeHmac(key, DataCodec.encode(m))
+    computeHmac(key, m)
+  }
+  def prf(keyBytes: Array[Byte], m: Array[Byte]): Array[Byte] = {
+    prf(new SecretKeySpec(keyBytes, hmacAlgorithm), m)
   }
 
-  def symEnc(key: SecretKey, m: Any): Array[Byte] = {
+  def symEnc(key: SecretKey, m: Array[Byte]): Array[Byte] = {
     //s"${m}_$k"
-    encryptAesCbc(key, DataCodec.encode(m))
+    encryptAesCbc(key, m)
+  }
+  def symEnc(keyBytes: Array[Byte], m: Array[Byte]): Array[Byte] = {
+    symEnc(new SecretKeySpec(keyBytes, aesAlgorithm), m)
   }
 
   def symDec(key: SecretKey, c: Array[Byte]): Array[Byte] = {

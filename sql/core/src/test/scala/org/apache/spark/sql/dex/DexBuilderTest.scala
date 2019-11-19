@@ -93,8 +93,7 @@ class DexBuilderTest extends DexQueryTest {
     val q1 = nameToDf("testdata2").select("a")
     checkDexFor(q1, q1.dexCorr(cks))
 
-    //val df = spark.read.jdbc(urlEnc, dexTableNameOf("testdata2"), properties)
-    //val values = df.collect()
-
+    val q2 = nameToDf("testdata2").where("b = 1").select("a")
+    checkDexFor(q2, q2.dexCorr(cks))
   }
 }

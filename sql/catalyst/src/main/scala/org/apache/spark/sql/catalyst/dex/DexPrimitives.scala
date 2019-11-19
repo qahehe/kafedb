@@ -20,8 +20,8 @@ package org.apache.spark.sql.catalyst.dex
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 import org.apache.spark.sql.catalyst.dex.DexConstants.TableAttribute
-import org.apache.spark.sql.catalyst.expressions.{Attribute, Concat, DialectSQLTranslatable, Literal}
-import org.apache.spark.sql.types.AtomicType
+import org.apache.spark.sql.catalyst.expressions.{Attribute, Concat, DialectSQLTranslatable, Expression, Literal}
+import org.apache.spark.sql.types.{AtomicType, LongType}
 import org.bouncycastle.util.encoders.Hex
 
 object DexPrimitives {
@@ -29,10 +29,10 @@ object DexPrimitives {
   val masterSecret: Crypto.MasterSecret = Crypto.getPseudoMasterSecret
 
   def dexTableNameOf(tableName: String): String =
-    "t" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, tableName))
+    "t" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, DataCodec.encode(tableName)))
 
   def dexColNameOf(colName: String): String =
-    "c" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, colName))
+    "c" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, DataCodec.encode(colName)))
 
   def dexCorrJoinPredicatePrefixOf(attrLeft: TableAttribute, attrRight: TableAttribute): String = {
     s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}"
@@ -58,50 +58,50 @@ object DexPrimitives {
     s"$predicatePrefix~$predicateTerm"
   }
 
-  def dexEmmLabelOf(dexPredicate: String, counter: Int): String = {
-    // todo: use dexEmmLabelPrfKey(dexPredicate) for k, return F_k(counter)
-    s"${dexEmmLabelPrfKeyOf(dexPredicate)}~$counter"
+  def dexTrapdoor(key: Array[Byte], predicate: String): Array[Byte] = {
+    Crypto.prf(key, DataCodec.encode(predicate))
   }
 
-  def dexEmmValueOf(dexPredicate: String, value: Long): Array[Byte] = {
-    //Crypto.symEnc(dexEmmValueEncKeyOf(dexPredicate))(s"$value")
-    val trapdoor = dexEmmValueEncKeyOf(dexPredicate)
-    Crypto.symEnc(trapdoor, value)
+  def dexTrapdoor(key: Array[Byte], predicate: String, j: Int): Array[Byte] = {
+    Crypto.prf(key, DataCodec.encode(predicate + j.toString))
   }
 
-  def dexEmmLabelPrfKeyOf(dexPredicate: String): String = dexPredicate // todo: append 1 and apply F
-  def dexEmmValueEncKeyOf(dexPredicate: String): SecretKey = {
-    val trapdoorBytes = Crypto.prf(masterSecret.hmacKey, dexPredicate)
-    val trapdoor = new SecretKeySpec(trapdoorBytes, Crypto.aesAlgorithm)
-    trapdoor
+  def dexEmmLabelOf(trapdoor: Array[Byte], counter: Int): Array[Byte] = {
+    // Postgres does not support conversion of integer to binary, only string to binary.
+    Crypto.prf(trapdoor, DataCodec.encode(counter.toString))
+  }
+
+  def dexEmmValueOf(trapdoor: Array[Byte], rid: Long): Array[Byte] = {
+    Crypto.symEnc(trapdoor, dexRidOf(rid))
   }
 
   def dexCellOf(cell: Any): Array[Byte] = {
-    Crypto.symEnc(masterSecret.aesKey, cell)
+    Crypto.symEnc(masterSecret.aesKey, DataCodec.encode(cell))
   }
 
-  def dexRidOf(rid: Long): Long = {
+  def dexRidOf(rid: Long): Array[Byte] = {
     //Crypto.prf(masterSecret.hmacKey, rid)
-    rid
+    //rid
+    DataCodec.encode(rid)
   }
 
   def catalystDecryptAttribute(attr: Attribute): DexDecrypt = {
-      DexDecrypt(Literal(masterSecret.aesKey.getEncoded), attr)
+    DexDecrypt(Literal(masterSecret.aesKey.getEncoded), attr)
   }
 
-  def catalystEmmLabelPrfKeyExprOf(predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
-    // todo: use Postgres PRF on key=client secret key append 1
-    predicateExpr
+  def catalystTrapdoorExprOf(key: Expression, predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
+    DexPrf(key, predicateExpr)
   }
 
-  def catalystEmmValueEncKeyExprOf(predicateExpr: DialectSQLTranslatable): DexPrf = {
-    DexPrf(Literal(masterSecret.hmacKey.getEncoded), predicateExpr)
+  def catalystTrapdoorExprOf(key: Expression, predicateExpr: DialectSQLTranslatable, j: Int): DialectSQLTranslatable = {
+    DexPrf(key, Concat(predicateExpr :: Literal(j.toString) :: Nil))
   }
 
-  def catalystEmmLabelExprOf(dbEmmLabelPrfKeyExpr: DialectSQLTranslatable, counterExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
+  def catalystEmmLabelExprOf(trapdoorExpr: DialectSQLTranslatable, counterExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
     // todo: instead of concat, use Postgres PRF on key=dbEmmLabelprfKeyExpr
     //s"$dbEmmLabelPrfKeyExpr || '~' || $counterExpr"
-    Concat(dbEmmLabelPrfKeyExpr :: Literal("~") :: counterExpr :: Nil)
+    //Concat(dbEmmLabelPrfKeyExpr :: Literal("~") :: counterExpr :: Nil)
+    DexPrf(trapdoorExpr, DexEncode(counterExpr, LongType))
   }
 
   def catalystConcatPredicateExprsOf(predicatePrefixExpr: DialectSQLTranslatable, predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
@@ -113,16 +113,19 @@ object DexPrimitives {
   // Used by translation
   //
 
-
   def sqlDecryptExpr(encKeyExpr: String, colExpr: String): String = {
-    // todo: use SQL decrypt like s"decrypt($decKey, $col)"
-    //s"substring($colExpr, '(.+)_' || $encKeyExpr)"
-    val ivExpr = s"substring($colExpr, 1, ${Crypto.aesBlockByteSize})"
-    val dataExpr = s"substring($colExpr, ${Crypto.aesBlockByteSize} + 1, octet_length($colExpr) - ${Crypto.aesBlockByteSize})"
-    s"decrypt_iv($dataExpr, $encKeyExpr, $ivExpr, 'aes-cbc/pad:pkcs')"
+    // Need to add conversion to binary for each expression, especially inside substring and octet_length functions.
+    // Otherwise these functions treat the arguments as strings rather than binaries.
+    val ivExpr = s"substring($colExpr::bytea, 1, ${Crypto.aesBlockByteSize})"
+    val dataExpr = s"substring($colExpr::bytea, ${Crypto.aesBlockByteSize + 1}, octet_length($colExpr::bytea) - ${Crypto.aesBlockByteSize})"
+    s"decrypt_iv($dataExpr::bytea, $encKeyExpr::bytea, $ivExpr::bytea, 'aes-cbc/pad:pkcs')"
   }
 
   def sqlPrfExpr(keyExpr: String, colExpr: String): String = {
     s"hmac($colExpr, $keyExpr, 'sha256')"
+  }
+
+  def sqlEncodeExpr(expr: String): String = {
+    s"to_hex($expr)::bytea"
   }
 }
