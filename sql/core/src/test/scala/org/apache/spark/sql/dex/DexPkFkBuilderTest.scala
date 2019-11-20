@@ -18,7 +18,7 @@ package org.apache.spark.sql.dex
 // scalastyle:off
 
 class DexPkFkBuilderTest extends DexTPCHTest {
-  override protected def provideEncryptedData: Boolean = true
+  override protected def provideEncryptedData: Boolean = false
 
   test("dex pkfk builder") {
     val dexPkfkBuilder = spark.sessionState.dexBuilder

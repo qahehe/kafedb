@@ -23,26 +23,16 @@ import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttributeAtom, Table
 import org.apache.spark.sql.catalyst.dex.DexPrimitives.dexTableNameOf
 
 
-class DexBuilderTest extends DexQueryTest {
+class DexBuilderTest extends DexTPCHTest {
   override protected def provideEncryptedData: Boolean = false
 
   lazy val dexBuilder = spark.sessionState.dexBuilder
 
   lazy val nameToDf = Map(
-    "testdata2" -> data2,
-    "testdata3" -> data3,
-    "testdata4" -> data4
-  )
-
-  lazy val primaryKeys = Set(
-    PrimaryKey(TableAttributeCompound("testdata2", Seq("a", "b"))),
-    PrimaryKey(TableAttributeAtom("testdata3", "d")),
-    PrimaryKey(TableAttributeAtom("testdata4", "g"))
-  )
-
-  lazy val foreignKeys = Set(
-    ForeignKey(TableAttributeAtom("testdata4", "e"), TableAttributeAtom("testdata3", "d")),
-    ForeignKey(TableAttributeCompound("testdata4", Seq("e", "f")), TableAttributeCompound("testdata2", Seq("a", "b")))
+    "partsupp" -> partsupp,
+    "part" -> part,
+    "supplier" -> supplier,
+    "lineitem" -> lineitem
   )
 
   test("dex builder: spx") {
@@ -57,9 +47,9 @@ class DexBuilderTest extends DexQueryTest {
 
   test("dex builder: corr") {
     dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
-    Seq(dexTableNameOf("testdata2"),
-      dexTableNameOf("testdata3"),
-      dexTableNameOf("testdata4"),
+    Seq(dexTableNameOf("partsupp"),
+      dexTableNameOf("part"),
+      dexTableNameOf("supplier"),
       DexConstants.tFilterName,
       DexConstants.tCorrJoinName).foreach { t =>
       val df = spark.read.jdbc(urlEnc, t, properties)
@@ -79,7 +69,7 @@ class DexBuilderTest extends DexQueryTest {
         df.collect().map { x =>
         Range(0, x.length).collect {
           case i if df.columns(i) == "rid" =>
-            x.getLong(i)
+            DataCodec.decode[Long](x.getAs[Array[Byte]](i))
           case i =>
             assert(df.dtypes(i)._2 == "BinaryType")
             DataCodec.decode[Int](Crypto.symDec(DexPrimitives.masterSecret.aesKey, x.get(i).asInstanceOf[Array[Byte]]))
@@ -90,10 +80,10 @@ class DexBuilderTest extends DexQueryTest {
 
   test("dex cor end to end") {
     dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
-    val q1 = nameToDf("testdata2").select("a")
+    val q1 = nameToDf("part").select("p_name")
     checkDexFor(q1, q1.dexCorr(cks))
 
-    val q2 = nameToDf("testdata2").where("b = 1").select("a")
+    val q2 = nameToDf("part").where("p_name = 'pa'").select("p_name")
     checkDexFor(q2, q2.dexCorr(cks))
   }
 }

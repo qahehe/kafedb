@@ -47,8 +47,13 @@ trait DexTPCHTest extends QueryTest with DexTest {
     ForeignKey(TableAttributeAtom("lineitem", "l_partkey"), TableAttributeAtom("part", "p_partkey")),
     ForeignKey(TableAttributeAtom("lineitem", "l_suppkey"), TableAttributeAtom("supplier", "s_suppkey"))
   )
+  lazy val compoundKeys = Set(
+    TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey")),
+    TableAttributeCompound("lineitem", Seq("l_orderkey", "l_linenumber"))
+  )
   lazy val pks = primaryKeys.map(_.attr.attr)
   lazy val fks = foreignKeys.map(_.attr.attr)
+  lazy val cks = compoundKeys.map(_.attr)
 
   protected def provideEncryptedData: Boolean
 
@@ -112,6 +117,9 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |(2, 2, 2, 2, 'la3')
       """.stripMargin)
 
+    conn.commit()
+
+    if (provideEncryptedData){
     // todo: in case primary key is meaningful and needs to conceal, one can easily create pseudo primary key
     // and then map the pseudo to real primary key via 'enc(key=f(table,pseudo_pk), real_pk)'.
     // For now, assume all primary keys are already pseudo.
@@ -211,8 +219,7 @@ trait DexTPCHTest extends QueryTest with DexTest {
         |(2 * 2 + 2 * 3, 'partsupp~lineitem~10~1', '10_enc_lineitem~partsupp~10', 'part~lineitem~2~1', '2_enc_lineitem~part~10', 'lineitem~l_comment~la3~1', 'la3_enc')
       """.stripMargin)
 
-    conn.commit()
-    connEnc.commit()
-
+      connEnc.commit()
+    }
   }
 }

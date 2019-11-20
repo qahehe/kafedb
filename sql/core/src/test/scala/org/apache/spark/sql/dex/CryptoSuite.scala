@@ -71,7 +71,7 @@ class CryptoSuite extends DexTest {
     val data = 10.toString
     val dexHash = Crypto.prf(masterSecret.hmacKey, DataCodec.encode(data))
     val postgresHash = {
-      val rs = connEnc.prepareStatement(s"select hmac('$data'::bytea, ${Literal(masterSecret.hmacKey.getEncoded).dialectSql(dialect)}, 'sha256')").executeQuery
+      val rs = connEnc.prepareStatement(s"select hmac($data::text::bytea, ${Literal(masterSecret.hmacKey.getEncoded).dialectSql(dialect)}, 'sha256')").executeQuery
       assert(rs.next())
       rs.getObject(1).asInstanceOf[Array[Byte]]
     }

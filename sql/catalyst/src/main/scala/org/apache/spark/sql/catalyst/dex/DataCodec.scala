@@ -23,6 +23,7 @@ import java.util
 import com.google.common.io.ByteStreams
 import javax.xml.bind.DatatypeConverter
 import org.apache.spark.sql.types.{AtomicType, DataType, IntegerType, StringType}
+import org.apache.spark.unsafe.types.UTF8String
 
 import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.runtime.universe.typeOf
@@ -61,6 +62,7 @@ object DataCodec {
       case t if t =:= typeOf[Int] => ByteBuffer.wrap(value).getInt
       case t if t =:= typeOf[Long] => ByteBuffer.wrap(value).getLong
       case t if t =:= typeOf[Double] => ByteBuffer.wrap(value).getDouble
+      case t if t =:= typeOf[UTF8String] => UTF8String.fromBytes(value)
       case t => throw DexException("unsupported: " + t.getClass.getName)
     }
     v.asInstanceOf[T]

@@ -107,7 +107,7 @@ object DexPrimitives {
     // todo: instead of concat, use Postgres PRF on key=dbEmmLabelprfKeyExpr
     //s"$dbEmmLabelPrfKeyExpr || '~' || $counterExpr"
     //Concat(dbEmmLabelPrfKeyExpr :: Literal("~") :: counterExpr :: Nil)
-    DexPrf(trapdoorExpr, DexEncode(counterExpr, LongType))
+    DexPrf(trapdoorExpr, DexEncodeCounter(counterExpr))
   }
 
   //

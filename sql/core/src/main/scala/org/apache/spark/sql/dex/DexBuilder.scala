@@ -407,7 +407,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         buildEncRidTables()
         buildTFilter()
         buildTCorrelatedJoin()
-        analyzeAll()
+        //analyzeAll()
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
   }

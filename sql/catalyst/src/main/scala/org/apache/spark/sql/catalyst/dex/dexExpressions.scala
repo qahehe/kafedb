@@ -85,15 +85,14 @@ case class DexDecode(bin: Expression, decodeType: AtomicType)
   }
 }
 
-case class DexEncode(expr: Expression, exprType: AtomicType)
+case class DexEncodeCounter(expr: Expression)
   extends UnaryExpression with ExpectsInputTypes with CodegenFallback {
-  require(exprType.isInstanceOf[LongType])
   override def child: Expression = expr
-  override def inputTypes: Seq[AbstractDataType] = Seq(exprType)
+  override def inputTypes: Seq[AbstractDataType] = Seq(LongType)
   override def dataType: DataType = BinaryType
 
   protected override def nullSafeEval(input: Any): Any = {
-    DataCodec.encode(input)
+    DataCodec.encode(input.asInstanceOf[Long].toString)
   }
 
   protected override def dialectSqlExpr(dialect: SqlDialect): String = {
