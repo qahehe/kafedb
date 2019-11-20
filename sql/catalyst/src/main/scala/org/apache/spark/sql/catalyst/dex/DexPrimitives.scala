@@ -19,7 +19,7 @@ package org.apache.spark.sql.catalyst.dex
 
 import org.apache.spark.sql.catalyst.dex.DexConstants.TableAttribute
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Concat, DialectSQLTranslatable, Expression, Literal}
-import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.{IntegerType, LongType}
 import org.bouncycastle.util.encoders.Hex
 
 object DexPrimitives {
@@ -65,9 +65,14 @@ object DexPrimitives {
     Crypto.prf(key, DataCodec.encode(predicate + j.toString))
   }
 
+  def dexTrapdoor(key: Array[Byte], rid: Long, j: Int): Array[Byte] = {
+    // Concat trapdoor index j as string (1 byte) to the predicate.
+    Crypto.prf(key, DataCodec.concatBytes(dexRidOf(rid), dexEncodeNumberString(j)))
+  }
+
   def dexEmmLabelOf(trapdoor: Array[Byte], counter: Int): Array[Byte] = {
     // Postgres does not support conversion of integer to binary, only string to binary.
-    Crypto.prf(trapdoor, dexEncodeCounter(counter))
+    Crypto.prf(trapdoor, dexEncodeNumberString(counter))
   }
 
   def dexEmmValueOf(trapdoor: Array[Byte], rid: Long): Array[Byte] = {
@@ -84,11 +89,11 @@ object DexPrimitives {
     DataCodec.encode(rid)
   }
 
-  def dexEncodeCounter(counter: Int): Array[Byte] = {
+  def dexEncodeNumberString(number: Number): Array[Byte] = {
     // quoted to make expr a string
     // Because postgres cannot convert anything directly to binary except for string
     // also see sqlEncodeCounterExpr()
-    DataCodec.encode(counter.toString)
+    DataCodec.encode(number.toString)
   }
 
   def catalystDecryptAttribute(attr: Attribute): DexDecrypt = {
@@ -100,14 +105,14 @@ object DexPrimitives {
   }
 
   def catalystTrapdoorExprOf(key: Expression, predicateExpr: DialectSQLTranslatable, j: Int): DialectSQLTranslatable = {
-    DexPrf(key, Concat(predicateExpr :: Literal(j.toString) :: Nil))
+    DexPrf(key, Concat(predicateExpr :: DexEncodeNumberString(Literal(j), IntegerType) :: Nil))
   }
 
   def catalystEmmLabelExprOf(trapdoorExpr: DialectSQLTranslatable, counterExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
     // todo: instead of concat, use Postgres PRF on key=dbEmmLabelprfKeyExpr
     //s"$dbEmmLabelPrfKeyExpr || '~' || $counterExpr"
     //Concat(dbEmmLabelPrfKeyExpr :: Literal("~") :: counterExpr :: Nil)
-    DexPrf(trapdoorExpr, DexEncodeCounter(counterExpr))
+    DexPrf(trapdoorExpr, DexEncodeNumberString(counterExpr, LongType))
   }
 
   //
@@ -126,7 +131,7 @@ object DexPrimitives {
     s"hmac($colExpr, $keyExpr, 'sha256')"
   }
 
-  def sqlEncodeCounterExpr(counterExpr: String): String = {
+  def sqlEncodeNumberStringExpr(counterExpr: String): String = {
     // quoted to make expr a string
     // Because postgres cannot convert anything directly to binary except for string
     // also see dexEncodeCounter()

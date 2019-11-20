@@ -66,6 +66,19 @@ class CryptoSuite extends DexTest {
     testForTyped(1.23)
   }
 
+  test("concatenate rid with index in dex and postgres for rid") {
+    val rid = 10L
+    //val dexTrapdoor = DexPrimitives.dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, 10, 2)
+    val j = 2
+    val dexTrapdoor = DataCodec.concatBytes(DexPrimitives.dexRidOf(rid), DataCodec.encode(j.toString))
+    val postgresTrapdoor = {
+      val rs = connEnc.prepareStatement(s"select ${Literal(DexPrimitives.dexRidOf(rid)).dialectSql(dialect)} || $j::text::bytea").executeQuery
+      assert(rs.next())
+      rs.getObject(1).asInstanceOf[Array[Byte]]
+    }
+    assert(dexTrapdoor === postgresTrapdoor)
+  }
+
   test("hmac in dex and postgres only equals for string") {
     val masterSecret = Crypto.generateMasterSecret()
     val data = 10.toString

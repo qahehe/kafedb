@@ -2288,6 +2288,10 @@ case class Concat(children: Seq[Expression]) extends ComplexTypeMergingExpressio
   override def toString: String = s"concat(${children.mkString(", ")})"
 
   override def sql: String = s"concat(${children.map(_.sql).mkString(", ")})"
+
+  override def dialectSqlExpr(dialect: SqlDialect): String =
+    children.map(
+      _.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)).mkString(" || ")
 }
 
 /**

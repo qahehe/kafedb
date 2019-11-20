@@ -21,12 +21,15 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.catalyst.dex.{DexConstants, DexException, DexPrimitives}
+import org.apache.spark.sql.catalyst.dex.{Crypto, DataCodec, DexConstants, DexException, DexPrimitives}
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
 import org.apache.spark.sql.catalyst.dex.DexConstants._
 import org.apache.spark.sql.catalyst.dex.DexPrimitives._
+import org.apache.spark.sql.catalyst.expressions.Literal
+import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.jdbc.JdbcDialects
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.util.Utils
@@ -88,8 +91,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate, j)
   }
 
-  private val udfSecondaryTrapdoor = udf { (masterTrapdoor: Array[Byte], dexPredicate: String, j: Int) =>
-    dexTrapdoor(masterTrapdoor, dexPredicate, j)
+  private val udfSecondaryTrapdoor = udf { (masterTrapdoor: Array[Byte], rid: Long, j: Int) =>
+    dexTrapdoor(masterTrapdoor, rid, j)
   }
 
   private val udfEmmLabel = udf { (trapdoor: Array[Byte], counter: Int) =>
@@ -407,7 +410,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         buildEncRidTables()
         buildTFilter()
         buildTCorrelatedJoin()
-        //analyzeAll()
+        analyzeAll()
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
   }

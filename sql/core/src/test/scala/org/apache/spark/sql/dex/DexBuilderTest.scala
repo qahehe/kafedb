@@ -85,5 +85,8 @@ class DexBuilderTest extends DexTPCHTest {
 
     val q2 = nameToDf("part").where("p_name = 'pa'").select("p_name")
     checkDexFor(q2, q2.dexCorr(cks))
+
+    val q3 = nameToDf("part").join(nameToDf("partsupp")).where("p_partkey = ps_partkey")
+    checkDexFor(q3, q3.dexCorr(cks))
   }
 }
