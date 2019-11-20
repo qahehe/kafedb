@@ -97,6 +97,6 @@ case class DexEncode(expr: Expression, exprType: AtomicType)
   }
 
   protected override def dialectSqlExpr(dialect: SqlDialect): String = {
-    DexPrimitives.sqlEncodeExpr(expr.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect))
+    DexPrimitives.sqlEncodeCounterExpr(expr.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect))
   }
 }

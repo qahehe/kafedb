@@ -17,11 +17,9 @@
 package org.apache.spark.sql.catalyst.dex
 // scalastyle:off
 
-import javax.crypto.SecretKey
-import javax.crypto.spec.SecretKeySpec
 import org.apache.spark.sql.catalyst.dex.DexConstants.TableAttribute
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Concat, DialectSQLTranslatable, Expression, Literal}
-import org.apache.spark.sql.types.{AtomicType, LongType}
+import org.apache.spark.sql.types.LongType
 import org.bouncycastle.util.encoders.Hex
 
 object DexPrimitives {
@@ -63,12 +61,13 @@ object DexPrimitives {
   }
 
   def dexTrapdoor(key: Array[Byte], predicate: String, j: Int): Array[Byte] = {
+    // Concat trapdoor index j as string (1 byte) to the predicate.
     Crypto.prf(key, DataCodec.encode(predicate + j.toString))
   }
 
   def dexEmmLabelOf(trapdoor: Array[Byte], counter: Int): Array[Byte] = {
     // Postgres does not support conversion of integer to binary, only string to binary.
-    Crypto.prf(trapdoor, DataCodec.encode(counter.toString))
+    Crypto.prf(trapdoor, dexEncodeCounter(counter))
   }
 
   def dexEmmValueOf(trapdoor: Array[Byte], rid: Long): Array[Byte] = {
@@ -80,9 +79,16 @@ object DexPrimitives {
   }
 
   def dexRidOf(rid: Long): Array[Byte] = {
-    //Crypto.prf(masterSecret.hmacKey, rid)
-    //rid
+    // Postgres cannot convert anything to binary except for string
+    // So for rids, convert them to binaries.
     DataCodec.encode(rid)
+  }
+
+  def dexEncodeCounter(counter: Int): Array[Byte] = {
+    // quoted to make expr a string
+    // Because postgres cannot convert anything directly to binary except for string
+    // also see sqlEncodeCounterExpr()
+    DataCodec.encode(counter.toString)
   }
 
   def catalystDecryptAttribute(attr: Attribute): DexDecrypt = {
@@ -104,11 +110,6 @@ object DexPrimitives {
     DexPrf(trapdoorExpr, DexEncode(counterExpr, LongType))
   }
 
-  def catalystConcatPredicateExprsOf(predicatePrefixExpr: DialectSQLTranslatable, predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
-    //s"$predicatePrefixExpr || '~' || $predicateExpr"
-    Concat(predicatePrefixExpr :: Literal("~") :: predicateExpr :: Nil)
-  }
-
   //
   // Used by translation
   //
@@ -125,7 +126,10 @@ object DexPrimitives {
     s"hmac($colExpr, $keyExpr, 'sha256')"
   }
 
-  def sqlEncodeExpr(expr: String): String = {
-    s"to_hex($expr)::bytea"
+  def sqlEncodeCounterExpr(counterExpr: String): String = {
+    // quoted to make expr a string
+    // Because postgres cannot convert anything directly to binary except for string
+    // also see dexEncodeCounter()
+    s"$counterExpr::text::bytea"
   }
 }
