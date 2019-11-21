@@ -2,7 +2,7 @@
 
 set -e
 
-if [ -z $dex_variant ]; then
+if [[ $# < 2 ]]; then
 	  echo "Usage: tpch_datagen.sh <dex_variant> data_mode [, data_mode]"
 	  exit 123
 fi
@@ -21,7 +21,7 @@ for i in $(eval echo {1..$reps}); do
 			                 --conf spark.executor.extraClassPath=$jar_jdbc:$jar_bc \
 			                 --driver-memory 6g   \
 			                 --conf spark.driver.maxResultSize=0 \
-			                 --class org.apache.spark.examples.sql.dex.TPCHBench ./examples/target/scala-2.11/jars/spark-examples_2.11-2.4.0.jar \
+			                 --class org.apache.spark.examples.sql.dex.TPCHDataGen ./examples/target/scala-2.11/jars/spark-examples_2.11-2.4.0.jar \
 			                 $@
 done
 
