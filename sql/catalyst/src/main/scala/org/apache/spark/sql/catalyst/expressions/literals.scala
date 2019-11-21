@@ -355,6 +355,7 @@ case class Literal (value: Any, dataType: DataType) extends LeafExpression {
 
   override protected def dialectSqlExpr(dialect: SqlDialect): String = (value, dataType) match {
     case (v: Array[Byte], BinaryType) => s"'\\x${DatatypeConverter.printHexBinary(v)}'"
+    case (v: Long, LongType) => s"$v::bigint"
     case _ => sql
   }
 }

@@ -291,7 +291,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_rid_filter(value_dec_key, value, counter) AS (
-           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabelExpr
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} FROM $emm WHERE label = $firstLabelExpr
            |    UNION ALL
            |    SELECT ${valueDecKeyExpr.dialectSql{dialect}}, $emm.value, dex_rid_filter.counter + 1 FROM $emm, dex_rid_filter
            |    WHERE $emm.label = $nextLabelExpr
@@ -311,7 +311,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE spx_rid_uncorrelated_join(value_dec_key, value_left, value_right, counter) AS (
-           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value_left, $emm.value_right, ${DexConstants.cashCounterStart}  FROM $emm WHERE label = $firstLabelExpr
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value_left, $emm.value_right, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}  FROM $emm WHERE label = $firstLabelExpr
            |    UNION ALL
            |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value_left, $emm.value_right, spx_rid_uncorrelated_join.counter + 1 FROM $emm, spx_rid_uncorrelated_join
            |    WHERE $emm.label = $nextLabelExpr
@@ -352,10 +352,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    SELECT distinct $leftRidExpr, $labelPrfKeyExpr, ${valueDecKeyExpr.dialectSql(dialect)} FROM left_subquery_all_cols
            |  ),
            |  dex_rid_correlated_join($leftRidExpr, label_prf_key, value_dec_key, value, counter) AS (
-           |    SELECT left_subquery.*, $emm.value, ${DexConstants.cashCounterStart} AS counter
+           |    SELECT left_subquery.*, $emm.value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
            |    FROM left_subquery, $emm
            |    WHERE $emm.label =
-           |      ${nextLabel("label_prf_key", s"${DexConstants.cashCounterStart}")}
+           |      ${nextLabel("label_prf_key", s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")}
            |
            |    UNION ALL
            |
@@ -371,7 +371,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_rid_correlated_join AS (
-           |    SELECT $leftSubqueryOutputCols, ${valueDecKeyExpr.dialectSql(dialect)} AS value_dec_key, $emm.value AS value, ${DexConstants.cashCounterStart} AS counter
+           |    SELECT $leftSubqueryOutputCols, ${valueDecKeyExpr.dialectSql(dialect)} AS value_dec_key, $emm.value AS value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
            |    FROM ($leftSubquery) AS ${generateSubqueryName()}, $emm
            |    WHERE $emm.label = $firstLabelExpr
            |
@@ -396,7 +396,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_domain_values(value_dec_key, value, counter) AS (
-           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, ${DexConstants.cashCounterStart} FROM $emm WHERE label = $firstLabel
+           |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} FROM $emm WHERE label = $firstLabel
            |    UNION ALL
            |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, dex_domain_values.counter + 1 FROM dex_domain_values, $emm
            |    WHERE ${catalystEmmLabelExprOf(labelPrfKeyExpr, "dex_domain_values.counter + 1")} = $emm.label
@@ -423,10 +423,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    SELECT $domainValueExpr, $labelPrfKeyExpr, ${valueDecKeyExpr.dialectSql(dialect)} FROM ($domainValueSubquery)
            |  ),
            |  dex_domain_rids($domainValueExpr, label_prf_key, value_dec_key, value, counter) AS (
-           |    SELECT dex_domain_values_keys.*, $emm.value, ${DexConstants.cashCounterStart} AS counter
+           |    SELECT dex_domain_values_keys.*, $emm.value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
            |    FROM dex_domain_values_keys, $emm
            |    WHERE $emm.label =
-           |      ${dbEmmLabelExprOf("label_prf_key", s"${DexConstants.cashCounterStart}")}
+           |      ${dbEmmLabelExprOf("label_prf_key", s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")}
            |    UNION ALL
            |    SELECT $domainValueExpr, label_prf_key, value_dec_key, $emm.value, counter + 1 AS counter
            |    FROM dex_domain_rids, $emm
@@ -462,10 +462,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
              |    SELECT $domainValueExpr, $labelPrfKeyExpr, ${valueDecKeyExpr.dialectSql(dialect)} FROM dex_intersected_domain_values
              |  ),
              |  dex_domain_rids_$joinSide($domainValueExpr, label_prf_key_$joinSide, value_dec_key_$joinSide, value_$joinSide, counter_$joinSide) AS (
-             |    SELECT dex_domain_values_keys_$joinSide.*, $emm.value, ${DexConstants.cashCounterStart} AS counter_$joinSide
+             |    SELECT dex_domain_values_keys_$joinSide.*, $emm.value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter_$joinSide
              |    FROM dex_domain_values_keys_$joinSide, $emm
              |    WHERE $emm.label =
-             |      ${catalystEmmLabelExprOf(s"label_prf_key_$joinSide", s"${DexConstants.cashCounterStart}")}
+             |      ${catalystEmmLabelExprOf(s"label_prf_key_$joinSide", s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")}
              |    UNION ALL
              |    SELECT $domainValueExpr, label_prf_key_$joinSide, value_dec_key_$joinSide, $emm.value, counter_$joinSide + 1 AS counter_$joinSide
              |    FROM dex_domain_rids_$joinSide, $emm
@@ -496,7 +496,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    ${convertToSQL(f.child)}
            |  ),
            |  t(counter, label) AS (
-           |    SELECT ${DexConstants.cashCounterStart}, ${nextLabel(labelPrfKeyExpr, DexConstants.cashCounterStart.toString)} WHERE EXISTS (SELECT 1 FROM child_view WHERE ${nextLabel(labelPrfKeyExpr, DexConstants.cashCounterStart.toString)} = $labelColExpr)
+           |    SELECT ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}, ${nextLabel(labelPrfKeyExpr, DexConstants.cashCounterStart.toString)} WHERE EXISTS (SELECT 1 FROM child_view WHERE ${nextLabel(labelPrfKeyExpr, DexConstants.cashCounterStart.toString)} = $labelColExpr)
            |    UNION ALL
            |    SELECT counter + 1, ${nextLabel(labelPrfKeyExpr, "counter + 1")} FROM t WHERE EXISTS (SELECT 1 FROM child_view WHERE label = $labelColExpr)
            |  )
@@ -509,7 +509,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    ${convertToSQL(f.child)}
            |  ),
            |  dex_ppk_filter AS (
-           |    SELECT child_view.*, ${DexConstants.cashCounterStart} AS counter FROM child_view WHERE $labelColExpr = ${nextLabel(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")}
+           |    SELECT child_view.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM child_view WHERE $labelColExpr = ${nextLabel(labelPrfKeyExpr, s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")}
            |    UNION ALL
            |    SELECT child_view.*, dex_ppk_filter.counter + 1 AS counter FROM child_view, dex_ppk_filter WHERE child_view.$labelColExpr = ${nextLabel(labelPrfKeyExpr, "dex_ppk_filter.counter + 1")}
            |  )
@@ -522,7 +522,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    ${convertToSQL(f.child)}
            |  ),
            |  dex_ppk_filter AS (
-           |    SELECT child_view.*, ${DexConstants.cashCounterStart} AS counter, 1 AS gap FROM child_view WHERE $labelColExpr = ${nextLabel(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")}
+           |    SELECT child_view.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter, 1 AS gap FROM child_view WHERE $labelColExpr = ${nextLabel(labelPrfKeyExpr, s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")}
            |    UNION ALL
            |    SELECT child_view.*, dex_ppk_filter.counter + gap AS counter, 2 * gap AS gap FROM child_view, dex_ppk_filter WHERE child_view.$labelColExpr = ${nextLabel(labelPrfKeyExpr, "dex_ppk_filter.counter + gap")}
            |  )
@@ -532,7 +532,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_ppk_filter($ridOrder, counter) AS (
-           |    SELECT ${f.filterTableName}.rid, ${DexConstants.cashCounterStart} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = ${catalystEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")}
+           |    SELECT ${f.filterTableName}.rid, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = ${catalystEmmLabelExprOf(labelPrfKeyExpr, s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")}
            |    UNION ALL
            |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = ${catalystEmmLabelExprOf(labelPrfKeyExpr, "dex_ppk_filter.counter + 1")}
            |  )
@@ -561,9 +561,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    ${convertToSQL(j.rightChildView)}
            |  ),
            |  dex_ppk_join AS (
-           |    SELECT left_child_view.*, right_child_view.*, ${DexConstants.cashCounterStart} AS counter
+           |    SELECT left_child_view.*, right_child_view.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
            |    FROM left_child_view, right_child_view
-           |    WHERE ${nextLabel(emmKeyColOfPrimaryKeyJoin(prfKey, j.leftChildViewRid, j.predicate), s"${DexConstants.cashCounterStart}")} = right_child_view.$labelColExpr
+           |    WHERE ${nextLabel(emmKeyColOfPrimaryKeyJoin(prfKey, j.leftChildViewRid, j.predicate), s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")} = right_child_view.$labelColExpr
            |
            |    UNION ALL
            |
@@ -577,9 +577,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_ppk_join($leftRidExpr, $rightRidExpr, counter) AS (
-           |    SELECT ${j.leftTableName}.rid, ${j.rightTableName}.rid, ${DexConstants.cashCounterStart} AS counter
+           |    SELECT ${j.leftTableName}.rid, ${j.rightTableName}.rid, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
            |    FROM ${j.leftTableName}, ${j.rightTableName}
-           |    WHERE ${catalystEmmLabelExprOf(labelPrfKeyExpr, s"${DexConstants.cashCounterStart}")} = $labelColExpr
+           |    WHERE ${catalystEmmLabelExprOf(labelPrfKeyExpr, s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")} = $labelColExpr
            |
            |    UNION ALL
            |
@@ -1439,7 +1439,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
 case class DexRidFilterExec(predicate: String, emm: SparkPlan) extends UnaryExecNode {
 
-  private val labelForCounter: Int => InternalRow => Boolean = {
+  private val labelForCounter: Long => InternalRow => Boolean = {
     counter => emmRow => {
       val lhs = UTF8String.fromString(s"$predicate~$counter")
       val emmLabelCol = BindReferences.bindReference(emm.output.head, emm.output).asInstanceOf[BoundReference]
@@ -1456,7 +1456,8 @@ case class DexRidFilterExec(predicate: String, emm: SparkPlan) extends UnaryExec
     */
   override protected def doExecute(): RDD[InternalRow] = {
     val emmRdd = emm.execute()
-    Iterator.from(DexConstants.cashCounterStart).map { i =>
+    Iterator.iterate(DexConstants.cashCounterStart)(_ + 1).map { i =>
+    //Iterator.from(DexConstants.cashCounterStart).map { i =>
       emmRdd.mapPartitionsInternal { emmIter =>
         emmIter.find(labelForCounter(i)).iterator
       }
@@ -1504,7 +1505,8 @@ case class DexRidCorrelatedJoinExec(predicate: String, childView: SparkPlan, emm
       emm.execute().map(row => (emmLabelCol.eval(row).asInstanceOf[UTF8String], row.copy()))
 
     var childViewRddToCount = childViewRdd
-    Iterator.from(DexConstants.cashCounterStart).map { i =>
+    Iterator.iterate(DexConstants.cashCounterStart)(_ + 1).map { i =>
+    //Iterator.from(DexConstants.cashCounterStart).map { i =>
       // iteratively "shrink'" the childViewRdd by the result of each join
       val res = childViewRddToCount.map { row =>
         val rid = childViewRidCol.eval(row).asInstanceOf[UTF8String].toString

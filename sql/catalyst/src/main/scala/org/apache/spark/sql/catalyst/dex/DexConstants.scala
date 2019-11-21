@@ -18,7 +18,7 @@ package org.apache.spark.sql.catalyst.dex
 // scalastyle:off
 
 object DexConstants {
-  val cashCounterStart: Int = 0
+  val cashCounterStart: Long = 0L
   val tFilterName = "t_filter"
   val tCorrJoinName = "t_correlated_join"
   val tUncorrJoinName = "t_uncorrelated_join"
