@@ -16,6 +16,7 @@
  */
 
 package org.apache.spark.sql.jdbc
+// scalastyle:off
 
 import java.sql.{Connection, Date, Timestamp}
 
