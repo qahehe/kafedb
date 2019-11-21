@@ -85,17 +85,17 @@ case class DexDecode(bin: Expression, decodeType: AtomicType)
   }
 }
 
-case class DexEncodeNumberString(expr: Expression, numType: IntegralType)
+case class DexEncode(expr: Expression, exprType: DataType)
   extends UnaryExpression with ExpectsInputTypes with CodegenFallback {
   override def child: Expression = expr
-  override def inputTypes: Seq[AbstractDataType] = Seq(IntegralType)
+  override def inputTypes: Seq[AbstractDataType] = Seq(exprType)
   override def dataType: DataType = BinaryType
 
   protected override def nullSafeEval(input: Any): Any = {
-    DataCodec.encode(input.toString)
+    DataCodec.encode(input)
   }
 
   protected override def dialectSqlExpr(dialect: SqlDialect): String = {
-    DexPrimitives.sqlEncodeNumberStringExpr(expr.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect))
+      DexPrimitives.sqlEncodeExpr(expr.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect), exprType)
   }
 }

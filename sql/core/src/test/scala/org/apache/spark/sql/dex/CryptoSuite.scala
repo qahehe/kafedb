@@ -70,21 +70,21 @@ class CryptoSuite extends DexTest {
     val rid = 10L
     //val dexTrapdoor = DexPrimitives.dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, 10, 2)
     val j = 2
-    val dexTrapdoor = DataCodec.concatBytes(DexPrimitives.dexRidOf(rid), DataCodec.encode(j.toString))
+    val dexTrapdoor = DataCodec.concatBytes(DexPrimitives.dexRidOf(rid), DataCodec.encode(j))
     val postgresTrapdoor = {
-      val rs = connEnc.prepareStatement(s"select ${Literal(DexPrimitives.dexRidOf(rid)).dialectSql(dialect)} || $j::text::bytea").executeQuery
+      val rs = connEnc.prepareStatement(s"select ${Literal(DexPrimitives.dexRidOf(rid)).dialectSql(dialect)} || int4send($j)").executeQuery
       assert(rs.next())
       rs.getObject(1).asInstanceOf[Array[Byte]]
     }
     assert(dexTrapdoor === postgresTrapdoor)
   }
 
-  test("hmac in dex and postgres only equals for string") {
+  test("hmac in dex and postgres equals for bigint") {
     val masterSecret = Crypto.generateMasterSecret()
-    val data = 10.toString
+    val data = 10L
     val dexHash = Crypto.prf(masterSecret.hmacKey, DataCodec.encode(data))
     val postgresHash = {
-      val rs = connEnc.prepareStatement(s"select hmac($data::text::bytea, ${Literal(masterSecret.hmacKey.getEncoded).dialectSql(dialect)}, 'sha256')").executeQuery
+      val rs = connEnc.prepareStatement(s"select hmac(int8send($data), ${Literal(masterSecret.hmacKey.getEncoded).dialectSql(dialect)}, 'sha256')").executeQuery
       assert(rs.next())
       rs.getObject(1).asInstanceOf[Array[Byte]]
     }
