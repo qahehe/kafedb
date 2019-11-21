@@ -120,6 +120,61 @@ class CryptoSuite extends DexTest {
     testForTyped(1.2345)
   }
 
+  test("dex and postgres encode to the same") {
+    val data = 123
+    assert(DataCodec.encode(data) ===
+      {
+        val rs = connEnc.prepareStatement(s"select int4send($data)").executeQuery
+        assert(rs.next())
+        rs.getObject(1).asInstanceOf[Array[Byte]]
+      }
+    )
+
+    val dataLong = 123L
+    assert(DataCodec.encode(dataLong) ===
+      {
+        val rs = connEnc.prepareStatement(s"select int8send($dataLong)").executeQuery
+        assert(rs.next())
+        rs.getObject(1).asInstanceOf[Array[Byte]]
+      }
+    )
+  }
+
+  test("prf output size") {
+    def testFor(m: Array[Byte]): Unit = {
+      val masterSecret = Crypto.generateMasterSecret()
+      val x = Crypto.prf(masterSecret.hmacKey, m)
+      println("input: " + m.length + ", output: " + x.length)
+    }
+    val eightBytes = Hex.decode("0001020304050607")
+    val sixteenBytes = Hex.decode("000102030405060708090a0b0c0d0e0f")
+    val thirtytwoBytes = Hex.decode("000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f")
+    val sixtyfourBytes = Hex.decode(
+      "000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f")
+    testFor(eightBytes)
+    testFor(sixteenBytes)
+    testFor(thirtytwoBytes)
+    testFor(sixtyfourBytes)
+  }
+
+  test("enc output size") {
+    def testFor(m: Array[Byte]): Unit = {
+      val masterSecret = Crypto.generateMasterSecret()
+      val x = Crypto.symEnc(masterSecret.aesKey, m)
+      println("input: " + m.length + ", output: " + x.length)
+    }
+    val eightBytes = Hex.decode("0001020304050607")
+    val sixteenBytes = Hex.decode("000102030405060708090a0b0c0d0e0f")
+    val thirtytwoBytes = Hex.decode("000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f")
+    val sixtyfourBytes = Hex.decode(
+      "000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f" + "000102030405060708090a0b0c0d0e0f")
+    println("block size/iv size: " + Crypto.aesBlockByteSize)
+    testFor(eightBytes)
+    testFor(sixteenBytes)
+    testFor(thirtytwoBytes)
+    testFor(sixtyfourBytes)
+  }
+
   test("aes cbc example ") {
     Crypto.example()
   }
