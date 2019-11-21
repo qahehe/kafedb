@@ -52,8 +52,8 @@ object DexPrimitives {
     s"${leftTableAttr.table}~${rightTableAttr.table}"
   }
 
-  def dexPredicatesConcat(predicatePrefix: String)(predicateTerm: String): String = {
-    s"$predicatePrefix~$predicateTerm"
+  def dexFilterPredicate(predicatePrefix: String)(value: Any): String = {
+    s"$predicatePrefix~${value.toString}"
   }
 
   def dexTrapdoor(key: Array[Byte], predicate: String): Array[Byte] = {

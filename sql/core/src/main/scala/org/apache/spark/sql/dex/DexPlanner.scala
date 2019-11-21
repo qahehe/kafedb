@@ -993,17 +993,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val colName = left.name
         val tableRel = exprIdToTable(left.exprId)
         val ridOrder = s"rid_${joinOrder(tableRel)}"
-        val valueStr = dataType match {
+/*        val valueStr = dataType match {
           case IntegerType => s"${value.asInstanceOf[Int]}"
           case StringType => s"$value"
           case x => throw DexException("unsupported: " + x.toString)
-        }
-
-        /*val predicateRelation = LocalRelation(
-          LocalRelation('predicate.string).output,
-          InternalRow(UTF8String.fromString(s"$tableName~$colName~$valueStr")) :: Nil)*/
-        //val predicate = s"$tableName~$colName~$valueStr"
-        dexFilterOf(tableRel, colName, valueStr, ridOrder, childView, isNegated)
+        }*/
+        dexFilterOf(tableRel, colName, value, ridOrder, childView, isNegated)
 
       case EqualTo(left: Attribute, right: Attribute) if left.name < right.name =>
         val colNames = (left.name, right.name)
@@ -1011,8 +1006,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         require(tableRels._1 == tableRels._2)
         val tableRel = tableRels._1
         val ridOrder = s"rid_${joinOrder(tableRel)}"
-        val tableName = tableNameFromLogicalRelation(tableRel)
-        // todo: extend this case to DexPkFk
+        // todo: extend this same value columns case to DexPkFk
+        // assume TFilter has entry like col1~col2 for the _same_ table
         dexFilterOf(tableRel, colNames._1, colNames._2, ridOrder, childView, isNegated)
 
       case EqualTo(left: Attribute, right: Attribute) if left.name > right.name =>
@@ -1021,7 +1016,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case x => throw DexException("unsupported: " + x.toString)
     }
 
-    protected def dexFilterOf(predicateTable: LogicalRelation, predicateColname: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan
+    protected def dexFilterOf(predicateTable: LogicalRelation, predicateColname: String, predicateValue: Any, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan
 
     case class JoinAttrs(left: Attribute, right: Attribute) {
       val (leftColName, rightColName) = (left.name, right.name)
@@ -1121,9 +1116,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   sealed trait StandaloneTranslator extends DexPlanTranslator {
-    override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
+    override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: Any, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val predicateTableName = tableNameFromLogicalRelation(predicateTable)
-      val predicate = s"$predicateTableName~$predicateColName~$predicateValue"
+      val predicate = dexFilterPredicate(dexFilterPredicatePrefixOf(predicateTableName, predicateColName))(predicateValue)
       val ridFilter = DexRidFilter(predicate, tFilter)
         .select(DexDecrypt($"value_dec_key", $"value").as(ridOrder))
 
@@ -1378,12 +1373,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case _ => false
     }
 
-    override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: String, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
+    override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: Any, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       require(!isNegated, "todo")
       val predicateTableName = tableNameFromLogicalRelation(predicateTable)
       val labelCol = DexPrimitives.dexColNameOf(s"val_${predicateTableName}_$predicateColName")
       val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
-      val predicate = s"$predicateTableName~$predicateColName~$predicateValue"
+      val predicate = dexFilterPredicate(dexFilterPredicatePrefixOf(predicateTableName, predicateColName))(predicateValue)
       // Output filtered rows in childView (eventually the source table).  Note that this is different from ridFilter
       // where output is just (value_dec_key, value) and to be joined with source table.
       // output schema: childView's schema

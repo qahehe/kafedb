@@ -300,7 +300,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       val tFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
         val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
         r.columns.filter(c => nonKey(pk, fks, c) && c != DexConstants.ridCol).map { c =>
-          val udfFilterPredicate = udf(dexPredicatesConcat(dexFilterPredicatePrefixOf(n, c)) _)
+          val udfFilterPredicate = udf(dexFilterPredicate(dexFilterPredicatePrefixOf(n, c)) _)
           r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
             .withColumn("predicate", udfFilterPredicate(col(c)))
             .withColumn("master_trapdoor_1", udfMasterTrapdoor($"predicate", lit(1)))
