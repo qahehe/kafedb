@@ -42,6 +42,8 @@ object DataCodec {
       val buf = new Array[Byte](java.lang.Long.BYTES)
       ByteBuffer.wrap(buf).putLong(x)
       buf
+    case x: java.math.BigDecimal =>
+      x.toString.getBytes(charsetName("scala"))
     case x: Double =>
       val buf = new Array[Byte](java.lang.Double.BYTES)
       ByteBuffer.wrap(buf).putDouble(x)
@@ -51,7 +53,7 @@ object DataCodec {
     case x: String => x.getBytes(charsetName("scala"))
     case x: java.sql.Date => encode(x.getTime)
     case x: java.sql.Time => encode(x.getTime)
-    case _ => throw DexException("unsupported")
+    case x => throw DexException("unsupported: " + x.getClass.getName)
   }
 
   //def decodeString(value: Array[Byte]): String = new String(value.toArray, charsetName("scala"))
@@ -63,6 +65,8 @@ object DataCodec {
       case t if t =:= typeOf[Long] => ByteBuffer.wrap(value).getLong
       case t if t =:= typeOf[Double] => ByteBuffer.wrap(value).getDouble
       case t if t =:= typeOf[UTF8String] => UTF8String.fromBytes(value)
+      case t if t =:= typeOf[java.math.BigDecimal] =>
+        BigDecimal(new String(value, charsetName("scala")))
       case t => throw DexException("unsupported: " + t.getClass.getName)
     }
     v.asInstanceOf[T]
