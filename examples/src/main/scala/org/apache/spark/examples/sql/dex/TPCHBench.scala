@@ -112,7 +112,7 @@ object TPCHBench extends DexTPCHBenchCommon {
       //       N
       //       |
       //      f(R)
-      /*BenchQuery("q5",
+      BenchQuery("q5",
         """
           |select
           |  n_name,
@@ -146,9 +146,20 @@ object TPCHBench extends DexTPCHBenchCommon {
           .join(lineitem).where("o_orderkey = l_orderkey")
           .join(supplier).where("l_suppkey = s_suppkey and n_nationkey = s_nationkey")
           .select("n_name", "l_extendedprice", "l_discount")
-      ),*/
+      ),
 
       // Q6 and Q1 is essentially the same
+      BenchQuery("q",
+        """
+          |select
+          |  l_extendedprice,
+          |  l_discount
+          |from
+          |  lineitem
+        """.stripMargin,
+        lineitem.selectExpr(
+          "l_returnflag", "l_linestatus")
+      ),
 
       //    L - O
       //   /     \

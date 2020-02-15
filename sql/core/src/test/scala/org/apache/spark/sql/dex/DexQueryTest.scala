@@ -33,13 +33,6 @@ trait DexQueryTest extends DexTest {
   )
   lazy val cks = compoundKeys.map(_.attr)
 
-  /*lazy val fact1 = spark.read.jdbc(url, "test_fact1", properties)
-  lazy val dim1 = spark.read.jdbc(url, "test_dim1", properties)
-  lazy val dim2 = spark.read.jdbc(url, "test_dim2", properties)
-  lazy val dim3 = spark.read.jdbc(url, "test_dim3", properties)
-
-  lazy val fks = Map()*/
-
   // Whether to materialize all encrypted test data before the first test is run
   protected def provideEncryptedData: Boolean
 
@@ -100,53 +93,6 @@ trait DexQueryTest extends DexTest {
       .executeUpdate()
     conn.commit()
 
-    /*conn.prepareStatement("create table test_fact1 (f1_pk int, f1_d1_fk int, f1_d2_fk int, f1_a int)")
-      .executeUpdate()
-    conn.prepareStatement(
-      """
-        |insert into test_fact1 values
-        |(1, 1, 1, 10),
-        |(2, 2, 1, 10),
-        |(3, 3, 1, 20),
-        |(4, 1, 2, 30)
-      """.stripMargin)
-      .executeUpdate()
-    conn.commit()
-
-    conn.prepareStatement("create table test_dim1 (d1_pk int, d1_d3_fk int, d1_a int, d1_b int)")
-      .executeUpdate()
-    conn.prepareStatement(
-      """
-        |insert into test_dim1 values
-        |(1, 1, 10, 100),
-        |(2, 2, 10, 200),
-        |(3, 2, 20, 200)
-      """.stripMargin)
-      .executeUpdate()
-    conn.commit()
-
-    conn.prepareStatement("create table test_dim2 (d2_pk int, d2_d3_fk int, d2_a int)")
-      .executeUpdate()
-    conn.prepareStatement(
-      """
-        |insert into test_dim2 values
-        |(1, 1, 10),
-        |(2, 2, 20)
-      """.stripMargin)
-      .executeUpdate()
-    conn.commit()
-
-    conn.prepareStatement("create table test_dim3 (d3_pk int, d3_a int)")
-      .executeUpdate()
-    conn.prepareStatement(
-      """
-        |insert into test_dim2 values
-        |(1, 100),
-        |(2, 200)
-      """.stripMargin)
-      .executeUpdate()
-    conn.commit()*/
-
     if (provideEncryptedData) {
       // todo: make rid start from 0, to be conssitent with DexBuilder
       connEnc.prepareStatement(s"create table ${dexTableNameOf(data2Name)} (rid varchar, a_prf varchar, b_prf varchar)")
@@ -206,66 +152,6 @@ trait DexQueryTest extends DexTest {
           .executeUpdate()
       connEnc.commit()
 
-      /*connEnc.prepareStatement("create table t_existence(label varchar)")
-          .executeUpdate()
-      connEnc.prepareStatement(
-        """
-          |insert into t_existence values
-          |('testdata2~1~a~1'), ('testdata2~1~b~1'),
-          |('testdata2~2~a~'), ('testdata2~2~b'),
-          |('testdata2~3~a~'), ('testdata2~3~b'),
-          |('testdata2~4~a~'), ('testdata2~4~b'),
-        """.stripMargin)
-          .executeUpdate()*/
-
-      /*connEnc.prepareStatement("create table t_fk_pk(label varchar, value varchar)")
-        .executeUpdate()
-      connEnc.prepareStatement(
-        """
-          |insert into t_fkdom values
-          |
-        """.stripMargin)
-        .executeUpdate()
-      connEnc.commit()
-
-      connEnc.prepareStatement("create table t_dom_pk(label varchar, value varchar)")
-          .executeUpdate()
-      connEnc.prepareStatement(
-        """
-          |
-        """.stripMargin)
-          .executeUpdate()
-      connEnc.commit()*/
-
-      /*// encrypted set of (rid, domain valuea)
-      connEnc.prepareStatement("create table t_correlated_filter(label varchar, value varchar)")
-          .executeUpdate()
-      // note: just 1_dom_enc would be bad, because two columns can have same domain values
-      // adding b~2_dom_enc makes domain values unique to attribute b. Cannot relate to other attribute.
-      connEnc.prepareStatement(
-        """
-          |insert into t_correlated_filter values
-          |('testdata2~1~b~1'),
-          |('testdata2~2~b~2'),
-          |('testdata2~3~b~1'),
-          |('testdata2~4~b~2'),
-          |('testdata2~5~b~1'),
-          |('testdata2~6~b~2')
-        """.stripMargin
-      )*/
-      // t_domain: a -> a-1, a-2, a-3; c -> c-1, c-2.
-      // t_filter: a-1 -> [a1, a2], c-1 -> [c1, c2].  So a-1 equi-join c-1 -> [(a1, c1), (a2, c1), (a2, c1), (a2, c2)]
-      // selection push down:
-      // case 1: filter on joined attr. Filter on t_domain.  a == 1 match a-1? a-2?
-      // case 2: filter on unjoined attr.
-      //   Choice 1: Filter on t_domain(a) using t_e(b). Gonna do this for post-join filters anyways.
-      //   Choice 2: t_filter(b), then what?  t_e(t_filter(b), t_domain(c)) (retain t_domain(c)) join t_filter(retained t_domain(c))
-      // advantage: no more quadratic emms
-      // multi-way join:
-      // case 1: (a join b) join (a join c)
-      //   Choice 1: domain_join(a, b) join (domain_join(a, c)
-      //   Choice 2: t_e(domain_join(a, b), t_domain(c)) (retain t_domain(c)) join t_filter(retained t_domain(c))
-
       // encrypted multi-map of (attr, domain value) -> rid
       connEnc.prepareStatement(s"create table ${tFilterName} (label varchar, value varchar)")
         .executeUpdate()
@@ -295,21 +181,6 @@ trait DexQueryTest extends DexTest {
         """.stripMargin)
         .executeUpdate()
       connEnc.commit()
-
-      /*// encrypted map of (attr1, dom_value1, attr2) -> dom_value2
-      // where attr1 and attr2 are from the same table
-      connEnc.prepareStatement("create table t_correlated_domain (label varchar, value varchar)")
-          .executeUpdate()
-      connEnc.prepareStatement(
-        """
-          |insert into t_correlated_domain values
-          |('testdata4~e~2~testdata4~b~0', '1_enc'),
-          |('testdata4~e~2~testdata4~b~1', '2_enc'),
-          |('testdata4~e~2~testdata4~b~2', '3_enc'),
-          |('testdata4~e~3~testdata4~b~0', '4_enc'),
-          |('testdata4~e~3~testdata4~b~1', '5_enc')
-        """.stripMargin
-      )*/
 
       // encrypted multi-map of (attr, attr, rid) -> rid
       connEnc.prepareStatement(s"create table ${tCorrJoinName} (label varchar, value varchar)")

@@ -36,6 +36,16 @@ class CryptoSuite extends DexTest {
     assert(masterSecret == masterSecretLoaded)
   }
 
+  test("iv") {
+    val masterSecret = Crypto.generateMasterSecret()
+    val m = 123
+    val c1 = Crypto.symEnc(masterSecret.aesKey, DataCodec.encode(m))
+    val c2 = Crypto.symEnc(masterSecret.aesKey, DataCodec.encode(m))
+    assert(c1 !== c2)
+    println(DataCodec.asHexString(c1))
+    println(DataCodec.asHexString(c2))
+  }
+
   test("symmetric encryption and decryption in scala") {
     def testForTyped[T: TypeTag](message: T) = {
       val masterSecret = Crypto.generateMasterSecret()

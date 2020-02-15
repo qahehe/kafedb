@@ -119,7 +119,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
   }
 
   private def compoundKeyCol(c: TableAttributeCompound): Column = {
-    /* doesn't work: 2a + 3b != 2a + 3b + 5c, but just using (2, 3) will equate them
+    /* doesn't work: 2 * col1 + 3 * col2 = 12 for (0,4) and (6,0), but these two should be mapped to different values.
     def sieve(s: Stream[Int]): Stream[Int] = {
       s.head #:: sieve(s.tail.filter(_ % s.head != 0))
     }*/
