@@ -17,7 +17,7 @@
 package org.apache.spark.sql.catalyst.dex
 // scalastyle:off
 
-import org.apache.spark.sql.catalyst.dex.DexConstants.TableAttribute
+import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttribute, TableName}
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Concat, DialectSQLTranslatable, Expression, Literal}
 import org.apache.spark.sql.types.{BinaryType, DataType, IntegerType, IntegralType, LongType}
 import org.bouncycastle.util.encoders.Hex
@@ -27,10 +27,16 @@ object DexPrimitives {
   val masterSecret: Crypto.MasterSecret = Crypto.getPseudoMasterSecret
 
   def dexTableNameOf(tableName: String): String =
-    "t" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, DataCodec.encode(tableName)))
+    "t" + tableName
+    // "t" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, DataCodec.encode(tableName)))
 
   def dexColNameOf(colName: String): String =
-    "c" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, DataCodec.encode(colName)))
+    "c" + colName
+    // "c" + Hex.toHexString(Crypto.prf(masterSecret.hmacKey, DataCodec.encode(colName)))
+
+  def dexPkfkJoinPredicatePrefixOf(tableLeft: TableName, tableRight: TableName): String = {
+    s"${tableLeft}~${tableRight}"
+  }
 
   def dexCorrJoinPredicatePrefixOf(attrLeft: TableAttribute, attrRight: TableAttribute): String = {
     s"${attrLeft.table}~${attrLeft.attr}~${attrRight.table}~${attrRight.attr}"
@@ -58,6 +64,10 @@ object DexPrimitives {
 
   def dexTrapdoor(key: Array[Byte], predicate: String): Array[Byte] = {
     Crypto.prf(key, DataCodec.encode(predicate))
+  }
+
+  def dexTrapdoor(key: Array[Byte], rid: Long): Array[Byte] = {
+    Crypto.prf(key, DataCodec.concatBytes(dexRidOf(rid)))
   }
 
   def dexTrapdoor(key: Array[Byte], predicate: String, j: Int): Array[Byte] = {

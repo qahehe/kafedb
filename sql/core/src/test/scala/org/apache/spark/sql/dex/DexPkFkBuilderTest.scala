@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 package org.apache.spark.sql.dex
+
+import org.apache.spark.sql.catalyst.dex.DexPrimitives._
 // scalastyle:off
 
 class DexPkFkBuilderTest extends DexTPCHTest {
@@ -33,7 +35,7 @@ class DexPkFkBuilderTest extends DexTPCHTest {
     dexPkfkBuilder.buildPkFkSchemeFromData(nameToDf, primaryKeys, foreignKeys)
 
     nameToDf.keys.foreach { t =>
-      val tEnc = s"${t}_prf"
+      val tEnc = dexTableNameOf(t)
       val dfEnc = spark.read.jdbc(urlEnc, tEnc, properties)
       println(tEnc + ": \n"
         + dfEnc.columns.mkString(",") + "\n"

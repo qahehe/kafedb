@@ -87,6 +87,14 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private val udfCell = udf(dexCellOf _)
 
+  private val udfMasterTrapdoorUnindexed = udf { dexPredicate: String =>
+    dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate)
+  }
+
+  private val udfSecondaryTrapdoorUnindexed = udf { (masterTrapdoor: Array[Byte], rid: Long) =>
+    dexTrapdoor(masterTrapdoor, rid)
+  }
+
   private val udfMasterTrapdoor = udf { (dexPredicate: String, j: Int) =>
     dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate, j)
   }
@@ -120,6 +128,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private def compoundKeyCol(c: TableAttributeCompound): Column = {
     /* doesn't work: 2 * col1 + 3 * col2 = 12 for (0,4) and (6,0), but these two should be mapped to different values.
+    Unless we do 2 ^ col1 + 3 ^ col2 by unique factorization theorem, but then this number of huge
     def sieve(s: Stream[Int]): Stream[Int] = {
       s.head #:: sieve(s.tail.filter(_ % s.head != 0))
     }*/
@@ -142,7 +151,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     case c: TableAttributeCompound => compoundKeyCol(c)
   }
 
-  private def encColName(t: TableName, c: AttrName): String = s"${c}_prf"
+  private def encColName(t: TableName, c: AttrName): String = {
+    // s"${c}_prf"
+    dexColNameOf(c)
+  }
 
   def buildPkFkSchemeFromData(nameToDf: Map[TableName, DataFrame],
                               primaryKeys: Set[PrimaryKey],
@@ -153,9 +165,9 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         val (pk, fks) = primaryKeyAndForeignKeysFor(t, primaryKeys, foreignKeys)
 
         def pkColName(pk: PrimaryKey): String = "rid"
-        def pfkColName(fk: ForeignKey): String = s"pfk_${fk.ref.table}_${fk.attr.table}_prf"
-        def fpkColName(fk: ForeignKey): String = s"fpk_${fk.attr.table}_${fk.ref.table}_prf"
-        def valColName(t: TableName, c: AttrName): String = s"val_${t}_${c}_prf"
+        def pfkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"pfk_${fk.ref.table}_${fk.attr.table}_prf")
+        def fpkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"fpk_${fk.attr.table}_${fk.ref.table}_prf")
+        def valColName(t: TableName, c: AttrName): String = DexPrimitives.dexColNameOf(s"val_${t}_${c}_prf")
 
         /*def outputCols(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.flatMap {
           case c if c == pk.attr.attr =>
@@ -180,31 +192,53 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         }
 
         def pfkCol(fk: ForeignKey): Column = {
-          def labelOf(c: Column): Column = concat(
+          /*def labelOf(c: Column): Column = concat(
             lit(fk.ref.table), lit("~"), lit(fk.attr.table), lit("~"), c, lit("~"),
             pibasCounterOn(c)
-          )
+          )*/
+          def labelOf(c: Column): Column = {
+            val joinPred = dexPkfkJoinPredicatePrefixOf(fk.ref.table, fk.attr.table)
+            val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
+            // assume rid is c
+            val secondaryTrapdoor = udfSecondaryTrapdoorUnindexed(lit(masterTrapdoor), c)
+            udfEmmLabel(secondaryTrapdoor, pibasCounterOn(c))
+          }
+
           fk.attr match {
             case a: TableAttributeAtom => labelOf(col(a.attr))
             case c: TableAttributeCompound => labelOf(compoundKeyCol(c))
           }
         }
         def fpkCol(fk: ForeignKey, pk: PrimaryKey): Column = {
-          def labelOf(c: Column): Column = concat(
+          /*def labelOf(c: Column): Column = concat(
             c, lit("_enc_"),
             lit(fk.attr.table), lit("~"), lit(fk.ref.table), lit("~"),
             col(pkColName(pk))
-          )
+          )*/
+          def valueOf(label: Column, value: Column): Column = {
+            val joinPred = dexPkfkJoinPredicatePrefixOf(fk.attr.table, fk.ref.table)
+            val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
+            val secondaryTrapdoor = udfSecondaryTrapdoorUnindexed(lit(masterTrapdoor), label)
+            udfEmmValue(secondaryTrapdoor, value)
+          }
           fk.attr match {
-            case a: TableAttributeAtom => labelOf(col(a.attr))
-            case c: TableAttributeCompound => labelOf(compoundKeyCol(c))
+            case a: TableAttributeAtom => valueOf(col(a.attr), col(pkColName(pk)))
+            case c: TableAttributeCompound => valueOf(compoundKeyCol(c), col(pkColName(pk)))
           }
         }
-        def valCol(t: TableName, c: AttrName): Column = concat(
-          lit(t), lit("~"), lit(c), lit("~"), col(c), lit("~"),
-          pibasCounterOn(col(c))
-        )
-        def encCol(t: TableName, c: AttrName): Column = concat(col(c), lit("_enc"))
+        def valCol(t: TableName, c: AttrName): Column = {
+          /*concat(
+            lit(t), lit("~"), lit(c), lit("~"), col(c), lit("~"),
+            pibasCounterOn(col(c))
+          )*/
+          val udfFilterPredicate = udf(dexFilterPredicate(dexFilterPredicatePrefixOf(t, c)) _)
+          val trapdoor = udfMasterTrapdoorUnindexed(udfFilterPredicate(col(c)))
+          udfEmmLabel(trapdoor, pibasCounterOn(col(c)))
+        }
+        def encCol(t: TableName, c: AttrName): Column = {
+          // concat(col(c), lit("_enc"))
+          udfCell(col(c))
+        }
 
         val pkDf = d.withColumn(pkColName(pk), pkCol(pk))
         val pkfkDf = fks.foldLeft(pkDf) { case (pd, fk) =>
@@ -220,7 +254,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             .withColumn(encColName(t, c), encCol(t, c))
         }
 
-        def encTableNameOf(t: TableName): String = s"${t}_prf"
+        def encTableNameOf(t: TableName): String =  {
+           // s"${t}_prf"
+          dexTableNameOf(t)
+        }
 
         val encTableName = encTableNameOf(t)
         val encIndexColNames = encIndexColNamesOf(d, pk, fks)
