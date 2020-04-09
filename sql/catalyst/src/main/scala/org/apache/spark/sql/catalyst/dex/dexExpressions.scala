@@ -59,7 +59,7 @@ case class DexPrf(key: Expression, data: Expression)
   extends BinaryExpression with ExpectsInputTypes with CodegenFallback {
   override def left: Expression = key
   override def right: Expression = data
-  override def inputTypes: Seq[AbstractDataType] = Seq(BinaryType, StringType)
+  override def inputTypes: Seq[AbstractDataType] = Seq(BinaryType, BinaryType)
   override def dataType: DataType = BinaryType
 
   protected override def nullSafeEval(input1: Any, input2: Any): Any = ???
@@ -85,7 +85,7 @@ case class DexDecode(bin: Expression, decodeType: AtomicType)
   }
 }
 
-case class DexEncode(expr: Expression, exprType: DataType)
+case class DexEncode(expr: Expression, exprType: DataType) // exprType is input type, not output type
   extends UnaryExpression with ExpectsInputTypes with CodegenFallback {
   override def child: Expression = expr
   override def inputTypes: Seq[AbstractDataType] = Seq(exprType)

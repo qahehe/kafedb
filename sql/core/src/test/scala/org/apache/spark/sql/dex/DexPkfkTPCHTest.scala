@@ -15,19 +15,12 @@
  * limitations under the License.
  */
 package org.apache.spark.sql.dex
-
-import org.apache.spark.sql.catalyst.dex.DexPrimitives._
 // scalastyle:off
 
-class DexPkFkBuilderTest extends DexPkfkTPCHTest {
+trait DexPkfkTPCHTest extends DexTPCHTest {
 
-  test("dex pkfk builder") {
-    nameToDf.keys.foreach { t =>
-      val tEnc = dexTableNameOf(t)
-      val dfEnc = spark.read.jdbc(urlEnc, tEnc, properties)
-      println(tEnc + ": \n"
-        + dfEnc.columns.mkString(",") + "\n"
-        + dfEnc.collect().mkString("\n"))
-    }
+  override protected def encryptData(): Unit = {
+    val dexPkfkBuilder = spark.sessionState.dexBuilder
+    dexPkfkBuilder.buildPkFkSchemeFromData(nameToDf, primaryKeys, foreignKeys)
   }
 }

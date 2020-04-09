@@ -17,26 +17,25 @@
 package org.apache.spark.sql.dex
 // scalastyle:off
 
-class DexTPCHSuite extends DexTPCHTest {
-  override protected def provideEncryptedData: Boolean = true
+class DexTPCHSuite extends DexPkfkTPCHTest {
 
   test("one filter") {
-    val query = part.where("p_name == 'pb'")
+    val query = part.where("p_name == 'pb'").select("p_name")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
   test("two conjunctive filters") {
-    val query = supplier.where("s_name == 'sb' and s_address == 'sa1'")
+    val query = supplier.where("s_name == 'sb' and s_address == 'sa1'").select("s_name")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
   test("one join: foreign key to primary key") {
-    val query = partsupp.join(supplier).where("ps_suppkey == s_suppkey")
+    val query = partsupp.join(supplier).where("ps_suppkey == s_suppkey").select("ps_comment", "s_name")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
   test("one join: primary key to foreign key") {
-    val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey")
+    val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey").select("ps_comment", "s_name")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
@@ -99,4 +98,6 @@ class DexTPCHSuite extends DexTPCHTest {
     val query = part.join(lineitem).where("p_partkey = l_partkey").select("l_comment")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
+
+
 }

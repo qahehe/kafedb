@@ -281,8 +281,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       case f: DexRidFilter =>
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
-          Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, f.predicate, 1)),
-          Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, f.predicate, 2))
+          Literal(dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, f.predicate, 1)),
+          Literal(dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, f.predicate, 2))
         )
         val firstLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, Literal(DexConstants.cashCounterStart)).dialectSql(dialect)
         val nextLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, Add($"dex_rid_filter.counter", 1)).dialectSql(dialect)
@@ -301,8 +301,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin
       case j: SpxRidUncorrelatedJoin =>
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
-          Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, j.predicate, 1)),
-          Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, j.predicate, 2))
+          Literal(dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, j.predicate, 1)),
+          Literal(dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, j.predicate, 2))
         )
         val firstLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, DexConstants.cashCounterStart).dialectSql(dialect)
         val nextLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, Add($"spx_rid_uncorrelated_join.counter", 1)).dialectSql(dialect)
@@ -322,7 +322,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case j: DexRidCorrelatedJoin =>
         val leftSubquery = convertToSQL(j.left)
         val leftRidExpr = j.childViewRid
-        val masterTrapdoor = dexTrapdoor(masterSecret.hmacKey.getEncoded, j.predicatePrefix)
+        val masterTrapdoor = dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, j.predicatePrefix)
         //val joinPredExpr = catalystConcatPredicateExprsOf(j.predicatePrefix, leftRidExpr)
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
           catalystTrapdoorExprOf(Literal(masterTrapdoor), leftRidExpr, 1),
@@ -387,8 +387,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
       case v: DexDomainValues =>
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
-          Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, v.predicate, 1)),
-          Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, v.predicate, 2))
+          Literal(dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, v.predicate, 1)),
+          Literal(dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, v.predicate, 2))
         )
         val firstLabel = catalystEmmLabelExprOf(labelPrfKeyExpr, Literal(DexConstants.cashCounterStart))
         val outputCols = v.output.map(_.dialectSql(dialect)).mkString(", ")
@@ -452,7 +452,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         def ctePartFor(joinSide: String, predicatePrefix: String) = {
           //val predicatePrefixExpr = dialect.compileValue(predicatePrefix).asInstanceOf[String]
           //val domainValuePredExpr = catalystConcatPredicateExprsOf(predicatePrefixExpr, domainValueExpr)
-          val masterTrapdoor = dexTrapdoor(masterSecret.hmacKey.getEncoded, predicatePrefix)
+          val masterTrapdoor = dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, predicatePrefix)
           val (labelPrfKeyExpr, valueDecKeyExpr) = (
             catalystTrapdoorExprOf(Literal(masterTrapdoor), domainValueExpr, 1),
             catalystTrapdoorExprOf(Literal(masterTrapdoor), domainValueExpr, 2)
@@ -485,11 +485,17 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin
 
       case f: DexPseudoPrimaryKeyFilter =>
-        val predExpr = dialect.compileValue(f.predicate).asInstanceOf[String]
-        val labelPrfKeyExpr = Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, predExpr))
+        // val predExpr = dialect.compileValue(f.predicate).asInstanceOf[String]
+        // val labelPrfKeyExpr = Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, predExpr))
+        val labelPrfKeyExpr = Literal(dexMasterTrapdoorForPred(f.predicate, None))
         val labelColExpr = dialect.quoteIdentifier(f.labelColumn)
         val outputCols = f.output.map(_.dialectSql(dialect)).mkString(", ")
         val ridOrder = f.filterTableRid.dialectSql(dialect)
+        val firstLabelExpr = catalystEmmLabelExprOf(
+          labelPrfKeyExpr, DexConstants.cashCounterStart
+        ).dialectSql(dialect)
+        val nextLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, Add($"dex_ppk_filter.counter", 1)).dialectSql(dialect)
+
         /*s"""
            |(
            |  WITH RECURSIVE child_view AS (
@@ -532,9 +538,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_ppk_filter($ridOrder, counter) AS (
-           |    SELECT ${f.filterTableName}.rid, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = ${catalystEmmLabelExprOf(labelPrfKeyExpr, s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")}
+           |    SELECT ${f.filterTableName}.rid, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = $firstLabelExpr
            |    UNION ALL
-           |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = ${catalystEmmLabelExprOf(labelPrfKeyExpr, "dex_ppk_filter.counter + 1")}
+           |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
            |)
@@ -544,10 +550,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val labelColExpr = dialect.quoteIdentifier(j.labelColumn)
         val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
         val (leftRidExpr, rightRidExpr) = (j.leftTableRid.dialectSql(dialect), j.rightTableRid.dialectSql(dialect))
-        val joinPredPrefixExpr = dialect.compileValue(j.predicate).asInstanceOf[String]
-        val masterTrapdoor = dexTrapdoor(masterSecret.hmacKey.getEncoded, joinPredPrefixExpr)
-        val labelPrfKeyExpr =
-          catalystTrapdoorExprOf(Literal(masterTrapdoor), s"${j.leftTableName}.rid")
+        // val joinPredPrefixExpr = dialect.compileValue(j.predicate).asInstanceOf[String]
+        // val masterTrapdoor = dexTrapdoor(masterSecret.hmacKey.getEncoded, joinPredPrefixExpr)
+        val masterTrapdoor = dexMasterTrapdoorForPred(j.predicate, None)
+        def secondaryTrapdoorExpr(ridCol: DialectSQLTranslatable) =
+          catalystTrapdoorExprOf(Literal(masterTrapdoor), ridCol) //.dialectSql(dialect)
 
         // first generate labelPrfKeys for each primary key
         // Question 1: join left child view and right child view each recursion or join right child view after all recursions?
@@ -577,15 +584,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         s"""
            |(
            |  WITH RECURSIVE dex_ppk_join($leftRidExpr, $rightRidExpr, counter) AS (
-           |    SELECT ${j.leftTableName}.rid, ${j.rightTableName}.rid, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
+           |    SELECT ${j.leftTableName}.rid AS $leftRidExpr, ${j.rightTableName}.rid AS $rightRidExpr, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
            |    FROM ${j.leftTableName}, ${j.rightTableName}
-           |    WHERE ${catalystEmmLabelExprOf(labelPrfKeyExpr, s"${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}")} = $labelColExpr
+           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr($"${j.leftTableName}.rid"), DexConstants.cashCounterStart).dialectSql(dialect)} = $labelColExpr
            |
            |    UNION ALL
            |
-           |    SELECT $leftRidExpr, ${j.rightTableName}.rid, counter + 1 AS counter
+           |    SELECT $leftRidExpr, ${j.rightTableName}.rid AS $rightRidExpr, counter + 1 AS counter
            |    FROM dex_ppk_join, ${j.rightTableName}
-           |    WHERE ${catalystEmmLabelExprOf(labelPrfKeyExpr, "counter + 1")} = $labelColExpr
+           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr($"${j.leftTableRid.name}"), Add($"counter", 1)).dialectSql(dialect)} = $labelColExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_join
            |)
@@ -1421,9 +1428,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           val mapColumnOrder = $"${DexPrimitives.dexColNameOf(s"fpk_${taF.table}_${taP.table}")}_${joinOrder(joinAttrs.leftTableRel)}"
           //val predicate = s"${taF.table}~${taP.table}"
           val predicate = dexPkFKJoinPredicateOf(taF, taP)
-          val mapColumnDecKey = Concat(Seq(Literal(predicate), Literal("~"), leftRidOrder))
+          // val mapColumnDecKey = Concat(Seq(Literal(predicate), Literal("~"), leftRidOrder))
+          val mapColumnDecKey = catalystTrapdoorExprOf(dexMasterTrapdoorForPred(predicate, None), leftRidOrder)
           //val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
-          leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder).cast(LongType) === rightRidOrder))
+          // note: rids are all in bytes
+          leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder))
             .select(star())
 
         case (taL, taR) => throw DexException("unsupported: " + taL.toString + ", " + taR.toString) // todo: handle nonkey join using t_domain

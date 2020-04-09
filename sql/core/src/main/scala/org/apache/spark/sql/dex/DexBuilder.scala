@@ -87,20 +87,24 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   private val udfCell = udf(dexCellOf _)
 
-  private val udfMasterTrapdoorUnindexed = udf { dexPredicate: String =>
-    dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate)
+  private val udfMasterTrapdoorSingletonForPred = udf { dexPredicate: String =>
+    // dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate)
+    dexMasterTrapdoorForPred(dexPredicate, None)
   }
 
-  private val udfSecondaryTrapdoorUnindexed = udf { (masterTrapdoor: Array[Byte], rid: Long) =>
-    dexTrapdoor(masterTrapdoor, rid)
+  private val udfSecondaryTrapdoorSingletonForRid = udf { (masterTrapdoor: Array[Byte], rid: Long) =>
+    // dexTrapdoor(masterTrapdoor, rid)
+    dexSecondaryTrapdoorForRid(masterTrapdoor, rid, None)
   }
 
-  private val udfMasterTrapdoor = udf { (dexPredicate: String, j: Int) =>
-    dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate, j)
+  private val udfMasterTrapdoorForPred = udf { (dexPredicate: String, j: Int) =>
+    // dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate, j)
+    dexMasterTrapdoorForPred(dexPredicate, Some(j))
   }
 
-  private val udfSecondaryTrapdoor = udf { (masterTrapdoor: Array[Byte], rid: Long, j: Int) =>
-    dexTrapdoor(masterTrapdoor, rid, j)
+  private val udfSecondaryTrapdoorForRid = udf { (masterTrapdoor: Array[Byte], rid: Long, j: Int) =>
+    // dexTrapdoor(masterTrapdoor, rid, j)
+    dexSecondaryTrapdoorForRid(masterTrapdoor, rid, Some(j))
   }
 
   private val udfEmmLabel = udf { (trapdoor: Array[Byte], counter: Int) =>
@@ -151,6 +155,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     case c: TableAttributeCompound => compoundKeyCol(c)
   }
 
+  private def longRidCol(pk: PrimaryKey): Column = pkCol(pk)
+
+  private def bytesRidCol(pk: PrimaryKey): Column = udfRid(pkCol(pk))
+
   private def encColName(t: TableName, c: AttrName): String = {
     // s"${c}_prf"
     dexColNameOf(c)
@@ -164,10 +172,10 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       case (t, d) =>
         val (pk, fks) = primaryKeyAndForeignKeysFor(t, primaryKeys, foreignKeys)
 
-        def pkColName(pk: PrimaryKey): String = "rid"
-        def pfkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"pfk_${fk.ref.table}_${fk.attr.table}_prf")
-        def fpkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"fpk_${fk.attr.table}_${fk.ref.table}_prf")
-        def valColName(t: TableName, c: AttrName): String = DexPrimitives.dexColNameOf(s"val_${t}_${c}_prf")
+        def ridColName(pk: PrimaryKey): String = "rid"
+        def pfkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"pfk_${fk.ref.table}_${fk.attr.table}")
+        def fpkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"fpk_${fk.attr.table}_${fk.ref.table}")
+        def valColName(t: TableName, c: AttrName): String = DexPrimitives.dexColNameOf(s"val_${t}_${c}")
 
         /*def outputCols(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.flatMap {
           case c if c == pk.attr.attr =>
@@ -180,7 +188,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         }*/
 
         def encIndexColNamesOf(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = {
-          Seq(pkColName(pk)) ++
+          Seq(ridColName(pk)) ++
             fks.flatMap(fk => Seq(pfkColName(fk), fpkColName(fk))) ++
             d.columns.collect {
               case c if nonKey(pk, fks, c) => valColName(t, c)
@@ -191,17 +199,22 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             encColName(t, c)
         }
 
+        //  p.p1 (=f.f1) <- f.p1
+        //  p.p1 (=f.f1) <- f.p2
+        //  p.p2 (=f.f2) <- f.p3
+        // one-to-many join (think in terms of tables, i.e. pfkCol means primary table join foreign table)
         def pfkCol(fk: ForeignKey): Column = {
           /*def labelOf(c: Column): Column = concat(
             lit(fk.ref.table), lit("~"), lit(fk.attr.table), lit("~"), c, lit("~"),
             pibasCounterOn(c)
           )*/
-          def labelOf(c: Column): Column = {
+          def labelOf(fkCol: Column): Column = {
             val joinPred = dexPkfkJoinPredicatePrefixOf(fk.ref.table, fk.attr.table)
-            val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
+            // val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
+            val masterTrapdoor = dexMasterTrapdoorForPred(joinPred, None)
             // assume rid is c
-            val secondaryTrapdoor = udfSecondaryTrapdoorUnindexed(lit(masterTrapdoor), c)
-            udfEmmLabel(secondaryTrapdoor, pibasCounterOn(c))
+            val secondaryTrapdoor = udfSecondaryTrapdoorSingletonForRid(lit(masterTrapdoor), fkCol)
+            udfEmmLabel(secondaryTrapdoor, pibasCounterOn(fkCol))
           }
 
           fk.attr match {
@@ -209,21 +222,28 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             case c: TableAttributeCompound => labelOf(compoundKeyCol(c))
           }
         }
-        def fpkCol(fk: ForeignKey, pk: PrimaryKey): Column = {
+
+        // f.p1 -> p.p1 (=f.f1)
+        // f.p2 -> p.p1 (=f.f1)
+        // f.p3 -> p.p2 (=f.f2)
+        // many-to-one join (think in terms of tables, i.e. fpkCol means foreign table join primary table)
+        def fpkCol(fk: ForeignKey, longRidCol: Column): Column = {
+          // This longRidCol is of the table that fk resides in.
           /*def labelOf(c: Column): Column = concat(
             c, lit("_enc_"),
             lit(fk.attr.table), lit("~"), lit(fk.ref.table), lit("~"),
             col(pkColName(pk))
           )*/
-          def valueOf(label: Column, value: Column): Column = {
+          def valueOf(fkCol: Column): Column = {
             val joinPred = dexPkfkJoinPredicatePrefixOf(fk.attr.table, fk.ref.table)
-            val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
-            val secondaryTrapdoor = udfSecondaryTrapdoorUnindexed(lit(masterTrapdoor), label)
-            udfEmmValue(secondaryTrapdoor, value)
+            // val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
+            val masterTrapdoor = dexMasterTrapdoorForPred(joinPred, None)
+            val secondaryTrapdoor = udfSecondaryTrapdoorSingletonForRid(lit(masterTrapdoor), longRidCol)
+            udfEmmValue(secondaryTrapdoor, fkCol)
           }
           fk.attr match {
-            case a: TableAttributeAtom => valueOf(col(a.attr), col(pkColName(pk)))
-            case c: TableAttributeCompound => valueOf(compoundKeyCol(c), col(pkColName(pk)))
+            case a: TableAttributeAtom => valueOf(col(a.attr))
+            case c: TableAttributeCompound => valueOf(compoundKeyCol(c))
           }
         }
         def valCol(t: TableName, c: AttrName): Column = {
@@ -232,7 +252,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             pibasCounterOn(col(c))
           )*/
           val udfFilterPredicate = udf(dexFilterPredicate(dexFilterPredicatePrefixOf(t, c)) _)
-          val trapdoor = udfMasterTrapdoorUnindexed(udfFilterPredicate(col(c)))
+          val trapdoor = udfMasterTrapdoorSingletonForPred(udfFilterPredicate(col(c)))
           udfEmmLabel(trapdoor, pibasCounterOn(col(c)))
         }
         def encCol(t: TableName, c: AttrName): Column = {
@@ -240,10 +260,16 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           udfCell(col(c))
         }
 
-        val pkDf = d.withColumn(pkColName(pk), pkCol(pk))
-        val pkfkDf = fks.foldLeft(pkDf) { case (pd, fk) =>
+        // Of this table:
+        // (1) create rid column based on primary key (WARNING: in long, for convenicnece in next step)
+        // (2) create join indices columns based on foreign keys (interface with long rids (bad), but eventually converted to bytes. fixme)
+        // (3) create filter indices columns based on nonkey columns
+        // (4) encrypt nonkey columns
+        // (5) convert long rid to bytes rid
+        val ridPkDf = d.withColumn(ridColName(pk), longRidCol(pk)) // create rid column of type long
+        val pkfkDf = fks.foldLeft(ridPkDf) { case (pd, fk) =>
           pd.withColumn(pfkColName(fk), pfkCol(fk))
-            .withColumn(fpkColName(fk), fpkCol(fk, pk))
+            .withColumn(fpkColName(fk), fpkCol(fk, col(ridColName(pk))))
         }
 
         val pkfkEncDf = d.columns.filterNot(
@@ -254,6 +280,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             .withColumn(encColName(t, c), encCol(t, c))
         }
 
+        val ridPkfkEncDf = pkfkEncDf.withColumn(ridColName(pk), bytesRidCol(pk))
+
         def encTableNameOf(t: TableName): String =  {
            // s"${t}_prf"
           dexTableNameOf(t)
@@ -262,7 +290,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         val encTableName = encTableNameOf(t)
         val encIndexColNames = encIndexColNamesOf(d, pk, fks)
         val encDataColNames = encDataColNamesOf(t, d, pk, fks)
-        pkfkEncDf.selectExpr(encIndexColNames ++ encDataColNames:_*)
+        ridPkfkEncDf.selectExpr(encIndexColNames ++ encDataColNames:_*)
           .write.mode(SaveMode.Overwrite).jdbc(encDbUrl, encTableName, encDbProps)
 
         Utils.classForName("org.postgresql.Driver")
@@ -314,6 +342,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       val ridPkFkDf = fks.foldLeft(ridPkDf) {
         case (df, fk) => fk.attr match {
           case c: TableAttributeCompound =>
+            // fixme: maybe convert rid to bytes using udfRid here?
             df.withColumn(c.attr, compoundKeyCol(c))
           case a: TableAttributeAtom =>
             df
@@ -340,8 +369,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           val udfFilterPredicate = udf(dexFilterPredicate(dexFilterPredicatePrefixOf(n, c)) _)
           r.withColumn("counter", row_number().over(Window.partitionBy(c).orderBy(c)) - 1).repartition(col(c))
             .withColumn("predicate", udfFilterPredicate(col(c)))
-            .withColumn("master_trapdoor_1", udfMasterTrapdoor($"predicate", lit(1)))
-            .withColumn("master_trapdoor_2", udfMasterTrapdoor($"predicate", lit(2)))
+            .withColumn("master_trapdoor_1", udfMasterTrapdoorForPred($"predicate", lit(1)))
+            .withColumn("master_trapdoor_2", udfMasterTrapdoorForPred($"predicate", lit(2)))
             .withColumn("label", udfEmmLabel($"master_trapdoor_1", $"counter"))
             .withColumn("value", udfEmmValue($"master_trapdoor_2", $"rid"))
             .select("label", "value")
@@ -376,8 +405,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
         val uncorrJoinPredicate = dexUncorrJoinPredicateOf(attrLeft, attrRight)
         val masterTrapdoors = (
-          dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, uncorrJoinPredicate, 1),
-          dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, uncorrJoinPredicate, 2))
+          dexTrapdoorForPred(DexPrimitives.masterSecret.hmacKey.getEncoded, uncorrJoinPredicate, 1),
+          dexTrapdoorForPred(DexPrimitives.masterSecret.hmacKey.getEncoded, uncorrJoinPredicate, 2))
         dfLeft.withColumnRenamed("rid", "rid_left")
           .join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
           .withColumn("counter", row_number().over(Window.orderBy(monotonically_increasing_id())) - 1).repartition($"counter")
@@ -398,15 +427,15 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         def joinFor(attrLeft: TableAttribute, attrRight: TableAttribute): DataFrame = {
           //val udfJoinPred = udf(dexPredicatesConcat(dexCorrJoinPredicatePrefixOf(attrLeft, attrRight)) _)
           val joinPred = dexCorrJoinPredicatePrefixOf(attrLeft, attrRight)
-          val masterTrapdoor = dexTrapdoor(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
+          val masterTrapdoor = dexTrapdoorForPred(DexPrimitives.masterSecret.hmacKey.getEncoded, joinPred)
           val (dfLeft, dfRight) = (nameToRidDf(attrLeft.table), nameToRidDf(attrRight.table))
           require(dfLeft.columns.contains(attrLeft.attr) && dfRight.columns.contains(attrRight.attr), s"${attrLeft.attr} and ${attrRight.attr}")
           dfLeft.withColumnRenamed("rid", "rid_left").join(dfRight.withColumnRenamed("rid", "rid_right"), col(attrLeft.attr) === col(attrRight.attr))
             //.groupBy("rid_left").agg(collect_list($"rid_right").as("rids_right"))
             //.select($"rid_left", posexplode($"rids_right").as("counter" :: "rid_right" :: Nil))
             .withColumn("counter", row_number().over(Window.partitionBy("rid_left").orderBy("rid_left")) - 1).repartition($"counter")
-            .withColumn("secondary_trapdoor_1", udfSecondaryTrapdoor(lit(masterTrapdoor), $"rid_left", lit(1)))
-            .withColumn("secondary_trapdoor_2", udfSecondaryTrapdoor(lit(masterTrapdoor), $"rid_left", lit(2)))
+            .withColumn("secondary_trapdoor_1", udfSecondaryTrapdoorForRid(lit(masterTrapdoor), $"rid_left", lit(1)))
+            .withColumn("secondary_trapdoor_2", udfSecondaryTrapdoorForRid(lit(masterTrapdoor), $"rid_left", lit(2)))
             .withColumn("label", udfEmmLabel($"secondary_trapdoor_1", $"counter"))
             .withColumn("value", udfEmmValue($"secondary_trapdoor_2", $"rid_right"))
             .select("label", "value")

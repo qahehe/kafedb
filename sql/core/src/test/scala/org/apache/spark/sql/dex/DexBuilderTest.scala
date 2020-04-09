@@ -23,20 +23,14 @@ import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttributeAtom, Table
 import org.apache.spark.sql.catalyst.dex.DexPrimitives.dexTableNameOf
 
 
-class DexBuilderTest extends DexTPCHTest {
-  override protected def provideEncryptedData: Boolean = false
-
-  lazy val dexBuilder = spark.sessionState.dexBuilder
-
-  lazy val nameToDf = Map(
-    "partsupp" -> partsupp,
-    "part" -> part,
-    "supplier" -> supplier,
-    "lineitem" -> lineitem
-  )
+class DexSpxBuilderTest extends DexTPCHTest {
+  override protected def encryptData(): Unit = {
+    lazy val dexBuilder = spark.sessionState.dexBuilder
+    dexBuilder.buildFromData(DexVariant.from("DexSpx").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
+  }
 
   test("dex builder: spx") {
-    dexBuilder.buildFromData(DexVariant.from("DexSpx").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
+
     Seq("testdata2_prf", "testdata3_prf", "testdata4_prf", DexConstants.tFilterName, DexConstants.tUncorrJoinName).foreach { t =>
       val df = spark.read.jdbc(urlEnc, t, properties)
       println(t + ": \n"
@@ -44,9 +38,15 @@ class DexBuilderTest extends DexTPCHTest {
         + df.collect().mkString("\n"))
     }
   }
+}
+
+class DexCorrBuilderTest extends DexTPCHTest {
+  override protected def encryptData(): Unit = {
+    lazy val dexBuilder = spark.sessionState.dexBuilder
+    dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
+  }
 
   test("dex builder: corr") {
-    dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
     Seq(dexTableNameOf("partsupp"),
       dexTableNameOf("part"),
       dexTableNameOf("supplier"),
@@ -67,19 +67,18 @@ class DexBuilderTest extends DexTPCHTest {
       println(df.dtypes.map(x => s"${x._1}:${x._2}").mkString(","))
       println(
         df.collect().map { x =>
-        Range(0, x.length).collect {
-          case i if df.columns(i) == "rid" =>
-            DataCodec.decode[Long](x.getAs[Array[Byte]](i))
-          case i =>
-            assert(df.dtypes(i)._2 == "BinaryType")
-            DataCodec.decode[Int](Crypto.symDec(DexPrimitives.masterSecret.aesKey, x.get(i).asInstanceOf[Array[Byte]]))
-        }.mkString(",")
-      }.mkString("\n"))
+          Range(0, x.length).collect {
+            case i if df.columns(i) == "rid" =>
+              DataCodec.decode[Long](x.getAs[Array[Byte]](i))
+            case i =>
+              assert(df.dtypes(i)._2 == "BinaryType")
+              DataCodec.decode[Int](Crypto.symDec(DexPrimitives.masterSecret.aesKey, x.get(i).asInstanceOf[Array[Byte]]))
+          }.mkString(",")
+        }.mkString("\n"))
     }
   }
 
   test("dex cor end to end") {
-    dexBuilder.buildFromData(DexVariant.from("dexcorr").asInstanceOf[DexStandalone], nameToDf, primaryKeys, foreignKeys)
     val q1 = nameToDf("part").select("p_name")
     checkDexFor(q1, q1.dexCorr(cks))
 

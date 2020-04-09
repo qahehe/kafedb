@@ -44,7 +44,9 @@ trait DexTest extends QueryTest with SharedSQLContext with BeforeAndAfter with P
     .set(SQLConf.WHOLESTAGE_CODEGEN_ENABLED, false)
 
   protected override def afterAll(): Unit = {
+    conn.commit()
     conn.close()
+    connEnc.commit()
     connEnc.close()
   }
 

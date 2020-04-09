@@ -62,19 +62,35 @@ object DexPrimitives {
     s"$predicatePrefix~${value.toString}"
   }
 
-  def dexTrapdoor(key: Array[Byte], predicate: String): Array[Byte] = {
+  def dexMasterTrapdoorForPred(dexPredicate: String, index: Option[Int]): Array[Byte] = {
+    index.map(
+      i => dexTrapdoorForPred(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate, i)
+    ).getOrElse(
+      dexTrapdoorForPred(DexPrimitives.masterSecret.hmacKey.getEncoded, dexPredicate)
+    )
+  }
+
+  def dexSecondaryTrapdoorForRid(masterTrapdoor: Array[Byte], rid: Long, index: Option[Int]): Array[Byte] = {
+    index.map(
+      i => dexTrapdoorForRid(masterTrapdoor, rid, i)
+    ).getOrElse(
+      dexTrapdoorForRid(masterTrapdoor, rid)
+    )
+  }
+
+  def dexTrapdoorForPred(key: Array[Byte], predicate: String): Array[Byte] = {
     Crypto.prf(key, DataCodec.encode(predicate))
   }
 
-  def dexTrapdoor(key: Array[Byte], rid: Long): Array[Byte] = {
+  def dexTrapdoorForRid(key: Array[Byte], rid: Long): Array[Byte] = {
     Crypto.prf(key, DataCodec.concatBytes(dexRidOf(rid)))
   }
 
-  def dexTrapdoor(key: Array[Byte], predicate: String, j: Int): Array[Byte] = {
+  def dexTrapdoorForPred(key: Array[Byte], predicate: String, j: Int): Array[Byte] = {
     Crypto.prf(key, DataCodec.concatBytes(predicate, j))
   }
 
-  def dexTrapdoor(key: Array[Byte], rid: Long, j: Int): Array[Byte] = {
+  def dexTrapdoorForRid(key: Array[Byte], rid: Long, j: Int): Array[Byte] = {
     Crypto.prf(key, DataCodec.concatBytes(dexRidOf(rid), j))
   }
 
@@ -100,12 +116,13 @@ object DexPrimitives {
     DexDecrypt(Literal(masterSecret.aesKey.getEncoded), attr)
   }
 
-  def catalystTrapdoorExprOf(key: Expression, predicateExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
-    DexPrf(key, DexEncode(predicateExpr, BinaryType))
+  def catalystTrapdoorExprOf(key: Expression, predBytesExpr: DialectSQLTranslatable): DialectSQLTranslatable = {
+    // DexPrf(key, DexEncode(predicateExpr, LongType))
+    DexPrf(key, DexEncode(predBytesExpr, BinaryType))
   }
 
-  def catalystTrapdoorExprOf(key: Expression, predicateExpr: DialectSQLTranslatable, j: Int): DialectSQLTranslatable = {
-    DexPrf(key, Concat(DexEncode(predicateExpr, BinaryType) :: DexEncode(Literal(j), IntegerType) :: Nil))
+  def catalystTrapdoorExprOf(key: Expression, predBytesExpr: DialectSQLTranslatable, j: Int): DialectSQLTranslatable = {
+    DexPrf(key, Concat(DexEncode(predBytesExpr, BinaryType) :: DexEncode(Literal(j), LongType) :: Nil))
   }
 
   def catalystEmmLabelExprOf(trapdoorExpr: DialectSQLTranslatable, counterExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
