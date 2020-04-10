@@ -149,7 +149,7 @@ object TPCHBench extends DexTPCHBenchCommon {
       ),
 
       // Q6 and Q1 is essentially the same
-      BenchQuery("q",
+      BenchQuery("q6",
         """
           |select
           |  l_extendedprice,
