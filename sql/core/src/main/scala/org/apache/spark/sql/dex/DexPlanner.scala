@@ -30,7 +30,7 @@ import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.TypeUtils
-import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound, ridCol}
+import org.apache.spark.sql.catalyst.dex.DexConstants.{AttrName, TableAttributeAtom, TableAttributeCompound, ridCol}
 import org.apache.spark.sql.catalyst.dex.DexPrimitives._
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRelation, JdbcRelationProvider}
 import org.apache.spark.sql.execution.datasources._
@@ -1399,10 +1399,22 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       )
     }
 
+    private def hasAttrInView(attr: String, view: LogicalPlan): Boolean = {
+      analyze(view).output.exists(_.name == attr)
+    }
+
     override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       require(childViews.size == 2)
       // Always join from left child view to right child view, post-orderly (subtree-first)
-      val (leftChildView, rightChildView) = (childViews.head, childViews(1))
+      // val (leftChildView, rightChildView) = (childViews.head, childViews(1))
+      // order childViews by joinAttrs
+      val (leftChildView, rightChildView) = if (hasAttrInView(joinAttrs.leftRidOrder, childViews.head) && hasAttrInView(joinAttrs.rightRidOrder, childViews(1))) {
+        (childViews.head, childViews(1))
+      } else if (hasAttrInView(joinAttrs.leftRidOrder, childViews(1)) && hasAttrInView(joinAttrs.rightRidOrder, childViews.head)) {
+        (childViews(1), childViews.head)
+      } else {
+        throw DexException("self join?")
+      }
       val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
       val (leftTableAttr, rightTableAttr) = (
         TableAttributeAtom(joinAttrs.leftTableName, joinAttrs.left.name),

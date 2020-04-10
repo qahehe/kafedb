@@ -99,5 +99,9 @@ class DexTPCHSuite extends DexPkfkTPCHTest {
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
+  test("join out of predicate order") {
+    val query = partsupp.join(part).where("ps_partkey == p_partkey").join(supplier).where("s_suppkey = ps_suppkey").select("ps_comment")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
 
 }
