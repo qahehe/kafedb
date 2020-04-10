@@ -230,6 +230,21 @@
   </properties>
   <repositories>
     <repository>
+      <id>gcs-maven-central-mirror</id>
+      <!--
+        Google Mirror of Maven Central, placed first so that it's used instead of flaky Maven Central.
+        See https://storage-download.googleapis.com/maven-central/index.html
+      -->
+      <name>GCS Maven Central mirror</name>
+      <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
       <id>central</id>
       <!-- This should be at top, it makes maven try the central repo first and then others and hence faster dep resolution -->
       <name>Maven Repository</name>
@@ -243,6 +258,21 @@
     </repository>
   </repositories>
   <pluginRepositories>
+    <pluginRepository>
+      <id>gcs-maven-central-mirror</id>
+      <!--
+        Google Mirror of Maven Central, placed first so that it's used instead of flaky Maven Central.
+        See https://storage-download.googleapis.com/maven-central/index.html
+      -->
+      <name>GCS Maven Central mirror</name>
+      <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </pluginRepository>
     <pluginRepository>
       <id>central</id>
       <url>https://repo.maven.apache.org/maven2</url>
