@@ -1208,10 +1208,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         case (Some(l), Some(r)) =>
           // "right" relation is a previously joined relation
+          // e.g. (T1 join T2 on T1.c = T2.c) join T3 on (T1.a = T3.a and T2.b = T3.b) is seen as
+          // ((T1 join T2 on ...) join T3_A on T1.a=T3.a) left-semijoin T3_B on T2.b=T3.b.  The last join T2.b=T3.b is this case
+          // the last left-semijoin is equivalent to inner join T3_B on T2.b=T3_B.b and T3_B.a=T3_A.a
           // don't have extra "value_dec_key" column
           val ridJoin = DexRidCorrelatedJoin(predicatePrefixOf(joinAttrs, reverse = false), childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
           val ridJoinProject = childView.output
           ridJoin.select(ridJoinProject: _*)
+          // Another approach
 
           if (hasFilterOnChildView) {
             val ridJoin = DexRidCorrelatedJoin(predicatePrefixOf(joinAttrs, reverse = false), childView, tCorrelatedJoin, l).where(EqualTo(r, DexDecrypt($"value_dec_key", $"value")))
@@ -1292,6 +1296,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         // Assume the join operator will output childView schema
         tableEncWithRidOrderOf(l)
 
+        // fixme: case when join is conjunction, only subset of the predicates are compound keys
       case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
         val joinCompoundCond = {
           val attrLefts = j.condition.get.collect {
@@ -1310,7 +1315,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val compoundJoinPlan = j.copy(condition = Some(joinCompoundCond))
         translatePlan(compoundJoinPlan)
 
-      case j: Join if j.condition.isDefined && isPkFkJoinWithFkFilter(j) =>
+      case j: Join if j.condition.isDefined && hasPkFkJoinWithFkFilter(j) =>
         // PK join Filter(FK) has a subtle issue if execute in post-order:
         // For pk-rows with pk-fk-pibas-counter having any prefix sequence not satisify their fk-rows' filter,
         // then pk-rows with ALL sequence would not be included in join (due to counter increment).
@@ -1366,13 +1371,26 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case _ => throw DexException("unsupported")
     }
 
-    private def isPkFkJoinWithFkFilter(j: Join): Boolean =
-      isPkFkJoin(j) && j.right.isInstanceOf[Filter] && isFkFilter(j.right.asInstanceOf[Filter])
+    private def hasPkFkJoinWithFkFilter(j: Join): Boolean = {
+      // hasPkFkJoin(j.condition.get) && j.right.isInstanceOf[Filter] && isFkFilter(j.right.asInstanceOf[Filter])
+      fksInAnyPkFkJoin(j.condition.get).exists(fk => hasFkFilterIn(j.right, fk))
+    }
 
-    private def isPkFkJoin(j: Join): Boolean = j.condition.get match {
-      case EqualTo(left: Attribute, right: Attribute) =>
-        primaryKeys.contains(left.name) && foreignKeys.contains(right.name)
-      case _ => throw DexException("unsupported")
+    private def fksInAnyPkFkJoin(condition: Expression): Seq[Attribute] = condition match {
+      case EqualTo(left: Attribute, right: Attribute) if primaryKeys.contains(left.name) && foreignKeys.contains(right.name) =>
+        Seq(right)
+      case And(left, right) =>
+        fksInAnyPkFkJoin(left) ++ fksInAnyPkFkJoin(right)
+      case _ =>
+        // todo: disjunction?
+        Seq.empty
+    }
+
+    private def hasFkFilterIn(plan: LogicalPlan, fk: Attribute): Boolean = {
+      plan.find {
+        case f: Filter => isFkFilter(f)
+        case _ => false
+      }.isDefined
     }
 
     private def isFkFilter(f: Filter): Boolean = f.condition.collectLeaves().exists {
