@@ -1421,18 +1421,23 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       analyze(view).output.exists(_.name == attr)
     }
 
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
-      require(childViews.size == 2)
+    override protected def translateEquiJoin(joinAttrsUnordered: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+      // ChildViews:
+      // case 1: one childview => conjunctive join condition e.g. Q join T on a = b and c = d is processed as Q join T_A on ... join T_B on ...
+      // case 2: two childview => singleton join condition or the leftmost leaf of conjunctive join condition
+      require(childViews.size == 1 || childViews.size == 2)
       // Always join from left child view to right child view, post-orderly (subtree-first)
       // val (leftChildView, rightChildView) = (childViews.head, childViews(1))
       // order childViews by joinAttrs
-      val (leftChildView, rightChildView) = if (hasAttrInView(joinAttrs.leftRidOrder, childViews.head) && hasAttrInView(joinAttrs.rightRidOrder, childViews(1))) {
-        (childViews.head, childViews(1))
-      } else if (hasAttrInView(joinAttrs.leftRidOrder, childViews(1)) && hasAttrInView(joinAttrs.rightRidOrder, childViews.head)) {
-        (childViews(1), childViews.head)
-      } else {
-        throw DexException("self join?")
-      }
+      val joinAttrs =
+        if (hasAttrInView(joinAttrsUnordered.leftRidOrder, childViews.head) && hasAttrInView(joinAttrsUnordered.rightRidOrder, childViews(1))) {
+          joinAttrsUnordered
+        } else if (hasAttrInView(joinAttrsUnordered.leftRidOrder, childViews(1)) && hasAttrInView(joinAttrsUnordered.rightRidOrder, childViews.head)) {
+          JoinAttrs(joinAttrsUnordered.right, joinAttrsUnordered.left)
+        } else {
+          throw DexException("unsupported childviews and join attrs")
+        }
+
       val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
       val (leftTableAttr, rightTableAttr) = (
         TableAttributeAtom(joinAttrs.leftTableName, joinAttrs.left.name),
@@ -1448,10 +1453,20 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           //DexPseudoPrimaryKeyJoin(predicate, labelColumn, leftChildView, leftRidOrder, rightChildView)
           val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.leftTableRel), tableEncWithRidOrderOf(joinAttrs.rightTableRel))
           val (taPEncName, taFEncName) = (tableEncNameOf(taP.table), tableEncNameOf(taF.table))
-          leftChildView.join(
-            DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
-            UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
-          ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+
+          childViews match {
+            case Seq(leftChildView, rightChildView) =>
+              leftChildView.join(
+                DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
+                UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
+              ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+            case Seq(leftChildView) =>
+              leftChildView.join(
+                DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
+                UsingJoin(LeftSemi, Seq(joinAttrs.leftRidOrder)))
+            case _ =>
+              throw DexException("longer childviews")
+          }
 
         case (taF, taP) if foreignKeys.contains(taF.attr) && primaryKeys.contains(taP.attr) =>
           // foreign to primary key join, e.g. partsupp.ps_suppkey = supplier.s_suppkey
@@ -1462,10 +1477,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           val mapColumnDecKey = catalystTrapdoorExprOf(dexMasterTrapdoorForPred(predicate, None), leftRidOrder)
           //val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
           // note: rids are all in bytes
-          leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder))
-            .select(star())
 
-        case (taL, taR) => throw DexException("unsupported: " + taL.toString + ", " + taR.toString) // todo: handle nonkey join using t_domain
+          childViews match {
+            case Seq(leftChildView, rightChildView) =>
+              leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder))
+                .select(star())
+            case Seq(leftChildView) =>
+              leftChildView.where(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder).select(star())
+            case _ =>
+              throw DexException("longer childviews")
+          }
+
+        case (taL, taR) => throw DexException("unsupported: nonkey join: " + taL.toString + ", " + taR.toString)
       }
     }
   }
