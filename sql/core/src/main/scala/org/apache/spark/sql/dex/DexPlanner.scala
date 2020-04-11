@@ -1430,12 +1430,22 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       // val (leftChildView, rightChildView) = (childViews.head, childViews(1))
       // order childViews by joinAttrs
       val joinAttrs =
-        if (hasAttrInView(joinAttrsUnordered.leftRidOrder, childViews.head) && hasAttrInView(joinAttrsUnordered.rightRidOrder, childViews(1))) {
-          joinAttrsUnordered
-        } else if (hasAttrInView(joinAttrsUnordered.leftRidOrder, childViews(1)) && hasAttrInView(joinAttrsUnordered.rightRidOrder, childViews.head)) {
-          JoinAttrs(joinAttrsUnordered.right, joinAttrsUnordered.left)
+        if (childViews.size == 2) {
+          if (hasAttrInView(joinAttrsUnordered.leftRidOrder, childViews.head) && hasAttrInView(joinAttrsUnordered.rightRidOrder, childViews(1)))
+            joinAttrsUnordered
+          else if (hasAttrInView(joinAttrsUnordered.leftRidOrder, childViews(1)) && hasAttrInView(joinAttrsUnordered.rightRidOrder, childViews.head))
+            JoinAttrs(joinAttrsUnordered.right, joinAttrsUnordered.left)
+          else
+            throw DexException("unmatched childviews and join attrs")
+        } else if (childViews.size == 1) {
+          if (hasAttrInView(joinAttrsUnordered.leftRidOrder, childViews.head))
+            joinAttrsUnordered
+          else if (hasAttrInView(joinAttrsUnordered.rightRidOrder, childViews.head))
+            JoinAttrs(joinAttrsUnordered.right, joinAttrsUnordered.left)
+          else
+            throw DexException("unmatched childviews and join attrs")
         } else {
-          throw DexException("unsupported childviews and join attrs")
+          throw DexException("childviews wrong size")
         }
 
       val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
