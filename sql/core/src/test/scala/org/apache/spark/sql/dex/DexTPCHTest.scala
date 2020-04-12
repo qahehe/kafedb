@@ -19,7 +19,7 @@ package org.apache.spark.sql.dex
 
 import java.sql.Connection
 
-import org.apache.spark.sql.{DataFrame, QueryTest}
+import org.apache.spark.sql.{DataFrame, Dataset, QueryTest}
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey}
 import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttributeAtom, TableAttributeCompound}
 import org.apache.spark.sql.catalyst.dex.DexPrimitives._
@@ -60,11 +60,12 @@ trait DexTPCHTest extends QueryTest with DexTest {
   )
   lazy val compoundKeys = Set(
     TableAttributeCompound("partsupp", Seq("ps_partkey", "ps_suppkey")),
-    TableAttributeCompound("lineitem", Seq("l_orderkey", "l_linenumber"))
+    TableAttributeCompound("lineitem", Seq("l_orderkey", "l_linenumber")),
+    TableAttributeCompound("lineitem", Seq("l_partkey", "l_suppkey"))
   )
   lazy val pks = primaryKeys.map(_.attr.attr)
   lazy val fks = foreignKeys.map(_.attr.attr)
-  lazy val cks = compoundKeys.map(_.attr)
+  lazy val cks = DexBuilder.compoundKeysFrom(primaryKeys, foreignKeys).map(_.attr)
 
   protected def encryptData(): Unit
 

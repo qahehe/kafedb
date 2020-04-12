@@ -70,6 +70,13 @@ object DexBuilder {
 
   case class PrimaryKey(attr: TableAttribute)
   case class ForeignKey(attr: TableAttribute, ref: TableAttribute)
+
+  def compoundKeysFrom(primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Set[TableAttribute] = primaryKeys.collect {
+    case pk if pk.attr.isInstanceOf[TableAttributeCompound] => pk.attr
+  } union foreignKeys.collect {
+    case fk if fk.attr.isInstanceOf[TableAttributeCompound] => fk.attr
+  }
+
 }
 
 class DexBuilder(session: SparkSession) extends Serializable with Logging {
@@ -331,18 +338,17 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   def buildFromData(dexStandaloneVariant: DexStandalone, nameToDf: Map[TableName, DataFrame], primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
-      val ridDf = d.withColumn("rid", monotonically_increasing_id()).cache()
+      val ridDf = d.withColumn(DexConstants.ridCol, monotonically_increasing_id()).cache()
       val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
       val ridPkDf = pk.attr match {
         case c: TableAttributeCompound =>
-          ridDf.withColumn(c.attr, pkCol(pk))
+          ridDf.withColumn(c.attr, compoundKeyCol(c))
         case a: TableAttributeAtom =>
           ridDf
       }
       val ridPkFkDf = fks.foldLeft(ridPkDf) {
         case (df, fk) => fk.attr match {
           case c: TableAttributeCompound =>
-            // fixme: maybe convert rid to bytes using udfRid here?
             df.withColumn(c.attr, compoundKeyCol(c))
           case a: TableAttributeAtom =>
             df

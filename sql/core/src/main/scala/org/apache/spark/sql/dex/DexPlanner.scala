@@ -1084,7 +1084,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   sealed trait CompoundKeyAwareTranslator extends DexPlanTranslator {
-    def compoundKeys: Set[String]
+    def compoundKeys: Set[String] // can contain atomic key
 
     private def isCompoundKeyJoin(condition: Expression): Boolean = {
       val attrLefts = condition.collect {
@@ -1093,13 +1093,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val attrRights = condition.collect {
         case EqualTo(attrLeft: Attribute, attrRight: Attribute) => attrRight
       }
-      val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
-      val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
-      attrLefts.size > 1 && attrRights.size > 1 &&
+      attrLefts.size > 1 && attrRights.size > 1 && {
+        val attrCompoundLeft = TableAttributeCompound("dummy", attrLefts.map(_.name)).attr
+        val attrCompoundRight = TableAttributeCompound("dummy", attrRights.map(_.name)).attr
         compoundKeys.contains(attrCompoundLeft) && compoundKeys.contains(attrCompoundRight)
+      }
     }
 
     override protected def translatePlan(plan: LogicalPlan): LogicalPlan = plan match {
+        // todo: case where compound key is only one of the conjunctive predicates in this join
       case j: Join if j.condition.isDefined && isCompoundKeyJoin(j.condition.get) =>
         val joinCompoundCond = {
           val attrLefts = j.condition.get.collect {

@@ -24,7 +24,7 @@ import java.util.Properties
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
 import org.apache.spark.sql.catalyst.dex.DexConstants.{TableAttribute, TableAttributeAtom, TableAttributeCompound}
-import org.apache.spark.sql.dex.{DexCorr, DexPkFk, DexSpx, DexStandalone, DexVariant}
+import org.apache.spark.sql.dex.{DexBuilder, DexCorr, DexPkFk, DexSpx, DexStandalone, DexVariant}
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.util.Utils
 // For datagens
@@ -90,11 +90,8 @@ object TPCHDataGen {
     ForeignKey(TableAttributeAtom("orders", "o_custkey"), TableAttributeAtom("customer", "c_custkey")),
     ForeignKey(TableAttributeAtom("lineitem", "l_orderkey"), TableAttributeAtom("orders", "o_orderkey"))
   )
-  val compoundKeys = primaryKeys.collect {
-    case pk if pk.attr.isInstanceOf[TableAttributeCompound] => pk.attr
-  } union foreignKeys.collect {
-    case fk if fk.attr.isInstanceOf[TableAttributeCompound] => fk.attr
-  }
+
+  val compoundKeys = DexBuilder.compoundKeysFrom(primaryKeys, foreignKeys)
 
   def newSparkSession(name: String): SparkSession = SparkSession
     .builder()

@@ -122,7 +122,7 @@ object DexPrimitives {
   }
 
   def catalystTrapdoorExprOf(key: Expression, predBytesExpr: DialectSQLTranslatable, j: Int): DialectSQLTranslatable = {
-    DexPrf(key, Concat(DexEncode(predBytesExpr, BinaryType) :: DexEncode(Literal(j), LongType) :: Nil))
+    DexPrf(key, Concat(DexEncode(predBytesExpr, BinaryType) :: DexEncode(Literal(j), IntegerType) :: Nil))
   }
 
   def catalystEmmLabelExprOf(trapdoorExpr: DialectSQLTranslatable, counterExpr: DialectSQLTranslatable): DialectSQLTranslatable  = {
