@@ -92,6 +92,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     p
   }
 
+  private def shuffle(df: DataFrame): DataFrame = df.sample(1)
+
   private val udfCell = udf(dexCellOf _)
 
   private val udfMasterTrapdoorSingletonForPred = udf { dexPredicate: String =>
@@ -273,7 +275,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         // (3) create filter indices columns based on nonkey columns
         // (4) encrypt nonkey columns
         // (5) convert long rid to bytes rid
-        val ridPkDf = d.withColumn(ridColName(pk), longRidCol(pk)) // create rid column of type long
+        val ridPkDf = shuffle(d).withColumn(ridColName(pk), longRidCol(pk)) // create rid column of type long
         val pkfkDf = fks.foldLeft(ridPkDf) { case (pd, fk) =>
           pd.withColumn(pfkColName(fk), pfkCol(fk))
             .withColumn(fpkColName(fk), fpkCol(fk, col(ridColName(pk))))
@@ -315,6 +317,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     Utils.classForName("org.postgresql.Driver")
     val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
     try {
+      encConn.prepareStatement(s"vacuum").execute()
       encConn.prepareStatement(s"analyze").execute()
     } finally {
       encConn.close()
@@ -338,7 +341,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
 
   def buildFromData(dexStandaloneVariant: DexStandalone, nameToDf: Map[TableName, DataFrame], primaryKeys: Set[PrimaryKey], foreignKeys: Set[ForeignKey]): Unit = {
     val nameToRidDf = nameToDf.map { case (n, d) =>
-      val ridDf = d.withColumn(DexConstants.ridCol, monotonically_increasing_id()).cache()
+      val ridDf = shuffle(d).withColumn(DexConstants.ridCol, monotonically_increasing_id()).cache()
       val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
       val ridPkDf = pk.attr match {
         case c: TableAttributeCompound =>
@@ -382,7 +385,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             .select("label", "value")
         }
       }
-      val tFilterDf = tFilterDfParts.reduce((d1, d2) => d1 union d2)
+      val tFilterDf = shuffle(tFilterDfParts.reduce((d1, d2) => d1 union d2))
       tFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tFilterName, encDbProps)
       buildIndexFor(DexConstants.tFilterName, DexConstants.emmLabelCol)
     }
@@ -421,7 +424,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           .withColumn("value_right", udfEmmValue(lit(masterTrapdoors._2), $"rid_right"))
           .select("label", "value_left", "value_right")
       }
-      val tUncorrJoinDf = tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2)
+      val tUncorrJoinDf = shuffle(tUncorrJoinDfParts.reduce((d1, d2) => d1 union d2))
       tUncorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tUncorrJoinName, encDbProps)
       buildIndexFor(DexConstants.tUncorrJoinName, DexConstants.emmLabelCol)
     }
@@ -448,7 +451,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         }
         joinFor(attr, attrRef) union joinFor(attrRef, attr)
       }
-      val tCorrJoinDf = tCorrJoinDfParts.reduce((d1, d2) => d1 union d2)
+      val tCorrJoinDf = shuffle(tCorrJoinDfParts.reduce((d1, d2) => d1 union d2))
       tCorrJoinDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tCorrJoinName, encDbProps)
       buildIndexFor(DexConstants.tCorrJoinName, DexConstants.emmLabelCol)
     }
@@ -466,6 +469,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
     def analyzeAll(): Unit = {
       val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
       try {
+        encConn.prepareStatement("vacuum").execute()
         encConn.prepareStatement("analyze").execute()
       } finally {
         encConn.close()
