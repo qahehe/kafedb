@@ -22,7 +22,7 @@ import java.util.Properties
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.dex.{Crypto, DataCodec, DexConstants, DexException, DexPrimitives}
-import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createTreeIndex}
+import org.apache.spark.sql.dex.DexBuilder.{ForeignKey, PrimaryKey, createHashIndex, createTreeIndex}
 import org.apache.spark.sql.catalyst.dex.DexConstants._
 import org.apache.spark.sql.catalyst.dex.DexPrimitives._
 import org.apache.spark.sql.catalyst.expressions.Literal
@@ -306,7 +306,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
         try {
           encIndexColNames.foreach { c =>
-            createTreeIndex(encConn, encTableName, c)
+            createHashIndex(encConn, encTableName, c)
           }
           //encConn.prepareStatement(s"analyze $encTableName").execute()
         } finally {
@@ -460,7 +460,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       Utils.classForName("org.postgresql.Driver")
       val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
       try {
-          createTreeIndex(encConn, encName, col)
+          createHashIndex(encConn, encName, col)
       } finally {
         encConn.close()
       }
