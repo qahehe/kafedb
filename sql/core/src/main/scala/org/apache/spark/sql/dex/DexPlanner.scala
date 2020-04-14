@@ -486,7 +486,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |) AS ${generateSubqueryName()}
          """.stripMargin
 
-      case f: DexPseudoPrimaryKeyFilter =>
+      case f: DexPseudoPrimaryKeyDependentFilter =>
         // val predExpr = dialect.compileValue(f.predicate).asInstanceOf[String]
         // val labelPrfKeyExpr = Literal(dexTrapdoor(masterSecret.hmacKey.getEncoded, predExpr))
         val labelPrfKeyExpr = Literal(dexMasterTrapdoorForPred(f.predicate, None))
@@ -543,6 +543,25 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    SELECT ${f.filterTableName}.rid, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = $firstLabelExpr
            |    UNION ALL
            |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = $nextLabelExpr
+           |  )
+           |  SELECT $outputCols FROM dex_ppk_filter
+           |)
+         """.stripMargin
+      case f: DexPseudoPrimaryKeyFilter =>
+        val labelPrfKeyExpr = Literal(dexMasterTrapdoorForPred(f.predicate, None))
+        val labelColExpr = dialect.quoteIdentifier(f.labelColumn)
+        val outputCols = f.output.map(_.dialectSql(dialect)).mkString(", ")
+        val firstLabelExpr = catalystEmmLabelExprOf(
+          labelPrfKeyExpr, DexConstants.cashCounterStart
+        ).dialectSql(dialect)
+        val nextLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, Add($"dex_ppk_filter.counter", 1)).dialectSql(dialect)
+
+        s"""
+           |(
+           |  WITH RECURSIVE dex_ppk_filter($outputCols, counter) AS (
+           |    SELECT ${f.filterTableName}.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = $firstLabelExpr
+           |    UNION ALL
+           |    SELECT ${f.filterTableName}.*, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
            |)
@@ -693,6 +712,11 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |)
          """.stripMargin
 
+      case SubqueryAlias(name, child) =>
+        s"""
+           |${convertToSQL(child)} AS ${name.unquotedString}
+           |""".stripMargin
+
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
@@ -757,7 +781,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       s"$labelPrfKey || ${dialect.compileValue("~")} || $nextCounter"*/
 
 
-    private def generateSubqueryName() =
+    def generateSubqueryName() =
       s"${genSubqueryName}_${curId.getAndIncrement()}"
 
   }
@@ -1164,7 +1188,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             JDBCOptions.JDBC_TABLE_NAME -> tableEncNameOf(tableNameFromLogicalRelation(tablePlain)))).resolveRelation())
     }
 
-    private def renameRidWithJoinOrder(tableEnc: LogicalRelation, tablePlain: LogicalRelation): LogicalPlan = {
+    def renameRidWithJoinOrder(tableEnc: LogicalPlan, tablePlain: LogicalRelation): LogicalPlan = {
       val output = tableEnc.output
       val order = joinOrder(tablePlain)
       val columns = output.map { col =>
@@ -1510,10 +1534,15 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val encPredicateTableName = tableEncNameOf(predicateTableName)
       val encPredicateTable = tableEncWithRidOrderOf(predicateTable)
       // todo: for idnependent filter, can skip the childview join, but need to extend the output of the Filter operator to include also the table attributes
-      childView.join(
-        DexPseudoPrimaryKeyFilter(predicate, labelCol, labelColOrder, encPredicateTableName, encPredicateTable, $"$ridOrder"),
-        UsingJoin(LeftSemi, Seq(ridOrder))
-      )
+      if (isTableScan(childView)) {
+        DexPseudoPrimaryKeyFilter(predicate, labelCol, labelColOrder, encPredicateTableName, childView)
+      } else {
+        childView.join(
+          DexPseudoPrimaryKeyDependentFilter(predicate, labelCol, labelColOrder, encPredicateTableName, encPredicateTable, $"$ridOrder"),
+          UsingJoin(LeftSemi, Seq(ridOrder))
+        )
+      }
+
     }
 
     private def hasAttrInView(attr: String, view: LogicalPlan): Boolean = {
@@ -1573,7 +1602,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                 UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
               ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))*/
               def hasFilterOn(view: LogicalPlan): Boolean = {
-                leftChildView.find(_.isInstanceOf[DexPseudoPrimaryKeyFilter]).nonEmpty
+                leftChildView.find(_.isInstanceOf[DexPseudoPrimaryKeyDependentFilter]).nonEmpty
               }
 
               if (hasFilterOn(leftChildView)) {
