@@ -306,7 +306,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         val encConn = DriverManager.getConnection(encDbUrl, encDbProps)
         try {
           encIndexColNames.foreach { c =>
-            createHashIndex(encConn, encTableName, c)
+            createTreeIndex(encConn, encTableName, c)
           }
           //encConn.prepareStatement(s"analyze $encTableName").execute()
         } finally {

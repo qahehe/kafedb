@@ -100,7 +100,7 @@ case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: String, label
 
   override def right: LogicalPlan = rightTable // only for resolving labelColumn
 
-  override def output: Seq[Attribute] = Seq(leftTableRid, rightTableRid)
+  override def output: Seq[Attribute] = left.output ++ right.output // Seq(leftTableRid, rightTableRid)
 
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }

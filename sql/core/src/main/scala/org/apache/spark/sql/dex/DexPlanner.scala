@@ -547,7 +547,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin
 
       case j: DexPseudoPrimaryKeyJoin =>
-        val labelColExpr = dialect.quoteIdentifier(j.labelColumn)
+        val (leftChildView, rightChildView) = (convertToSQL(j.left), convertToSQL(j.right))
+        val leftChildViewOutputCols = j.left.outputSet.map(_.dialectSql(dialect)).mkString(", ")
+        val labelColExpr = j.rightTable.output.find(_.name.contains(j.labelColumn)).get.dialectSql(dialect)
         val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
         val (leftRidExpr, rightRidExpr) = (j.leftTableRid.dialectSql(dialect), j.rightTableRid.dialectSql(dialect))
         // val joinPredPrefixExpr = dialect.compileValue(j.predicate).asInstanceOf[String]
@@ -583,16 +585,22 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin*/
         s"""
            |(
-           |  WITH RECURSIVE dex_ppk_join($leftRidExpr, $rightRidExpr, counter) AS (
-           |    SELECT ${j.leftTableName}.rid AS $leftRidExpr, ${j.rightTableName}.rid AS $rightRidExpr, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
-           |    FROM ${j.leftTableName}, ${j.rightTableName}
-           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr($"${j.leftTableName}.rid"), DexConstants.cashCounterStart).dialectSql(dialect)} = $labelColExpr
+           |  WITH RECURSIVE left_child_view AS (
+           |    $leftChildView
+           |  ),
+           |  right_child_view AS (
+           |    $rightChildView
+           |  ),
+           |  dex_ppk_join AS (
+           |    SELECT $leftChildViewOutputCols, right_child_view.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
+           |    FROM left_child_view, right_child_view
+           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr(j.leftTableRid), DexConstants.cashCounterStart).dialectSql(dialect)} = right_child_view.$labelColExpr
            |
            |    UNION ALL
            |
-           |    SELECT $leftRidExpr, ${j.rightTableName}.rid AS $rightRidExpr, counter + 1 AS counter
-           |    FROM dex_ppk_join, ${j.rightTableName}
-           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr($"${j.leftTableRid.name}"), Add($"counter", 1)).dialectSql(dialect)} = $labelColExpr
+           |    SELECT $leftChildViewOutputCols, right_child_view.*, counter + 1 AS counter
+           |    FROM dex_ppk_join, right_child_view
+           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr(j.leftTableRid), Add($"counter", 1)).dialectSql(dialect)} = right_child_view.$labelColExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_join
            |)
@@ -1468,10 +1476,32 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
           childViews match {
             case Seq(leftChildView, rightChildView) =>
-              leftChildView.join(
+              // Pkfk-specific optimization: if rightChildView is just a table scan, then don't need to join the
+              // rightChildView again after the RCTE
+              // Pass leftChildView into the RCTE
+/*              leftChildView.join(
                 DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
                 UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
-              ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+              ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))*/
+
+              // if (childViews.head.find(_.isInstanceOf[DexPseudoPrimaryKeyFilter]).nonEmpty) {
+                // has filter on leftChildView
+                // val leftSubquery = tableEncOf(joinAttrs.leftTableRel).select(col("rid").as(joinAttrs.leftRidOrder).expr)
+                // val leftSubqueryRidOrder = leftSubquery.outputSet.find(_.name == joinAttrs.leftRidOrder).get
+              def isTableScan(view: LogicalPlan): Boolean =
+                view.isInstanceOf[Project] && view.children.length == 1 && view.children.head.isInstanceOf[LogicalRelation]
+
+              if (isTableScan(rightChildView)) {
+                DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, rightChildView, taFEncName, rightRidOrder)
+              } else {
+                DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder)
+                  .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+              }
+            // UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
+                // )  .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+              // } else {
+
+              // }
             case Seq(leftChildView) =>
               leftChildView.join(
                 DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
