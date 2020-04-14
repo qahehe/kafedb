@@ -95,12 +95,42 @@ case class DexPseudoPrimaryKeyFilter(predicate: String, labelColumn: String, lab
 }
 
 // output: childView's schema plus
-case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+case class DexPseudoPrimaryKeyDependentJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = leftTable // only for resolving leftTableRid
 
   override def right: LogicalPlan = rightTable // only for resolving labelColumn
 
   override def output: Seq[Attribute] = left.output ++ right.output // Seq(leftTableRid, rightTableRid)
+
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
+}
+
+case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+  override def left: LogicalPlan = leftTable // only for resolving leftTableRid
+
+  override def right: LogicalPlan = rightTable // only for resolving labelColumn
+
+  override def output: Seq[Attribute] = Seq(leftTableRid, rightTableRid)
+
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
+}
+
+case class DexPseudoPrimaryKeyRightDependentTableJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+  override def left: LogicalPlan = leftTable // only for resolving leftTableRid
+
+  override def right: LogicalPlan = rightTable // only for resolving labelColumn
+
+  override def output: Seq[Attribute] = leftTableRid +: right.output
+
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
+}
+
+case class DexPseudoPrimaryKeyLeftDependentJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+  override def left: LogicalPlan = leftTable // only for resolving leftTableRid
+
+  override def right: LogicalPlan = rightTable // only for resolving labelColumn
+
+  override def output: Seq[Attribute] = left.output :+ rightTableRid
 
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }

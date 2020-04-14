@@ -40,7 +40,7 @@ class DexPkfkTPCHSuite extends DexPkfkTPCHTest {
   }
 
   test("one pk-fk join one filter on pk table") {
-    val query = supplier.join(partsupp).where("s_suppkey == ps_suppkey and s_name == 'sa'").select("s_name")
+    val query = supplier.join(partsupp).where("s_name == 'sb' and s_suppkey == ps_suppkey").select("ps_comment")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
@@ -89,18 +89,38 @@ class DexPkfkTPCHSuite extends DexPkfkTPCHTest {
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
-  test("partial compound key in fk-pk join") {
+  test("partial compound fk in fk-pk join") {
     val query = lineitem.join(part).where("l_partkey = p_partkey").select("l_comment")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
-  test("partial compound key in pk-fk join") {
+  test("partial compound fk in pk-fk join") {
     val query = part.join(lineitem).where("p_partkey = l_partkey").select("l_comment")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
+
+  test("partial compound pk in fk-pk join") {
+    val query = partsupp.join(part).where("ps_partkey == p_partkey").select("ps_comment")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
+
+  test("partial compound pk in pk-fk join") {
+    val query = partsupp.join(part).where("p_partkey == ps_partkey").select("ps_comment")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
   test("join out of predicate order") {
     val query = partsupp.join(part).where("ps_partkey == p_partkey").join(supplier).where("s_suppkey = ps_suppkey").select("ps_comment")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
+
+  test("right depth tree unfiltereds") {
+    val query = supplier.join(partsupp.join(part).where("ps_partkey == p_partkey")).where("s_suppkey = ps_suppkey").select("ps_comment")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
+
+  test("right depth tree filtered") {
+    val query = supplier.join(partsupp.join(part).where("p_partkey == ps_partkey")).where("s_name == 'sb' and s_suppkey = ps_suppkey").select("ps_comment")
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
