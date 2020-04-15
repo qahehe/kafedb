@@ -1534,14 +1534,14 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val encPredicateTableName = tableEncNameOf(predicateTableName)
       val encPredicateTable = tableEncWithRidOrderOf(predicateTable)
       // todo: for idnependent filter, can skip the childview join, but need to extend the output of the Filter operator to include also the table attributes
-      if (isTableScan(childView)) {
+      /*if (isTableScan(childView)) {
         DexPseudoPrimaryKeyFilter(predicate, labelCol, labelColOrder, encPredicateTableName, childView)
-      } else {
+      } else {*/
         childView.join(
           DexPseudoPrimaryKeyDependentFilter(predicate, labelCol, labelColOrder, encPredicateTableName, encPredicateTable, $"$ridOrder"),
           UsingJoin(LeftSemi, Seq(ridOrder))
         )
-      }
+      // }
 
     }
 
@@ -1605,27 +1605,27 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                 leftChildView.find(_.isInstanceOf[DexPseudoPrimaryKeyDependentFilter]).nonEmpty
               }
 
-              if (hasFilterOn(leftChildView)) {
+             if (hasFilterOn(leftChildView)) {
                 // has filter on leftChildView
-                if (isTableScan(rightChildView)) {
+                /*if (isTableScan(rightChildView)) {
                   DexPseudoPrimaryKeyDependentJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, rightChildView, taFEncName, rightRidOrder)
-                } else {
+                } else {*/
                    DexPseudoPrimaryKeyLeftDependentJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder)
                     .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
-                }
+                // }
               } else {
-                if (isTableScan(rightChildView)) {
+                /*if (isTableScan(rightChildView)) {
                   leftChildView.join(
                     DexPseudoPrimaryKeyRightDependentTableJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, rightChildView, taFEncName, rightRidOrder),
                     UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
                   )
-                } else {
+                } else {*/
                   leftChildView.join(
                     DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
                     UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
                   ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+               //  }
                 }
-              }
             // UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
                 // )  .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
               // } else {
