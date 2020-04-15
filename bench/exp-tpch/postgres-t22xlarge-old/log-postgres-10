@@ -1,4 +1,4 @@
-20/04/15 19:50:34 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+19/10/24 04:06:23 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
 baseLocation=/data/encrypted-spark/bench/data
 baseDatagenFolder=/data/encrypted-spark/bench/datagen
 Creating external tables at /data/encrypted-spark/bench/data/tpch/sf1_parquet
@@ -15,7 +15,7 @@ Discovering partitions for table lineitem.
 Creating external table nation in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/nation.
 Creating external table region in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/region.
 The current database has been set to tpch_sf1_parquet.
-Elapsed time: 16230ms
+Elapsed time: 10627ms
 Table part has 25 partitions
 Cannot VACUUM part
 +----------------------------+-------------------------------------------------------------+-------+
@@ -37,7 +37,7 @@ Cannot VACUUM part
 |# Detailed Table Information|                                                             |       |
 |Database                    |tpch_sf1_parquet                                             |       |
 |Table                       |part                                                         |       |
-|Created Time                |Wed Apr 15 19:50:42 UTC 2020                                 |       |
+|Created Time                |Thu Oct 24 04:06:26 UTC 2019                                 |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                 |       |
 |Created By                  |Spark 2.4.0                                                  |       |
 |Type                        |EXTERNAL                                                     |       |
@@ -63,7 +63,7 @@ Cannot VACUUM supplier
 |# Detailed Table Information|                                                                 |       |
 |Database                    |tpch_sf1_parquet                                                 |       |
 |Table                       |supplier                                                         |       |
-|Created Time                |Wed Apr 15 19:50:44 UTC 2020                                     |       |
+|Created Time                |Thu Oct 24 04:06:27 UTC 2019                                     |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
 |Created By                  |Spark 2.4.0                                                      |       |
 |Type                        |EXTERNAL                                                         |       |
@@ -86,7 +86,7 @@ Cannot VACUUM partsupp
 |# Detailed Table Information|                                                                 |       |
 |Database                    |tpch_sf1_parquet                                                 |       |
 |Table                       |partsupp                                                         |       |
-|Created Time                |Wed Apr 15 19:50:44 UTC 2020                                     |       |
+|Created Time                |Thu Oct 24 04:06:27 UTC 2019                                     |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
 |Created By                  |Spark 2.4.0                                                      |       |
 |Type                        |EXTERNAL                                                         |       |
@@ -115,7 +115,7 @@ Cannot VACUUM customer
 |# Detailed Table Information|                                                                 |       |
 |Database                    |tpch_sf1_parquet                                                 |       |
 |Table                       |customer                                                         |       |
-|Created Time                |Wed Apr 15 19:50:44 UTC 2020                                     |       |
+|Created Time                |Thu Oct 24 04:06:27 UTC 2019                                     |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
 |Created By                  |Spark 2.4.0                                                      |       |
 |Type                        |EXTERNAL                                                         |       |
@@ -146,7 +146,7 @@ Cannot VACUUM orders
 |# Detailed Table Information|                                                               |       |
 |Database                    |tpch_sf1_parquet                                               |       |
 |Table                       |orders                                                         |       |
-|Created Time                |Wed Apr 15 19:50:44 UTC 2020                                   |       |
+|Created Time                |Thu Oct 24 04:06:28 UTC 2019                                   |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
 |Created By                  |Spark 2.4.0                                                    |       |
 |Type                        |EXTERNAL                                                       |       |
@@ -184,7 +184,7 @@ Cannot VACUUM lineitem
 |# Detailed Table Information|                                                                 |       |
 |Database                    |tpch_sf1_parquet                                                 |       |
 |Table                       |lineitem                                                         |       |
-|Created Time                |Wed Apr 15 19:50:51 UTC 2020                                     |       |
+|Created Time                |Thu Oct 24 04:06:32 UTC 2019                                     |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
 |Created By                  |Spark 2.4.0                                                      |       |
 |Type                        |EXTERNAL                                                         |       |
@@ -207,7 +207,7 @@ Cannot VACUUM nation
 |# Detailed Table Information|                                                               |       |
 |Database                    |tpch_sf1_parquet                                               |       |
 |Table                       |nation                                                         |       |
-|Created Time                |Wed Apr 15 19:50:56 UTC 2020                                   |       |
+|Created Time                |Thu Oct 24 04:06:35 UTC 2019                                   |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
 |Created By                  |Spark 2.4.0                                                    |       |
 |Type                        |EXTERNAL                                                       |       |
@@ -228,7 +228,7 @@ Cannot VACUUM region
 |# Detailed Table Information|                                                               |       |
 |Database                    |tpch_sf1_parquet                                               |       |
 |Table                       |region                                                         |       |
-|Created Time                |Wed Apr 15 19:50:56 UTC 2020                                   |       |
+|Created Time                |Thu Oct 24 04:06:35 UTC 2019                                   |       |
 |Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
 |Created By                  |Spark 2.4.0                                                    |       |
 |Type                        |EXTERNAL                                                       |       |
@@ -237,6 +237,71 @@ Cannot VACUUM region
 +----------------------------+---------------------------------------------------------------+-------+
 
 
+
+q9b=
+
+select
+  n_name as nation, o_orderdate, l_extendedprice, l_discount, ps_supplycost, l_quantity
+from
+  part, supplier, lineitem, partsupp, orders, nation
+where
+  s_suppkey = l_suppkey
+  and ps_suppkey = l_suppkey and ps_partkey = l_partkey
+  and p_partkey = l_partkey
+  and o_orderkey = l_orderkey
+  and s_nationkey = n_nationkey
+        
+Postgres$ result size=6001215
+Elapsed time: 35603ms
+
+q1=
+
+select
+  l_returnflag,
+  l_linestatus
+from
+  lineitem
+        
+Postgres$ result size=6001215
+Elapsed time: 1842ms
+
+q17=
+
+select
+  l_extendedprice
+from
+  lineitem, part
+where
+  p_partkey = l_partkey
+  and p_brand = 'Brand#23'
+  and p_container = 'MED BOX'
+        
+Postgres$ result size=6088
+Elapsed time: 77ms
+
+q4=
+
+select
+  *
+from
+  lineitem, orders
+where
+  l_orderkey = o_orderkey
+        
+Postgres$ result size=6001215
+Elapsed time: 4711ms
+
+q15=
+
+select
+  s_suppkey, s_name, s_address, s_phone
+from
+  supplier, lineitem
+where
+  s_suppkey = l_suppkey
+        
+Postgres$ result size=6001215
+Elapsed time: 2909ms
 
 q7=
 
@@ -264,96 +329,7 @@ where
   )
         
 Postgres$ result size=9735
-Elapsed time: 906ms
-
-q6=
-
-select
-  l_extendedprice,
-  l_discount
-from
-  lineitem
-        
-Postgres$ result size=6001215
-Elapsed time: 1961ms
-
-q17=
-
-select
-  l_extendedprice
-from
-  lineitem, part
-where
-  p_partkey = l_partkey
-  and p_brand = 'Brand#23'
-  and p_container = 'MED BOX'
-        
-Postgres$ result size=6088
-Elapsed time: 96ms
-
-q13=
-
-select
-  o_orderkey
-from
-  customer left outer join orders on c_custkey = o_custkey
-        
-Postgres$ result size=1550004
-Elapsed time: 1235ms
-
-q4=
-
-select
-  *
-from
-  lineitem, orders
-where
-  l_orderkey = o_orderkey
-        
-Postgres$ result size=6001215
-Elapsed time: 5598ms
-
-q14=
-
-select
-  p_type, l_extendedprice, l_discount
-from
-  lineitem, part
-where
-  l_partkey = p_partkey
-        
-Postgres$ result size=6001215
-Elapsed time: 4851ms
-
-q9b=
-
-select
-  n_name as nation, o_orderdate, l_extendedprice, l_discount, ps_supplycost, l_quantity
-from
-  part, supplier, lineitem, partsupp, orders, nation
-where
-  s_suppkey = l_suppkey
-  and ps_suppkey = l_suppkey and ps_partkey = l_partkey
-  and p_partkey = l_partkey
-  and o_orderkey = l_orderkey
-  and s_nationkey = n_nationkey
-        
-Postgres$ result size=6001215
-Elapsed time: 47635ms
-
-q11=
-
-select
-  ps_partkey, ps_supplycost, ps_availqty
-from
-  partsupp, supplier, nation
-where
-  ps_suppkey = s_suppkey
-  and s_nationkey = n_nationkey
-  and n_name = 'GERMANY'
-        
-Postgres$ result size=31680
-Elapsed time: 106ms
+Elapsed time: 398ms
 
 q2=
 
@@ -374,7 +350,50 @@ where
   and p_size = 15
         
 Postgres$ result size=3162
-Elapsed time: 254ms
+Elapsed time: 171ms
+
+q14=
+
+select
+  p_type, l_extendedprice, l_discount
+from
+  lineitem, part
+where
+  l_partkey = p_partkey
+        
+Postgres$ result size=6001215
+Elapsed time: 3383ms
+
+q22=
+
+select
+  c_phone, c_acctbal
+from
+  customer
+where not exists (
+  select *
+  from orders
+  where o_custkey = c_custkey
+)
+        
+Postgres$ result size=50004
+Elapsed time: 503ms
+
+q19=
+
+select
+ l_extendedprice, l_discount
+from
+  lineitem, part
+where
+  p_partkey = l_partkey
+  and p_brand = 'Brand#12'
+  and p_container = 'SM CASE'
+  and l_shipmode = 'AIR'
+  and l_shipinstruct = 'DELIVER IN PERSON'
+        
+Postgres$ result size=205
+Elapsed time: 76ms
 
 q5=
 
@@ -394,20 +413,7 @@ where
   and r_name = 'ASIA'
         
 Postgres$ result size=48089
-Elapsed time: 3480ms
-
-q16=
-
-select
-  p_brand, p_type, p_size, ps_suppkey
-from
-  partsupp, part
-where
-  p_partkey = ps_partkey
-  and p_size = 49
-        
-Postgres$ result size=15780
-Elapsed time: 202ms
+Elapsed time: 2281ms
 
 q10=
 
@@ -422,7 +428,21 @@ where
   and c_nationkey = n_nationkey
         
 Postgres$ result size=1478870
-Elapsed time: 3022ms
+Elapsed time: 2241ms
+
+q12=
+
+select
+  l_shipmode
+from
+  orders,
+  lineitem
+where
+  o_orderkey = l_orderkey
+  and l_shipmode = 'MAIL'
+        
+Postgres$ result size=857401
+Elapsed time: 1354ms
 
 q20=
 
@@ -442,7 +462,7 @@ where s_suppkey in (
   and n_name = 'CANADA'
         
 Postgres$ result size=324
-Elapsed time: 157ms
+Elapsed time: 104ms
 
 q21a=
 
@@ -465,7 +485,48 @@ where
   and n_name = 'SAUDI ARABIA'
         
 Postgres$ result size=119924
-Elapsed time: 1500ms
+Elapsed time: 1096ms
+
+q13=
+
+select
+  o_orderkey
+from
+  customer left outer join orders on c_custkey = o_custkey
+        
+Postgres$ result size=1550004
+Elapsed time: 890ms
+
+q8=
+
+select
+  o_orderdate as o_year, l_extendedprice, l_discount, n2.n_name as nation
+from
+  part, supplier, lineitem, orders, customer, nation n1, nation n2, region
+where
+  p_partkey = l_partkey
+  and s_suppkey = l_suppkey
+  and l_orderkey = o_orderkey
+  and o_custkey = c_custkey
+  and c_nationkey = n1.n_nationkey and n1.n_regionkey = r_regionkey and r_name = 'AMERICA'
+  and s_nationkey = n2.n_nationkey
+  and p_type = 'ECONOMY ANODIZED STEEL'
+        
+Postgres$ result size=8716
+Elapsed time: 2226ms
+
+q16=
+
+select
+  p_brand, p_type, p_size, ps_suppkey
+from
+  partsupp, part
+where
+  p_partkey = ps_partkey
+  and p_size = 49
+        
+Postgres$ result size=15780
+Elapsed time: 181ms
 
 q3=
 
@@ -485,94 +546,7 @@ where
   and l_orderkey = o_orderkey
         
 Postgres$ result size=1214743
-Elapsed time: 3026ms
-
-q12=
-
-select
-  l_shipmode
-from
-  orders,
-  lineitem
-where
-  o_orderkey = l_orderkey
-  and l_shipmode = 'MAIL'
-        
-Postgres$ result size=857401
-Elapsed time: 1778ms
-
-q19=
-
-select
- l_extendedprice, l_discount
-from
-  lineitem, part
-where
-  p_partkey = l_partkey
-  and p_brand = 'Brand#12'
-  and p_container = 'SM CASE'
-  and l_shipmode = 'AIR'
-  and l_shipinstruct = 'DELIVER IN PERSON'
-        
-Postgres$ result size=205
-Elapsed time: 90ms
-
-q15=
-
-select
-  s_suppkey, s_name, s_address, s_phone
-from
-  supplier, lineitem
-where
-  s_suppkey = l_suppkey
-        
-Postgres$ result size=6001215
-Elapsed time: 3099ms
-
-q8=
-
-select
-  o_orderdate as o_year, l_extendedprice, l_discount, n2.n_name as nation
-from
-  part, supplier, lineitem, orders, customer, nation n1, nation n2, region
-where
-  p_partkey = l_partkey
-  and s_suppkey = l_suppkey
-  and l_orderkey = o_orderkey
-  and o_custkey = c_custkey
-  and c_nationkey = n1.n_nationkey and n1.n_regionkey = r_regionkey and r_name = 'AMERICA'
-  and s_nationkey = n2.n_nationkey
-  and p_type = 'ECONOMY ANODIZED STEEL'
-        
-Postgres$ result size=8716
-Elapsed time: 3218ms
-
-q18=
-
-select
-  c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice, l_quantity
-from
-  customer, orders, lineitem
-where
-  c_custkey = o_custkey and o_orderkey = l_orderkey
-        
-Postgres$ result size=6001215
-Elapsed time: 6269ms
-
-q22=
-
-select
-  c_phone, c_acctbal
-from
-  customer
-where not exists (
-  select *
-  from orders
-  where o_custkey = c_custkey
-)
-        
-Postgres$ result size=50004
-Elapsed time: 645ms
+Elapsed time: 2034ms
 
 q9a=
 
@@ -588,38 +562,52 @@ where
   and s_nationkey = n_nationkey
         
 Postgres$ result size=6001215
-Elapsed time: 48556ms
+Elapsed time: 36424ms
 
-q1=
+q18=
 
 select
-  l_returnflag,
-  l_linestatus
+  c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice, l_quantity
 from
-  lineitem
+  customer, orders, lineitem
+where
+  c_custkey = o_custkey and o_orderkey = l_orderkey
         
 Postgres$ result size=6001215
-Elapsed time: 1829ms
-query=q1, count=6001215, duration=1829
-query=q10, count=1478870, duration=3022
-query=q11, count=31680, duration=106
-query=q12, count=857401, duration=1778
-query=q13, count=1550004, duration=1235
-query=q14, count=6001215, duration=4851
-query=q15, count=6001215, duration=3099
-query=q16, count=15780, duration=202
-query=q17, count=6088, duration=96
-query=q18, count=6001215, duration=6269
-query=q19, count=205, duration=90
-query=q2, count=3162, duration=254
-query=q20, count=324, duration=157
-query=q21a, count=119924, duration=1500
-query=q22, count=50004, duration=645
-query=q3, count=1214743, duration=3026
-query=q4, count=6001215, duration=5598
-query=q5, count=48089, duration=3480
-query=q6, count=6001215, duration=1961
-query=q7, count=9735, duration=906
-query=q8, count=8716, duration=3218
-query=q9a, count=6001215, duration=48556
-query=q9b, count=6001215, duration=47635
+Elapsed time: 4977ms
+
+q11=
+
+select
+  ps_partkey, ps_supplycost, ps_availqty
+from
+  partsupp, supplier, nation
+where
+  ps_suppkey = s_suppkey
+  and s_nationkey = n_nationkey
+  and n_name = 'GERMANY'
+        
+Postgres$ result size=31680
+Elapsed time: 81ms
+query=q1, count=6001215, duration=1842
+query=q10, count=1478870, duration=2241
+query=q11, count=31680, duration=81
+query=q12, count=857401, duration=1354
+query=q13, count=1550004, duration=890
+query=q14, count=6001215, duration=3383
+query=q15, count=6001215, duration=2909
+query=q16, count=15780, duration=181
+query=q17, count=6088, duration=77
+query=q18, count=6001215, duration=4977
+query=q19, count=205, duration=76
+query=q2, count=3162, duration=171
+query=q20, count=324, duration=104
+query=q21a, count=119924, duration=1096
+query=q22, count=50004, duration=503
+query=q3, count=1214743, duration=2034
+query=q4, count=6001215, duration=4711
+query=q5, count=48089, duration=2281
+query=q7, count=9735, duration=398
+query=q8, count=8716, duration=2226
+query=q9a, count=6001215, duration=36424
+query=q9b, count=6001215, duration=35603
