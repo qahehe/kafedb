@@ -185,6 +185,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         def pfkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"pfk_${fk.ref.table}_${fk.attr.table}")
         def fpkColName(fk: ForeignKey): String = DexPrimitives.dexColNameOf(s"fpk_${fk.attr.table}_${fk.ref.table}")
         def valColName(t: TableName, c: AttrName): String = DexPrimitives.dexColNameOf(s"val_${t}_${c}")
+        def depValColName(t: TableName, c: AttrName): String = DexPrimitives.dexColNameOf(s"depval_${t}_${c}")
 
         /*def outputCols(d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.flatMap {
           case c if c == pk.attr.attr =>
@@ -201,6 +202,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
             fks.flatMap(fk => Seq(pfkColName(fk), fpkColName(fk))) ++
             d.columns.collect {
               case c if nonKey(pk, fks, c) => valColName(t, c)
+            } ++ d.columns.collect {
+              case c if nonKey(pk, fks, c) => depValColName(t, c)
             }
         }
         def encDataColNamesOf(t: TableName, d: DataFrame, pk: PrimaryKey, fks: Set[ForeignKey]): Seq[AttrName] = d.columns.collect {
@@ -264,6 +267,12 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
           val trapdoor = udfMasterTrapdoorSingletonForPred(udfFilterPredicate(col(c)))
           udfEmmLabel(trapdoor, pibasCounterOn(col(c)))
         }
+        def depValCol(t: TableName, c: AttrName, ridCol: AttrName): Column = {
+          // prf(prf(t, c, val), rid)
+          val udfFilterPredicate = udf(dexFilterPredicate(dexFilterPredicatePrefixOf(t, c)) _)
+          val masterTrapdoor = udfMasterTrapdoorSingletonForPred(udfFilterPredicate(col(c)))
+          udfSecondaryTrapdoorSingletonForRid(masterTrapdoor, col(ridCol))
+        }
         def encCol(t: TableName, c: AttrName): Column = {
           // concat(col(c), lit("_enc"))
           udfCell(col(c))
@@ -286,7 +295,8 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
         ).foldLeft(pkfkDf) {
           case (pd, c) =>
             pd.withColumn(valColName(t, c), valCol(t, c))
-            .withColumn(encColName(t, c), encCol(t, c))
+              .withColumn(depValColName(t, c), depValCol(t, c, ridColName(pk)))
+              .withColumn(encColName(t, c), encCol(t, c))
         }
 
         val ridPkfkEncDf = pkfkEncDf.withColumn(ridColName(pk), bytesRidCol(pk))

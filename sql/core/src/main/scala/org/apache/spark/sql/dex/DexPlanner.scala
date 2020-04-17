@@ -1523,8 +1523,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: Any, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       require(!isNegated, "todo")
       val predicateTableName = tableNameFromLogicalRelation(predicateTable)
-      val labelCol = DexPrimitives.dexColNameOf(s"val_${predicateTableName}_$predicateColName")
-      val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
       val predicate = dexFilterPredicate(dexFilterPredicatePrefixOf(predicateTableName, predicateColName))(predicateValue)
       // Output filtered rows in childView (eventually the source table).  Note that this is different from ridFilter
       // where output is just (value_dec_key, value) and to be joined with source table.
@@ -1534,14 +1532,17 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       val encPredicateTableName = tableEncNameOf(predicateTableName)
       val encPredicateTable = tableEncWithRidOrderOf(predicateTable)
       // todo: for idnependent filter, can skip the childview join, but need to extend the output of the Filter operator to include also the table attributes
-      /*if (isTableScan(childView)) {
+      if (isTableScan(childView)) {
+        val labelCol = DexPrimitives.dexColNameOf(s"val_${predicateTableName}_$predicateColName")
+        val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
         DexPseudoPrimaryKeyFilter(predicate, labelCol, labelColOrder, encPredicateTableName, childView)
-      } else {*/
-        childView.join(
-          DexPseudoPrimaryKeyDependentFilter(predicate, labelCol, labelColOrder, encPredicateTableName, encPredicateTable, $"$ridOrder"),
-          UsingJoin(LeftSemi, Seq(ridOrder))
-        )
-      // }
+      } else {
+        val labelCol = DexPrimitives.dexColNameOf(s"depval_${predicateTableName}_$predicateColName")
+        val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
+        val masterTrapdoor = dexMasterTrapdoorForPred(predicate, None)
+        val secondaryTrapdoor = catalystTrapdoorExprOf(masterTrapdoor, $"$ridOrder")
+        childView.select(star()).as(ConvertDexPlanToSQL.generateSubqueryName()).where(labelColOrder === secondaryTrapdoor)
+      }
 
     }
 
