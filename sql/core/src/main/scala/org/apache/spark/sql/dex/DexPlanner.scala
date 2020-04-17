@@ -1607,12 +1607,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
              if (hasFilterOn(leftChildView)) {
                 // has filter on leftChildView
-                /*if (isTableScan(rightChildView)) {
+                if (isTableScan(rightChildView)) {
                   DexPseudoPrimaryKeyDependentJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, rightChildView, taFEncName, rightRidOrder)
-                } else {*/
+                } else {
                    DexPseudoPrimaryKeyLeftDependentJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder)
                     .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
-                // }
+                }
               } else {
                 /*if (isTableScan(rightChildView)) {
                   leftChildView.join(
