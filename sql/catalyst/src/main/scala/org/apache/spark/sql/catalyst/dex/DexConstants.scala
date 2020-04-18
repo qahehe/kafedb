@@ -20,6 +20,7 @@ package org.apache.spark.sql.catalyst.dex
 object DexConstants {
   val cashCounterStart: Long = 0L
   val tFilterName = "t_filter"
+  val tDepFilterName = "t_depfilter"
   val tCorrJoinName = "t_correlated_join"
   val tUncorrJoinName = "t_uncorrelated_join"
   val tDomainName = "t_domain"
@@ -27,7 +28,7 @@ object DexConstants {
   val emmValueCol = "value"
   val emmValueDecKeyCol = "value_dec_key"
   val ridCol = "rid"
-
+  val tDepFilterCol = "label"
 
   type TableName = String
   type AttrName = String

@@ -58,6 +58,8 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
 
   private lazy val tFilter = emmTableOf(DexConstants.tFilterName)
 
+  private lazy val tDepFilter = emmTableOf(DexConstants.tDepFilterName)
+
   private lazy val tCorrelatedJoin = emmTableOf(DexConstants.tCorrJoinName)
 
   private lazy val tUncorrelatedJoin = emmTableOf(DexConstants.tUncorrJoinName)
@@ -89,7 +91,14 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     sparkSession.sessionState.analyzer.executeAndCheck(plan)
 
   private def isTableScan(view: LogicalPlan): Boolean =
-    view.isInstanceOf[Project] && view.children.length == 1 && view.children.head.isInstanceOf[LogicalRelation]
+    (view.isInstanceOf[Project] && view.children.length == 1 && view.children.head.isInstanceOf[LogicalRelation]) ||
+      isTableName(view)
+
+  private def isTableName(view: LogicalPlan): Boolean =
+    view.children.isEmpty && view.isInstanceOf[LogicalRelation]
+
+  private def isProject(view: LogicalPlan): Boolean =
+    view.isInstanceOf[Project]
 
   /*
   == Dex Plan ==
@@ -176,9 +185,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       case p: DexPlan => convertToSQL(p.child)
       case p: Project =>
         val projectList = p.projectList.map(_.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)).mkString(", ")
+        val childSql = if (isTableName(p.child)) convertToSQL(p.child) else s"(${convertToSQL(p.child)}) AS ${generateSubqueryName()}"
         s"""
            |SELECT $projectList
-           |FROM ${convertToSQL(p.child)}
+           |FROM $childSql
           """.stripMargin
       case p: LogicalRelation =>
         p.relation match {
@@ -187,81 +197,86 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         }
       case f: Filter =>
         // This is a regular filter, added for example for the case of join partially coincide with filters
+        val childSql = if (isTableName(f.child)) convertToSQL(f.child) else s"(${convertToSQL(f.child)}) AS ${generateSubqueryName()}"
         s"""
-           |${convertToSQL(f.child)}
+           |SELECT * FROM
+           |$childSql
            |WHERE ${f.condition.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)}
          """.stripMargin
       case j: Join =>
-        val leftSubquery = convertToSQL(j.left)
-        val rightSubquery = convertToSQL(j.right)
+        val leftSubquery = if (isTableName(j.left)) convertToSQL(j.left) else s"(${convertToSQL(j.left)}) AS ${generateSubqueryName()}"
+        val rightSubquery = if (isTableName(j.right)) convertToSQL(j.right) else s"(${convertToSQL(j.right)}) AS ${generateSubqueryName()}"
         j.joinType match {
           case x if x == Cross  =>
             s"""
-               |($leftSubquery) AS ${generateSubqueryName()}
+               |$leftSubquery
                |
                |CROSS JOIN
                |
-               |($rightSubquery) AS ${generateSubqueryName()}
+               |$rightSubquery
               """.stripMargin
           case x if x == Inner && isNaturalJoin(j) =>
             s"""
-               |($leftSubquery) AS ${generateSubqueryName()}
+               |$leftSubquery
                |
                |NATURAL INNER JOIN
                |
-               |($rightSubquery) AS ${generateSubqueryName()}
+               |$rightSubquery
               """.stripMargin
           case x if x == Inner && j.condition.isDefined =>
             s"""
-               |($leftSubquery) AS ${generateSubqueryName()}
+               |$leftSubquery
                |
                |INNER JOIN
                |
-               |($rightSubquery) AS ${generateSubqueryName()}
+               |$rightSubquery
                |
                |ON (${j.condition.get.asInstanceOf[DialectSQLTranslatable].dialectSql(dialect)})
               """.stripMargin
           case x if x == LeftSemi && j.condition.isDefined =>
             val (leftRids, rightRids) = ridOrdersFromJoin(j)
             s"""
-               |($leftSubquery) AS ${generateSubqueryName()}
+               |SELECT * FROM
+               |$leftSubquery
                |WHERE ($leftRids) IN (
                |  SELECT $rightRids
-               |  FROM ($rightSubquery) AS ${generateSubqueryName()}
+               |  FROM $rightSubquery
                |)
              """.stripMargin
           case x if x == RightSemi && j.condition.isDefined =>
             val (leftRids, rightRids) = ridOrdersFromJoin(j)
             s"""
-               |($rightSubquery) AS ${generateSubqueryName()}
+               |SELECT * FROM
+               |$rightSubquery
                |WHERE ($rightRids) IN (
                |  SELECT $leftRids
-               |  FROM ($leftSubquery) AS ${generateSubqueryName()}
+               |  FROM $leftSubquery
                |)
              """.stripMargin
           case x if x == LeftAnti && j.condition.isDefined =>
             val (leftRid, rightRid) = ridOrdersFromJoin(j)
             s"""
-               |($leftSubquery) AS ${generateSubqueryName()}
+               |SELECT * FROM
+               |$leftSubquery
                |WHERE ($leftRid) NOT IN (
                |  SELECT $rightRid
-               |  FROM ($rightSubquery) AS ${generateSubqueryName()}
+               |  FROM $rightSubquery
                |)
              """.stripMargin
           case x if x == RightOuter && isNaturalJoin(j) =>
             s"""
-               |($leftSubquery) AS ${generateSubqueryName()}
+               |$leftSubquery
                |
                |NATURAL RIGHT OUTER JOIN
                |
-               |($rightSubquery) AS ${generateSubqueryName()}
+               |$rightSubquery
               """.stripMargin
           case x => throw DexException("unsupported: " + x.getClass.getName + " in join: " + j.toString)
         }
 
       case i: Intersect =>
-        val leftSubquery = convertToSQL(i.left)
-        val rightSubquery = convertToSQL(i.right)
+        val leftSubquery = if (isTableName(i.left)) convertToSQL(i.left) else s"(${convertToSQL(i.left)}) AS ${generateSubqueryName()}"
+        val rightSubquery = if (isTableName(i.right)) convertToSQL(i.right) else s"(${convertToSQL(i.right)}) AS ${generateSubqueryName()}"
         val intersectClause = if (i.isAll) "INTERSECT ALL" else "INTERSECT"
         s"""
            |$leftSubquery
@@ -271,8 +286,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |$rightSubquery
          """.stripMargin
       case Distinct(Union(left :: right :: Nil)) =>
-        val leftSubquery = convertToSQL(left)
-        val rightSubquery = convertToSQL(right)
+        val leftSubquery = if (isTableName(left)) convertToSQL(left) else s"(${convertToSQL(left)}) AS ${generateSubqueryName()}"
+        val rightSubquery = if (isTableName(right)) convertToSQL(right) else s"(${convertToSQL(right)}) AS ${generateSubqueryName()}"
         s"""
            |$leftSubquery
            |
@@ -291,7 +306,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val outputCols = f.output.map(_.dialectSql(dialect)).mkString(", ")
         val emm = dialect.quoteIdentifier(tFilter.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         s"""
-           |(
            |  WITH RECURSIVE dex_rid_filter(value_dec_key, value, counter) AS (
            |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} FROM $emm WHERE label = $firstLabelExpr
            |    UNION ALL
@@ -299,7 +313,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    WHERE $emm.label = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_rid_filter
-           |) AS ${generateSubqueryName()}
          """.stripMargin
       case j: SpxRidUncorrelatedJoin =>
         val (labelPrfKeyExpr, valueDecKeyExpr) = (
@@ -311,7 +324,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
         val emm = dialect.quoteIdentifier(tUncorrelatedJoin.relation.asInstanceOf[JDBCRelation].jdbcOptions.tableOrQuery)
         s"""
-           |(
            |  WITH RECURSIVE spx_rid_uncorrelated_join(value_dec_key, value_left, value_right, counter) AS (
            |    SELECT ${valueDecKeyExpr.dialectSql(dialect)}, $emm.value_left, $emm.value_right, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)}  FROM $emm WHERE label = $firstLabelExpr
            |    UNION ALL
@@ -319,10 +331,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    WHERE $emm.label = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM spx_rid_uncorrelated_join
-           |) AS ${generateSubqueryName()}
          """.stripMargin
       case j: DexRidCorrelatedJoin =>
-        val leftSubquery = convertToSQL(j.left)
+        val leftSubquery = if (isTableName(j.left)) convertToSQL(j.left) else s"(${convertToSQL(j.left)}) AS ${generateSubqueryName()}"
         val leftRidExpr = j.childViewRid
         val masterTrapdoor = dexTrapdoorForPred(masterSecret.hmacKey.getEncoded, j.predicatePrefix)
         //val joinPredExpr = catalystConcatPredicateExprsOf(j.predicatePrefix, leftRidExpr)
@@ -371,10 +382,9 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
 
         s"""
-           |(
            |  WITH RECURSIVE dex_rid_correlated_join AS (
            |    SELECT $leftSubqueryOutputCols, ${valueDecKeyExpr.dialectSql(dialect)} AS value_dec_key, $emm.value AS value, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
-           |    FROM ($leftSubquery) AS ${generateSubqueryName()}, $emm
+           |    FROM $leftSubquery, $emm
            |    WHERE $emm.label = $firstLabelExpr
            |
            |    UNION ALL
@@ -384,7 +394,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    WHERE $emm.label = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_rid_correlated_join
-           |) AS ${generateSubqueryName()}
          """.stripMargin
 
       case v: DexDomainValues =>
@@ -538,14 +547,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |)
          """.stripMargin*/
         s"""
-           |(
            |  WITH RECURSIVE dex_ppk_filter($ridOrder, counter) AS (
            |    SELECT ${f.filterTableName}.rid, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = $firstLabelExpr
            |    UNION ALL
            |    SELECT ${f.filterTableName}.rid, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
-           |)
          """.stripMargin
       case f: DexPseudoPrimaryKeyFilter =>
         val labelPrfKeyExpr = Literal(dexMasterTrapdoorForPred(f.predicate, None))
@@ -557,14 +564,12 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val nextLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, Add($"dex_ppk_filter.counter", 1)).dialectSql(dialect)
 
         s"""
-           |(
            |  WITH RECURSIVE dex_ppk_filter($outputCols, counter) AS (
            |    SELECT ${f.filterTableName}.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = $firstLabelExpr
            |    UNION ALL
            |    SELECT ${f.filterTableName}.*, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = $nextLabelExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
-           |)
          """.stripMargin
 
       case j: DexPseudoPrimaryKeyDependentJoin =>
@@ -605,7 +610,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |)
          """.stripMargin*/
         s"""
-           |(
            |  WITH RECURSIVE left_child_view AS (
            |    $leftChildView
            |  ),
@@ -624,7 +628,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr(j.leftTableRid), Add($"counter", 1)).dialectSql(dialect)} = right_child_view.$labelColExpr
            |  )
            |  SELECT $outputCols FROM dex_ppk_join
-           |)
          """.stripMargin
       case j: DexPseudoPrimaryKeyJoin =>
         val labelColExpr = dialect.quoteIdentifier(j.labelColumn)
@@ -1247,14 +1250,20 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     override protected def dexFilterOf(predicateTable: LogicalRelation, predicateColName: String, predicateValue: Any, ridOrder: String, childView: LogicalPlan, isNegated: Boolean): LogicalPlan = {
       val predicateTableName = tableNameFromLogicalRelation(predicateTable)
       val predicate = dexFilterPredicate(dexFilterPredicatePrefixOf(predicateTableName, predicateColName))(predicateValue)
-      val ridFilter = DexRidFilter(predicate, tFilter)
-        .select(DexDecrypt($"value_dec_key", $"value").as(ridOrder))
 
-      if (isNegated) {
-        childView.join(ridFilter, UsingJoin(LeftAnti, Seq(ridOrder)))
+      if (isTableScan(childView)) {
+        val ridFilter = DexRidFilter(predicate, tFilter)
+          .select(DexDecrypt($"value_dec_key", $"value").as(ridOrder))
+        if (isNegated) {
+          childView.join(ridFilter, UsingJoin(LeftAnti, Seq(ridOrder)))
+        } else {
+          require(childView.output.exists(_.name == ridOrder))
+          childView.join(ridFilter, UsingJoin(LeftSemi, Seq(ridOrder)))
+        }
       } else {
-        require(childView.output.exists(_.name == ridOrder))
-        childView.join(ridFilter, UsingJoin(LeftSemi, Seq(ridOrder)))
+        val masterTrapdoor = dexMasterTrapdoorForPred(predicate, None)
+        val joinType = if (isNegated) LeftAnti else LeftSemi
+        childView.join(tDepFilter, joinType, Some(catalystTrapdoorExprOf(masterTrapdoor, $"$ridOrder") === $"${DexConstants.tDepFilterCol}"))
       }
     }
   }
@@ -1541,7 +1550,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
         val masterTrapdoor = dexMasterTrapdoorForPred(predicate, None)
         val secondaryTrapdoor = catalystTrapdoorExprOf(masterTrapdoor, $"$ridOrder")
-        childView.select(star()).as(ConvertDexPlanToSQL.generateSubqueryName()).where(labelColOrder === secondaryTrapdoor)
+        childView.where(labelColOrder === secondaryTrapdoor)
       }
 
     }

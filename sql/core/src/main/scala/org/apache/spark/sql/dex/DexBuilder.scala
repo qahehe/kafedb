@@ -400,6 +400,22 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       buildIndexFor(DexConstants.tFilterName, DexConstants.emmLabelCol)
     }
 
+    def buildTDependentFilter(): Unit = {
+      val tDepFilterDfParts = nameToRidDf.flatMap { case (n, r) =>
+        val (pk, fks) = primaryKeyAndForeignKeysFor(n, primaryKeys, foreignKeys)
+        r.columns.filter(c => nonKey(pk, fks, c) && c != DexConstants.ridCol).map { c =>
+          val udfFilterPredicate = udf(dexFilterPredicate(dexFilterPredicatePrefixOf(n, c)) _)
+          r.withColumn("predicate", udfFilterPredicate(col(c)))
+            .withColumn("master_trapdoor", udfMasterTrapdoorSingletonForPred($"predicate"))
+            .withColumn(DexConstants.tDepFilterCol, udfSecondaryTrapdoorSingletonForRid($"master_trapdoor", col(DexConstants.ridCol)))
+            .select(DexConstants.tDepFilterCol)
+        }
+      }
+      val tDepFilterDf = shuffle(tDepFilterDfParts.reduce((d1, d2) => d1 union d2))
+      tDepFilterDf.write.mode(SaveMode.Overwrite).jdbc(encDbUrl, DexConstants.tDepFilterName, encDbProps)
+      buildIndexFor(DexConstants.tDepFilterName, DexConstants.tDepFilterCol)
+    }
+
     /*val tDomainDfParts = nameToRidDf.flatMap { case (n, r) =>
       r.columns.filterNot(_ == "rid").map { c =>
         r.select(col(c)).distinct()
@@ -495,6 +511,7 @@ class DexBuilder(session: SparkSession) extends Serializable with Logging {
       case DexCorr =>
         buildEncRidTables()
         buildTFilter()
+        buildTDependentFilter()
         buildTCorrelatedJoin()
         analyzeAll()
       case x => throw DexException("unsupported: " + x.getClass.toString)
