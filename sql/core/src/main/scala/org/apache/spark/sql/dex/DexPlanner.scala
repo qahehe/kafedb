@@ -588,10 +588,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         val leftChildViewOutputCols = j.left.outputSet.map(_.dialectSql(dialect)).mkString(", ")
         val rightChildViewOutputCols = j.right.outputSet.map(_.dialectSql(dialect)).map(x => s"right_child_view.$x").mkString(", ")
         s"""
-           |  WITH RECURSIVE left_child_view AS (
+           |  WITH RECURSIVE left_child_view AS ${j.leftMs.sql} (
            |    $leftChildView
            |  ),
-           |  right_child_view AS (
+           |  right_child_view AS ${j.rightMs.sql} (
            |    $rightChildView
            |  ),
            |  dex_ppk_join AS (
