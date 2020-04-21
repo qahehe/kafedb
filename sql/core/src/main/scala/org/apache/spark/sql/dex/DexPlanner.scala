@@ -87,8 +87,14 @@ class DexPlanner(sessionCatalog: SessionCatalog, sparkSession: SparkSession) ext
     )
   )
 
-  private def analyze(plan: LogicalPlan) =
-    sparkSession.sessionState.analyzer.executeAndCheck(plan)
+  private def analyze(plan: LogicalPlan): LogicalPlan =
+    if (plan.resolved)
+      plan
+    else
+      sparkSession.sessionState.analyzer.executeAndCheck(plan)
+
+  private def resolvedAttribute(attr: UnresolvedAttribute, plan: LogicalPlan): Attribute =
+    plan.output.find(_.name.contains(attr.name)).get
 
   private def isTableScan(view: LogicalPlan): Boolean =
     (view.isInstanceOf[Project] && view.children.length == 1 && view.children.head.isInstanceOf[LogicalRelation]) ||
@@ -572,7 +578,37 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_ppk_filter
          """.stripMargin
 
-      case j: DexPseudoPrimaryKeyDependentJoin =>
+      case j: DexPkfkMaterializationAwareJoin =>
+        val (leftChildView, rightChildView) = (convertToSQL(j.left), convertToSQL(j.right))
+        val labelColExpr = j.labelColumnOrder.dialectSql(dialect)
+        val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
+        val masterTrapdoor = dexMasterTrapdoorForPred(j.predicate, None)
+        def secondaryTrapdoorExpr(ridCol: DialectSQLTranslatable) =
+          catalystTrapdoorExprOf(Literal(masterTrapdoor), ridCol)
+        val leftChildViewOutputCols = j.left.outputSet.map(_.dialectSql(dialect)).mkString(", ")
+        val rightChildViewOutputCols = j.right.outputSet.map(_.dialectSql(dialect)).map(x => s"right_child_view.$x").mkString(", ")
+        s"""
+           |  WITH RECURSIVE left_child_view AS (
+           |    $leftChildView
+           |  ),
+           |  right_child_view AS (
+           |    $rightChildView
+           |  ),
+           |  dex_ppk_join AS (
+           |    SELECT $leftChildViewOutputCols, $rightChildViewOutputCols, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter
+           |    FROM left_child_view, right_child_view
+           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr(j.leftTableRid), DexConstants.cashCounterStart).dialectSql(dialect)} = right_child_view.$labelColExpr
+           |
+           |    UNION ALL
+           |
+           |    SELECT $leftChildViewOutputCols, $rightChildViewOutputCols, counter + 1 AS counter
+           |    FROM dex_ppk_join, right_child_view
+           |    WHERE ${catalystEmmLabelExprOf(secondaryTrapdoorExpr(j.leftTableRid), Add($"counter", 1)).dialectSql(dialect)} = right_child_view.$labelColExpr
+           |  )
+           |  SELECT $outputCols FROM dex_ppk_join
+         """.stripMargin
+
+      case j: DexPkfkDependentJoin =>
         val (leftChildView, rightChildView) = (convertToSQL(j.left), convertToSQL(j.right))
         val leftChildViewOutputCols = j.left.outputSet.map(_.dialectSql(dialect)).mkString(", ")
         val labelColExpr = j.right.output.find(_.name.contains(j.labelColumn)).get.dialectSql(dialect)
@@ -629,7 +665,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  )
            |  SELECT $outputCols FROM dex_ppk_join
          """.stripMargin
-      case j: DexPseudoPrimaryKeyJoin =>
+      case j: DexPkfkIndepJoin =>
         val labelColExpr = dialect.quoteIdentifier(j.labelColumn)
         val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
         val (leftRidExpr, rightRidExpr) = (j.leftTableRid.dialectSql(dialect), j.rightTableRid.dialectSql(dialect))
@@ -655,7 +691,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_ppk_join
            |)
          """.stripMargin
-      case j: DexPseudoPrimaryKeyRightDependentTableJoin =>
+      case j: DexPkfkRightTableJoin =>
         require(isTableScan(j.right))
         val labelColExpr = j.right.output.find(_.name.contains(j.labelColumn)).get.dialectSql(dialect)
         val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
@@ -685,7 +721,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
            |  SELECT $outputCols FROM dex_ppk_join
            |)
          """.stripMargin
-      case j: DexPseudoPrimaryKeyLeftDependentJoin =>
+      case j: DexPkfkLeftDependentJoin =>
         // val labelColExpr = j.right.output.find(_.name.contains(j.labelColumn)).get.dialectSql(dialect)
         val labelColExpr = j.labelColumn
         val outputCols = j.output.map(_.dialectSql(dialect)).mkString(", ")
@@ -697,7 +733,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
         s"""
            |(
-           |  WITH RECURSIVE left_child_view AS (
+           |  WITH RECURSIVE left_child_view AS NOT MATERIALIZED (
            |    ${convertToSQL(j.left)}
            |  ),
            |  dex_ppk_join AS (
@@ -1601,8 +1637,30 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           //DexPseudoPrimaryKeyJoin(predicate, labelColumn, leftChildView, leftRidOrder, rightChildView)
           val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.leftTableRel), tableEncWithRidOrderOf(joinAttrs.rightTableRel))
           val (taPEncName, taFEncName) = (tableEncNameOf(taP.table), tableEncNameOf(taF.table))
+          def hasFilterOn(view: LogicalPlan): Boolean = {
+            view.find(x => x.isInstanceOf[DexPseudoPrimaryKeyDependentFilter] || x.isInstanceOf[DexPseudoPrimaryKeyFilter]).nonEmpty
+          }
 
-          childViews match {
+          def hasJoinOn(view: LogicalPlan): Boolean = {
+            // also check Join because fk-pk join is not expressed as custom operator
+            view.find(x => x.isInstanceOf[Join] || x.isInstanceOf[DexPkfkMaterializationAwareJoin]).nonEmpty
+          }
+
+          def leftMaterializationStrategy(leftChildView: LogicalPlan): MaterializationStrategy = {
+            if (isTableScan(leftChildView)) // table scan
+              NotMaterialized
+            else if (hasFilterOn(leftChildView) && !hasJoinOn(leftChildView)) // filtered table scan
+              NotMaterialized
+            else if (!hasFilterOn(leftChildView) && hasJoinOn(leftChildView)) // join
+              NotMaterialized
+            else if (hasFilterOn(leftChildView) && hasJoinOn(leftChildView)) // filtered join
+              NotMaterialized
+            else
+              throw DexException("unsupported leftchildView type: " + leftChildView.toString)
+          }
+
+          // make sure the child views are analyzed
+          childViews.map(analyze) match {
             case Seq(leftChildView, rightChildView) =>
               // Pkfk-specific optimization: if rightChildView is just a table scan, then don't need to join the
               // rightChildView again after the RCTE
@@ -1611,40 +1669,35 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                 DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
                 UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
               ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))*/
-              def hasFilterOn(view: LogicalPlan): Boolean = {
-                leftChildView.find(_.isInstanceOf[DexPseudoPrimaryKeyDependentFilter]).nonEmpty
-              }
 
-             if (hasFilterOn(leftChildView)) {
-                // has filter on leftChildView
-                if (isTableScan(rightChildView)) {
-                  DexPseudoPrimaryKeyDependentJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, rightChildView, taFEncName, rightRidOrder)
-                } else {
-                   DexPseudoPrimaryKeyLeftDependentJoin(predicate, labelColumn, labelColumnOrder, leftChildView, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder)
-                    .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
-                }
+              val leftMs = leftMaterializationStrategy(leftChildView)
+
+              val rightMs = if (isTableScan(rightChildView)) // tableScan
+                NotMaterialized
+              else if (hasFilterOn(rightChildView) && !hasJoinOn(rightChildView)) // filtered table scan
+                NotMaterialized // because using flatten to join with base table first
+              else if (!hasFilterOn(rightChildView) && hasJoinOn(rightChildView)) // join
+                Materialized
+              else if (hasFilterOn(rightChildView) && hasJoinOn(rightChildView)) // filtered join
+                NotMaterialized // because using flatten to join with base table first
+              else
+                throw DexException("unsupported right child view type: " + rightChildView.toString)
+
+              // For now, always pipeline left
+              // right filterd table scan or join would require flatten, because otherwise might lead to missing joined tuples
+              if (hasFilterOn(rightChildView)) {
+                DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, leftMs, rightMs, leftChildView, taFEnc.select(labelColumnOrder, rightRidOrder), leftChildView.output :+ rightRidOrder)
+                  .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
               } else {
-                /*if (isTableScan(rightChildView)) {
-                  leftChildView.join(
-                    DexPseudoPrimaryKeyRightDependentTableJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, rightChildView, taFEncName, rightRidOrder),
-                    UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
-                  )
-                } else {*/
-                  leftChildView.join(
-                    DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
-                    UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
-                  ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
-               //  }
-                }
-            // UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
-                // )  .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
-              // } else {
-
-              // }
+                DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, leftMs, rightMs, leftChildView, rightChildView, leftChildView.output ++ rightChildView.output)
+              }
             case Seq(leftChildView) =>
-              leftChildView.join(
-                DexPseudoPrimaryKeyDependentJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
-                UsingJoin(LeftSemi, Seq(joinAttrs.leftRidOrder)))
+              // flatten the left tree if left tree has deep joins?
+              val (leftMs, rightMs) = (leftMaterializationStrategy(leftChildView), NotMaterialized)
+              val rightRidConjunction = s"${joinAttrs.rightRidOrder}_conjunction"
+              val labelColumnConjunction = s"${labelColumnOrder}_conjunction"
+              DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, leftMs, rightMs, leftChildView, taFEnc.select(labelColumnOrder.as(labelColumnConjunction), rightRidOrder.as(rightRidConjunction)), leftChildView.output :+ $"$rightRidConjunction")
+                .where(rightRidOrder === $"$rightRidConjunction")
             case _ =>
               throw DexException("longer childviews")
           }

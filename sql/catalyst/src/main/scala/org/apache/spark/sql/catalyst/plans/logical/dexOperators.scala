@@ -18,7 +18,7 @@
 package org.apache.spark.sql.catalyst.plans.logical
 // scalastyle:off
 
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet, Literal}
+import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet, DialectSQLTranslatable, Literal}
 import org.apache.spark.sql.catalyst.dsl.expressions._
 
 abstract class DexUnaryOperator(emm: LogicalPlan) extends UnaryNode {
@@ -102,8 +102,16 @@ case class DexPseudoPrimaryKeyDependentFilter(predicate: String, labelColumn: St
   override def child: LogicalPlan = filterTable // use for analysis resolution of label column only
 }
 
+sealed abstract class MaterializationStrategy(val sql: String)
+case object Materialized extends MaterializationStrategy("MATERIALIZED")
+case object NotMaterialized extends MaterializationStrategy("NOT MATERIALIZED")
+
+case class DexPkfkMaterializationAwareJoin(predicate: String, labelColumnOrder: Attribute, leftTableRid: Attribute, leftMs: MaterializationStrategy, rightMs: MaterializationStrategy, left: LogicalPlan, right: LogicalPlan, output: Seq[Attribute]) extends BinaryNode {
+  override def references: AttributeSet = super.references ++ AttributeSet(output)
+}
+
 // output: childView's schema plus
-case class DexPseudoPrimaryKeyDependentJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+case class DexPkfkDependentJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = leftTable // only for resolving leftTableRid
 
   override def right: LogicalPlan = rightTable // only for resolving labelColumn
@@ -113,7 +121,7 @@ case class DexPseudoPrimaryKeyDependentJoin(predicate: String, labelColumn: Stri
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
-case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+case class DexPkfkIndepJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = leftTable // only for resolving leftTableRid
 
   override def right: LogicalPlan = rightTable // only for resolving labelColumn
@@ -123,7 +131,7 @@ case class DexPseudoPrimaryKeyJoin(predicate: String, labelColumn: String, label
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
-case class DexPseudoPrimaryKeyRightDependentTableJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+case class DexPkfkRightTableJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = leftTable // only for resolving leftTableRid
 
   override def right: LogicalPlan = rightTable // only for resolving labelColumn
@@ -133,7 +141,7 @@ case class DexPseudoPrimaryKeyRightDependentTableJoin(predicate: String, labelCo
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 }
 
-case class DexPseudoPrimaryKeyLeftDependentJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
+case class DexPkfkLeftDependentJoin(predicate: String, labelColumn: String, labelColumnOrder: Attribute, leftTable: LogicalPlan, leftTableName: String, leftTableRid: Attribute, rightTable: LogicalPlan, rightTableName: String, rightTableRid: Attribute) extends BinaryNode {
   override def left: LogicalPlan = leftTable // only for resolving leftTableRid
 
   override def right: LogicalPlan = rightTable // only for resolving labelColumn
