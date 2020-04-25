@@ -1622,21 +1622,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           throw DexException("childviews wrong size")
         }
 
-      val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
-      val (leftTableAttr, rightTableAttr) = (
-        TableAttributeAtom(joinAttrs.leftTableName, joinAttrs.left.name),
-        TableAttributeAtom(joinAttrs.rightTableName, joinAttrs.right.name)
-      )
-      (leftTableAttr, rightTableAttr) match {
-        case (taP, taF) if primaryKeys.contains(taP.attr) && foreignKeys.contains(taF.attr) =>
-          // primary to foreign key join, e.g. supplier.s_suppkey = partsupp.ps_suppkey
-          val labelColumn = DexPrimitives.dexColNameOf(s"pfk_${taP.table}_${taF.table}")
-          val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.rightTableRel)}"
-          //val predicate = s"${taP.table}~${taF.table}"
-          val predicate = dexPkFKJoinPredicateOf(taP, taF)
-          //DexPseudoPrimaryKeyJoin(predicate, labelColumn, leftChildView, leftRidOrder, rightChildView)
-          val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.leftTableRel), tableEncWithRidOrderOf(joinAttrs.rightTableRel))
-          val (taPEncName, taFEncName) = (tableEncNameOf(taP.table), tableEncNameOf(taF.table))
           def hasFilterOn(view: LogicalPlan): Boolean = {
             view.find(x => x.isInstanceOf[DexPseudoPrimaryKeyDependentFilter] || x.isInstanceOf[DexPseudoPrimaryKeyFilter]).nonEmpty
           }
@@ -1646,58 +1631,41 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
             view.find(x => x.isInstanceOf[Join] || x.isInstanceOf[DexPkfkMaterializationAwareJoin]).nonEmpty
           }
 
-          def leftMaterializationStrategy(leftChildView: LogicalPlan): MaterializationStrategy = {
-            if (isTableScan(leftChildView)) // table scan
-              NotMaterialized
-            else if (hasFilterOn(leftChildView) && !hasJoinOn(leftChildView)) // filtered table scan
-              NotMaterialized
-            else if (!hasFilterOn(leftChildView) && hasJoinOn(leftChildView)) // join
-              NotMaterialized
-            else if (hasFilterOn(leftChildView) && hasJoinOn(leftChildView)) // filtered join
-              NotMaterialized
-            else
-              throw DexException("unsupported leftchildView type: " + leftChildView.toString)
-          }
+          def isFilter(view: LogicalPlan): Boolean = !hasJoinOn(view) && hasFilterOn(view)
 
-          // make sure the child views are analyzed
-          childViews.map(analyze) match {
+
+      val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
+      val (leftTableAttr, rightTableAttr) = (
+        TableAttributeAtom(joinAttrs.leftTableName, joinAttrs.left.name),
+        TableAttributeAtom(joinAttrs.rightTableName, joinAttrs.right.name)
+      )
+      (leftTableAttr, rightTableAttr) match {
+        case (taP, taF) if primaryKeys.contains(taP.attr) && foreignKeys.contains(taF.attr) =>
+          // primary to foreign key join, e.g. supplier.s_suppkey = partsupp.ps_suppkey
+          val mapColumnOrder = $"${DexPrimitives.dexColNameOf(s"fpk_${taF.table}_${taP.table}")}_${joinOrder(joinAttrs.rightTableRel)}"
+          //val predicate = s"${taF.table}~${taP.table}"
+          val predicate = dexPkFKJoinPredicateOf(taF, taP)
+          // val mapColumnDecKey = Concat(Seq(Literal(predicate), Literal("~"), leftRidOrder))
+          val mapColumnDecKey = catalystTrapdoorExprOf(dexMasterTrapdoorForPred(predicate, None), rightRidOrder)
+          //val tablePrimaryKey = tableEncWithRidOrderOf(taP.table)
+          // note: rids are all in bytes
+
+        childViews match {
             case Seq(leftChildView, rightChildView) =>
-              // Pkfk-specific optimization: if rightChildView is just a table scan, then don't need to join the
-              // rightChildView again after the RCTE
-              // Pass leftChildView into the RCTE
-/*              leftChildView.join(
-                DexPseudoPrimaryKeyJoin(predicate, labelColumn, labelColumnOrder, taPEnc, taPEncName, leftRidOrder, taFEnc, taFEncName, rightRidOrder),
-                UsingJoin(Inner, Seq(joinAttrs.leftRidOrder))
-              ).join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))*/
-
-              val leftMs = leftMaterializationStrategy(leftChildView)
-
-              val rightMs = if (isTableScan(rightChildView)) // tableScan
-                NotMaterialized
-              else if (hasFilterOn(rightChildView) && !hasJoinOn(rightChildView)) // filtered table scan
-                NotMaterialized // because using flatten to join with base table first
-              else if (!hasFilterOn(rightChildView) && hasJoinOn(rightChildView)) // join
-                Materialized
-              else if (hasFilterOn(rightChildView) && hasJoinOn(rightChildView)) // filtered join
-                NotMaterialized // because using flatten to join with base table first
-              else
-                throw DexException("unsupported right child view type: " + rightChildView.toString)
-
-              // For now, always pipeline left
-              // right filterd table scan or join would require flatten, because otherwise might lead to missing joined tuples
-              if (hasFilterOn(rightChildView)) {
-                DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, leftMs, rightMs, leftChildView, taFEnc.select(labelColumnOrder, rightRidOrder), leftChildView.output :+ rightRidOrder)
-                  .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
-              } else {
-                DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, leftMs, rightMs, leftChildView, rightChildView, leftChildView.output ++ rightChildView.output)
+              (isFilter(leftChildView), isFilter(rightChildView)) match {
+                case (true, true) =>
+                  val labelColumn = DexPrimitives.dexColNameOf(s"pfk_${taP.table}_${taF.table}")
+                  val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.rightTableRel)}"
+                  val predicate = dexPkFKJoinPredicateOf(taP, taF)
+                  val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.leftTableRel), tableEncWithRidOrderOf(joinAttrs.rightTableRel))
+                  DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, NotMaterialized, NotMaterialized, leftChildView, taFEnc.select(labelColumnOrder, rightRidOrder), leftChildView.output :+ rightRidOrder)
+                    .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+                case _ =>
+                  rightChildView.join(leftChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === leftRidOrder))
+                    // .select(star())
               }
             case Seq(leftChildView) =>
-              // flatten the left tree if left tree has deep joins?
-              val (leftMs, rightMs) = (leftMaterializationStrategy(leftChildView), NotMaterialized)
-              val rightRidConjunction = s"${joinAttrs.rightRidOrder}_conjunction"
-              val labelColumnConjunction = s"${labelColumnOrder}_conjunction"
-              DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, leftMs, rightMs, leftChildView, taFEnc.select(labelColumnOrder.as(labelColumnConjunction), rightRidOrder.as(rightRidConjunction)), leftChildView.output :+ $"$rightRidConjunction")
-                .where(rightRidOrder === $"$rightRidConjunction")
+              leftChildView.where(DexDecrypt(mapColumnDecKey, mapColumnOrder) === leftRidOrder) // .select(star())
             case _ =>
               throw DexException("longer childviews")
           }
@@ -1714,10 +1682,19 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
           childViews match {
             case Seq(leftChildView, rightChildView) =>
-              leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder))
-                .select(star())
+              (isFilter(leftChildView), isFilter(rightChildView)) match {
+                case (true, true) =>
+                  val labelColumn = DexPrimitives.dexColNameOf(s"pfk_${taP.table}_${taF.table}")
+                  val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.leftTableRel)}"
+                  val predicate = dexPkFKJoinPredicateOf(taP, taF)
+                  val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.rightTableRel), tableEncWithRidOrderOf(joinAttrs.leftTableRel))
+                  DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, rightRidOrder, NotMaterialized, NotMaterialized, rightChildView, taFEnc.select(labelColumnOrder, leftRidOrder), rightChildView.output :+ leftRidOrder)
+                    .join(leftChildView, UsingJoin(Inner, Seq(joinAttrs.leftRidOrder)))
+                case _ =>
+                  leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder))
+              }
             case Seq(leftChildView) =>
-              leftChildView.where(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder).select(star())
+              leftChildView.where(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder) //.select(star())
             case _ =>
               throw DexException("longer childviews")
           }
