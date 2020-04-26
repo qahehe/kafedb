@@ -1653,7 +1653,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         childViews match {
             case Seq(leftChildView, rightChildView) =>
               (isFilter(leftChildView), isFilter(rightChildView)) match {
-                case (true, true) =>
+                case (true, _) =>
                   val labelColumn = DexPrimitives.dexColNameOf(s"pfk_${taP.table}_${taF.table}")
                   val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.rightTableRel)}"
                   val predicate = dexPkFKJoinPredicateOf(taP, taF)
@@ -1683,7 +1683,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           childViews match {
             case Seq(leftChildView, rightChildView) =>
               (isFilter(leftChildView), isFilter(rightChildView)) match {
-                case (true, true) =>
+                case (_, true) =>
                   val labelColumn = DexPrimitives.dexColNameOf(s"pfk_${taP.table}_${taF.table}")
                   val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.leftTableRel)}"
                   val predicate = dexPkFKJoinPredicateOf(taP, taF)
