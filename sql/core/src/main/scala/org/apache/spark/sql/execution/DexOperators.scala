@@ -20,20 +20,21 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-package org.apache.spark.sql.dex
-
-import org.apache.spark.sql.catalyst.dex.DexPrimitives._
+package org.apache.spark.sql.execution
 // scalastyle:off
 
-class DexPkFkBuilderTest extends DexPkfkTPCHTest {
+import org.apache.spark.sql.Strategy
+import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.dex.{DexRidCorrelatedJoinExec, DexRidFilterExec}
 
-  test("dex pkfk builder") {
-    nameToDf.keys.foreach { t =>
-      val tEnc = dexTableNameOf(t)
-      val dfEnc = spark.read.jdbc(urlEnc, tEnc, properties)
-      println(tEnc + ": \n"
-        + dfEnc.columns.mkString(",") + "\n"
-        + dfEnc.collect().mkString("\n"))
-    }
+object DexOperators extends Strategy {
+  override def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
+    case DexRidFilter(predicate, emm) =>
+      DexRidFilterExec(predicate, planLater(emm)) :: Nil
+    case DexRidCorrelatedJoin(predicate, childView, emm, childViewRid) =>
+      DexRidCorrelatedJoinExec(
+        predicate, planLater(childView), planLater(emm), childViewRid) :: Nil
+    case _ =>
+      Nil
   }
 }

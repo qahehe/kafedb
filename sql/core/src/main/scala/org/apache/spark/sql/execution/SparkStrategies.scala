@@ -533,18 +533,6 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
     }
   }
 
-  object DexOperators extends Strategy {
-    override def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
-      case DexRidFilter(predicate, emm) =>
-        DexRidFilterExec(predicate, planLater(emm)) :: Nil
-      case DexRidCorrelatedJoin(predicate, childView, emm, childViewRid) =>
-        DexRidCorrelatedJoinExec(
-          predicate, planLater(childView), planLater(emm), childViewRid) :: Nil
-      case _ =>
-        Nil
-    }
-  }
-
   object BasicOperators extends Strategy {
     def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
       case d: DataWritingCommand => DataWritingCommandExec(d, planLater(d.query)) :: Nil
