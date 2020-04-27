@@ -18,7 +18,7 @@
 package org.apache.spark.sql.catalyst.plans.logical
 // scalastyle:off
 
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet, DialectSQLTranslatable, Literal}
+import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeSet, BinaryOperator, DialectSQLTranslatable, EqualTo, Expression, Literal, Predicate}
 import org.apache.spark.sql.catalyst.dsl.expressions._
 
 abstract class DexUnaryOperator(emm: LogicalPlan) extends UnaryNode {
@@ -86,12 +86,15 @@ case class DexDomainJoin(leftPredicate: String, rightPredicate: String, intersec
   }
 }
 
-case class DexPseudoPrimaryKeyFilter(predicate: String, labelColumn: String, labelColumnOrder: Attribute, filterTableName: String, filterTable: LogicalPlan) extends UnaryNode {
+case class DexPseudoPrimaryKeyFilter(predicate: String, labelColumn: Attribute, filterTableName: String, filterTable: LogicalPlan, conjunction: Option[BinaryOperator] = None) extends UnaryNode {
   override def references: AttributeSet = super.references ++ AttributeSet(output)
 
   override def output: Seq[Attribute] = filterTable.output
 
   override def child: LogicalPlan = filterTable // use for analysis resolution of label column only
+
+  def withConjunction(clause: EqualTo): DexPseudoPrimaryKeyFilter =
+    DexPseudoPrimaryKeyFilter(predicate, labelColumn, filterTableName, filterTable, conjunction.map(x => And(x, clause)).orElse(Some(clause)))
 }
 
 case class DexPseudoPrimaryKeyDependentFilter(predicate: String, labelColumn: String, labelColumnOrder: Attribute, filterTableName: String, filterTable: LogicalPlan, filterTableRid: Attribute) extends UnaryNode {

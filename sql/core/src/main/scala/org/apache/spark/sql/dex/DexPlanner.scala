@@ -562,18 +562,24 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
          """.stripMargin
       case f: DexPseudoPrimaryKeyFilter =>
         val labelPrfKeyExpr = Literal(dexMasterTrapdoorForPred(f.predicate, None))
-        val labelColExpr = dialect.quoteIdentifier(f.labelColumn)
+        val labelColExpr = f.labelColumn.dialectSql(dialect)
         val outputCols = f.output.map(_.dialectSql(dialect)).mkString(", ")
         val firstLabelExpr = catalystEmmLabelExprOf(
           labelPrfKeyExpr, DexConstants.cashCounterStart
         ).dialectSql(dialect)
         val nextLabelExpr = catalystEmmLabelExprOf(labelPrfKeyExpr, Add($"dex_ppk_filter.counter", 1)).dialectSql(dialect)
-
+        /*val qualifiedConjunction = f.conjunction.map {
+          case EqualTo(a: Attribute, b) => EqualTo(a.withQualifier(Seq(f.filterTableName)), b)
+          case EqualTo(a, b: Attribute) => EqualTo(a, b.withQualifier(Seq(f.filterTableName)))
+          case EqualTo(a: Attribute, b: Attribute) => EqualTo(a.withQualifier(Seq(f.filterTableName)), b.withQualifier(Seq(f.filterTableName)))
+          case
+        }*/
+        val conjunction = f.conjunction.map(_.dialectSql(dialect)).map(x => s"AND $x").getOrElse("")
         s"""
            |  WITH RECURSIVE dex_ppk_filter($outputCols, counter) AS (
-           |    SELECT ${f.filterTableName}.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = $firstLabelExpr
+           |    SELECT ${f.filterTableName}.*, ${Literal(DexConstants.cashCounterStart).dialectSql(dialect)} AS counter FROM ${f.filterTableName} WHERE $labelColExpr = $firstLabelExpr $conjunction
            |    UNION ALL
-           |    SELECT ${f.filterTableName}.*, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = $nextLabelExpr
+           |    SELECT ${f.filterTableName}.*, dex_ppk_filter.counter + 1 AS counter FROM ${f.filterTableName}, dex_ppk_filter WHERE ${f.filterTableName}.$labelColExpr = $nextLabelExpr $conjunction
            |  )
            |  SELECT $outputCols FROM dex_ppk_filter
          """.stripMargin
@@ -1575,12 +1581,30 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       // todo: projection pushdown
       // todo: add t_e column?  Can eliminnate this left semi join
       val encPredicateTableName = tableEncNameOf(predicateTableName)
-      val encPredicateTable = tableEncWithRidOrderOf(predicateTable)
       // todo: for idnependent filter, can skip the childview join, but need to extend the output of the Filter operator to include also the table attributes
       if (isTableScan(childView)) {
+        // val encPredicateTableOrder = tableEncWithRidOrderOf(predicateTable)
+        val encPredicateTable = tableEncOf(predicateTable)
         val labelCol = DexPrimitives.dexColNameOf(s"val_${predicateTableName}_$predicateColName")
         val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
-        DexPseudoPrimaryKeyFilter(predicate, labelCol, labelColOrder, encPredicateTableName, childView)
+        renameRidWithJoinOrder(
+          DexPseudoPrimaryKeyFilter(predicate, $"$labelCol", encPredicateTableName, encPredicateTable),
+          predicateTable
+        )
+      } else if (isFilter(childView)) {
+        val labelCol = DexPrimitives.dexColNameOf(s"depval_${predicateTableName}_$predicateColName")
+        // val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
+        val masterTrapdoor = dexMasterTrapdoorForPred(predicate, None)
+        childView match {
+          case Project(projectList, childFilter: DexPseudoPrimaryKeyFilter) =>
+            val labelColResolved = resolvedAttribute($"$labelCol", childFilter).withQualifier(Seq(encPredicateTableName))
+            val ridResolved = resolvedAttribute($"${DexConstants.ridCol}", childFilter).withQualifier(Seq(encPredicateTableName))
+            val secondaryTrapdoor = catalystTrapdoorExprOf(masterTrapdoor, ridResolved)
+            Project(projectList, childFilter.withConjunction((labelColResolved === secondaryTrapdoor).asInstanceOf[EqualTo]))
+          case _ =>
+            throw DexException("unexpected: " + childView.toString)
+        }
+
       } else {
         val labelCol = DexPrimitives.dexColNameOf(s"depval_${predicateTableName}_$predicateColName")
         val labelColOrder = $"${labelCol}_${joinOrder(predicateTable)}"
@@ -1594,6 +1618,18 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
     private def hasAttrInView(attr: String, view: LogicalPlan): Boolean = {
       analyze(view).output.exists(_.name == attr)
     }
+
+
+    def hasFilterOn(view: LogicalPlan): Boolean = {
+      view.find(x => x.isInstanceOf[DexPseudoPrimaryKeyDependentFilter] || x.isInstanceOf[DexPseudoPrimaryKeyFilter]).nonEmpty
+    }
+
+    def hasJoinOn(view: LogicalPlan): Boolean = {
+      // also check Join because fk-pk join is not expressed as custom operator
+      view.find(x => x.isInstanceOf[Join] || x.isInstanceOf[DexPkfkMaterializationAwareJoin]).nonEmpty
+    }
+
+    def isFilter(view: LogicalPlan): Boolean = !hasJoinOn(view) && hasFilterOn(view)
 
     override protected def translateEquiJoin(joinAttrsUnordered: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
       // ChildViews:
@@ -1621,18 +1657,6 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         } else {
           throw DexException("childviews wrong size")
         }
-
-          def hasFilterOn(view: LogicalPlan): Boolean = {
-            view.find(x => x.isInstanceOf[DexPseudoPrimaryKeyDependentFilter] || x.isInstanceOf[DexPseudoPrimaryKeyFilter]).nonEmpty
-          }
-
-          def hasJoinOn(view: LogicalPlan): Boolean = {
-            // also check Join because fk-pk join is not expressed as custom operator
-            view.find(x => x.isInstanceOf[Join] || x.isInstanceOf[DexPkfkMaterializationAwareJoin]).nonEmpty
-          }
-
-          def isFilter(view: LogicalPlan): Boolean = !hasJoinOn(view) && hasFilterOn(view)
-
 
       val (leftRidOrder, rightRidOrder)= ($"${joinAttrs.leftRidOrder}", $"${joinAttrs.rightRidOrder}")
       val (leftTableAttr, rightTableAttr) = (
