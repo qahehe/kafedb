@@ -23,6 +23,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 package org.apache.spark.sql.dex
 // scalastyle:off
 
+import org.apache.spark.sql.functions.{col, expr}
+
 class DexPkfkTPCHSuite extends DexPkfkTPCHTest {
 
   test("one filter") {
@@ -130,4 +132,25 @@ class DexPkfkTPCHSuite extends DexPkfkTPCHTest {
     checkDexFor(query, query.dexPkFk(pks, fks))
   }
 
+  test("left semi join") {
+    val query = supplier.join(partsupp.where("ps_comment == 'psb'"), col("s_suppkey") === col("ps_suppkey"), "left_semi").select("s_name")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
+
+  test("right semi join") {
+    val query = supplier.join(partsupp.where("ps_comment == 'psb'"), col("s_suppkey") === col("ps_suppkey"), "left_semi").select("s_name")
+    val queryRewrite = partsupp.where("ps_comment == 'psb'").join(supplier, col("ps_suppkey") === col("s_suppkey"), "right_semi").select("s_name")
+    checkDexFor(query, queryRewrite.dexPkFk(pks, fks))
+  }
+
+  test("left anti join") {
+    val query = supplier.join(partsupp.where("ps_comment == 'psb'"), col("s_suppkey") === col("ps_suppkey"), "left_anti").select("s_name")
+    checkDexFor(query, query.dexPkFk(pks, fks))
+  }
+
+  test("right anti join") {
+    val query = supplier.join(partsupp.where("ps_comment == 'psb'"), col("s_suppkey") === col("ps_suppkey"), "left_semi").select("s_name")
+    val queryRewrite = partsupp.where("ps_comment == 'psb'").join(supplier, col("ps_suppkey") === col("s_suppkey"), "right_semi").select("s_name")
+    checkDexFor(query, queryRewrite.dexPkFk(pks, fks))
+  }
 }

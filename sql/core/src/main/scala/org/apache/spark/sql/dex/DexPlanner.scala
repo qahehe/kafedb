@@ -1050,7 +1050,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           } else {
             // e.g.  T1(a, b) join T2(c, d) on a = c and b = d where a = c = 1
             val leftView = translatePlan(j.left)
-            val joinView = translateFormula(JoinFormula, j.condition.get, Seq(leftView), isNegated = false)
+            val joinView = translateFormula(JoinFormula(j.joinType), j.condition.get, Seq(leftView), isNegated = false)
             val rightView = translatePlan(j.right)
             j.joinType match {
               case Inner =>
@@ -1126,8 +1126,8 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
           case FilterFormula =>
             require(childViews.size == 1)
             translateFilterPredicate(p, childViews.headOption.get, isNegated)
-          case JoinFormula =>
-            translateJoinPredicate(p, childViews)
+          case JoinFormula(joinType: JoinType) =>
+            translateJoinPredicate(p, childViews, joinType)
         }
 
         case And(left, right) if !isNegated =>
@@ -1208,13 +1208,13 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       }
     }
 
-    private def translateJoinPredicate(p: Predicate, childViews: Seq[LogicalPlan]): LogicalPlan = p match {
+    private def translateJoinPredicate(p: Predicate, childViews: Seq[LogicalPlan], joinType: JoinType) = p match {
       case EqualTo(left: Attribute, right: Attribute) =>
-        translateEquiJoin(JoinAttrs(left, right), childViews)
+        translateEquiJoin(JoinAttrs(left, right), childViews, joinType)
       case x => throw DexException("unsupported: " + x.getClass.toString)
     }
 
-    protected def translateEquiJoin(joinAttrs: JoinAttrs, chidlViews: Seq[LogicalPlan]): LogicalPlan
+    protected def translateEquiJoin(joinAttrs: JoinAttrs, chidlViews: Seq[LogicalPlan], joinType: JoinType): LogicalPlan
 
     protected def tableEncNameOf(tableName: String): String = dexTableNameOf(tableName)
 
@@ -1311,7 +1311,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   case class SpxTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends StandaloneTranslator with CompoundKeyAwareTranslator {
-    override protected def translateEquiJoin(joinAttrsUnordered: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrsUnordered: JoinAttrs, childViews: Seq[LogicalPlan], joinType: JoinType): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
       val joinAttrs = joinAttrsUnordered.orderedAlphabetically()
@@ -1324,7 +1324,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   case class DexCorrelationTranslator(dexPlan: DexPlan, compoundKeys: Set[String]) extends StandaloneTranslator with CompoundKeyAwareTranslator {
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan], joinType: JoinType): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
       //val hasJoinOnChildView = childView.find(_.isInstanceOf[DexRidCorrelatedJoin]).nonEmpty
@@ -1432,7 +1432,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
   }
 
   case class DexDomainTranslator(dexPlan: DexPlan) extends StandaloneTranslator {
-    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrs: JoinAttrs, childViews: Seq[LogicalPlan], joinType: JoinType): LogicalPlan = {
       require(childViews.size == 1)
       val childView = childViews.headOption.get
       val (leftPredicate, rightPredicate) = (s"${joinAttrs.leftTableName}~${joinAttrs.leftColName}",s"${joinAttrs.rightTableName}~${joinAttrs.rightColName}")
@@ -1508,7 +1508,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
         translatePlan(reverseJoinPlan)*/
 
       case j: Join if j.condition.isDefined =>
-        translateJoinView(j.left, j.right, j.condition.get)
+        translateJoinView(j.left, j.right, j.condition.get, j.joinType)
 
       case _ => super.translatePlan(plan)
     }
@@ -1532,10 +1532,10 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
 
     }
 
-    private def translateJoinView(left: LogicalPlan, right: LogicalPlan, joinCond: Expression) = {
+    private def translateJoinView(left: LogicalPlan, right: LogicalPlan, joinCond: Expression, joinType: JoinType) = {
       val leftView = translatePlan(left)
       val rightView = translatePlan(right)
-      val joinView = translateFormula(JoinFormula, joinCond, Seq(leftView, rightView), isNegated = false)
+      val joinView = translateFormula(JoinFormula(joinType), joinCond, Seq(leftView, rightView), isNegated = false)
       joinView
     }
 
@@ -1601,7 +1601,7 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
       analyze(view).output.exists(_.name == attr)
     }
 
-    override protected def translateEquiJoin(joinAttrsUnordered: JoinAttrs, childViews: Seq[LogicalPlan]): LogicalPlan = {
+    override protected def translateEquiJoin(joinAttrsUnordered: JoinAttrs, childViews: Seq[LogicalPlan], joinType: JoinType): LogicalPlan = {
       // ChildViews:
       // case 1: one childview => conjunctive join condition e.g. Q join T on a = b and c = d is processed as Q join T_A on ... join T_B on ...
       // case 2: two childview => singleton join condition or the leftmost leaf of conjunctive join condition
@@ -1664,13 +1664,22 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                   val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.rightTableRel)}"
                   val predicate = dexPkFKJoinPredicateOf(taP, taF)
                   val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.leftTableRel), tableEncWithRidOrderOf(joinAttrs.rightTableRel))
-                  DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, NotMaterialized, NotMaterialized, leftChildView, taFEnc.select(labelColumnOrder, rightRidOrder), leftChildView.output :+ rightRidOrder)
-                    .join(rightChildView, UsingJoin(Inner, Seq(joinAttrs.rightRidOrder)))
+                  val pkfkJoin = DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, leftRidOrder, NotMaterialized, NotMaterialized, leftChildView, taFEnc.select(labelColumnOrder, rightRidOrder), leftChildView.output :+ rightRidOrder)
+                  joinType match {
+                    case Inner | RightSemi | RightAnti =>
+                      pkfkJoin.join(rightChildView, UsingJoin(joinType, Seq(joinAttrs.rightRidOrder)))
+                    case LeftSemi | LeftAnti =>
+                      leftChildView.join(
+                        pkfkJoin.join(rightChildView, UsingJoin(LeftSemi, Seq(joinAttrs.rightRidOrder))),
+                        UsingJoin(LeftSemi, Seq(joinAttrs.leftRidOrder))
+                      )
+                    case _ => throw DexException("not supported join: " + joinType.toString)
+                  }
                 case _ =>
-                  rightChildView.join(leftChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === leftRidOrder))
-                    // .select(star())
+                  leftChildView.join(rightChildView, joinType, condition = Some(leftRidOrder === DexDecrypt(mapColumnDecKey, mapColumnOrder)))
               }
             case Seq(leftChildView) =>
+              require(joinType == Inner) // todo: extend to other join type
               leftChildView.where(DexDecrypt(mapColumnDecKey, mapColumnOrder) === leftRidOrder) // .select(star())
             case _ =>
               throw DexException("longer childviews")
@@ -1694,12 +1703,21 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                   val labelColumnOrder = $"${labelColumn}_${joinOrder(joinAttrs.leftTableRel)}"
                   val predicate = dexPkFKJoinPredicateOf(taP, taF)
                   val (taPEnc, taFEnc) = (tableEncWithRidOrderOf(joinAttrs.rightTableRel), tableEncWithRidOrderOf(joinAttrs.leftTableRel))
-                  DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, rightRidOrder, NotMaterialized, NotMaterialized, rightChildView, taFEnc.select(labelColumnOrder, leftRidOrder), rightChildView.output :+ leftRidOrder)
-                    .join(leftChildView, UsingJoin(Inner, Seq(joinAttrs.leftRidOrder)))
+
+                  val pkfkJoin = DexPkfkMaterializationAwareJoin(predicate, labelColumnOrder, rightRidOrder, NotMaterialized, NotMaterialized, rightChildView, taFEnc.select(labelColumnOrder, leftRidOrder), rightChildView.output :+ leftRidOrder)
+                  joinType match {
+                    case Inner | LeftSemi | LeftAnti =>
+                      leftChildView.join(pkfkJoin, UsingJoin(joinType, Seq(joinAttrs.leftRidOrder)))
+                    case RightSemi | RightAnti =>
+                      leftChildView.join(pkfkJoin, UsingJoin(RightSemi, Seq(joinAttrs.leftRidOrder)))
+                        .join(rightChildView, UsingJoin(RightSemi, Seq(joinAttrs.rightRidOrder)))
+                    case _ => throw DexException("not supported join: " + joinType.toString)
+                  }
                 case _ =>
-                  leftChildView.join(rightChildView, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder))
+                  leftChildView.join(rightChildView, joinType, condition = Some(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder))
               }
             case Seq(leftChildView) =>
+              require(joinType == Inner) // todo: extend to other join type
               leftChildView.where(DexDecrypt(mapColumnDecKey, mapColumnOrder) === rightRidOrder) //.select(star())
             case _ =>
               throw DexException("longer childviews")
@@ -1840,5 +1858,5 @@ case class DexRidCorrelatedJoinExec(predicate: String, childView: SparkPlan, emm
 }*/
 
 sealed trait FormulaType
-case object JoinFormula extends FormulaType
+case class JoinFormula(joinType: JoinType) extends FormulaType
 case object FilterFormula extends FormulaType
