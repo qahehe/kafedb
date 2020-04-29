@@ -1,0 +1,625 @@
+20/04/29 13:48:35 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+baseLocation=/data/encrypted-spark/bench/data
+baseDatagenFolder=/data/encrypted-spark/bench/datagen
+Creating external tables at /data/encrypted-spark/bench/data/tpch/sf1_parquet
+Creating external table part in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/part.
+Discovering partitions for table part.
+Creating external table supplier in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier.
+Creating external table partsupp in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp.
+Creating external table customer in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/customer.
+Discovering partitions for table customer.
+Creating external table orders in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/orders.
+Discovering partitions for table orders.
+Creating external table lineitem in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem.
+Discovering partitions for table lineitem.
+Creating external table nation in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/nation.
+Creating external table region in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/region.
+The current database has been set to tpch_sf1_parquet.
+Elapsed time: 11002ms
+Table part has 25 partitions
+Cannot VACUUM part
++----------------------------+-------------------------------------------------------------+-------+
+|col_name                    |data_type                                                    |comment|
++----------------------------+-------------------------------------------------------------+-------+
+|p_partkey                   |bigint                                                       |null   |
+|p_name                      |string                                                       |null   |
+|p_mfgr                      |string                                                       |null   |
+|p_type                      |string                                                       |null   |
+|p_size                      |int                                                          |null   |
+|p_container                 |string                                                       |null   |
+|p_retailprice               |decimal(12,2)                                                |null   |
+|p_comment                   |string                                                       |null   |
+|p_brand                     |string                                                       |null   |
+|# Partition Information     |                                                             |       |
+|# col_name                  |data_type                                                    |comment|
+|p_brand                     |string                                                       |null   |
+|                            |                                                             |       |
+|# Detailed Table Information|                                                             |       |
+|Database                    |tpch_sf1_parquet                                             |       |
+|Table                       |part                                                         |       |
+|Created Time                |Wed Apr 29 13:48:38 UTC 2020                                 |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                 |       |
+|Created By                  |Spark 2.4.0                                                  |       |
+|Type                        |EXTERNAL                                                     |       |
+|Provider                    |parquet                                                      |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/part|       |
+|Partition Provider          |Catalog                                                      |       |
++----------------------------+-------------------------------------------------------------+-------+
+
+
+Table supplier has no partitions
+Cannot VACUUM supplier
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|s_suppkey                   |bigint                                                           |null   |
+|s_name                      |string                                                           |null   |
+|s_address                   |string                                                           |null   |
+|s_nationkey                 |bigint                                                           |null   |
+|s_phone                     |string                                                           |null   |
+|s_acctbal                   |decimal(12,2)                                                    |null   |
+|s_comment                   |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |supplier                                                         |       |
+|Created Time                |Wed Apr 29 13:48:40 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table partsupp has no partitions
+Cannot VACUUM partsupp
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|ps_partkey                  |bigint                                                           |null   |
+|ps_suppkey                  |bigint                                                           |null   |
+|ps_availqty                 |int                                                              |null   |
+|ps_supplycost               |decimal(12,2)                                                    |null   |
+|ps_comment                  |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |partsupp                                                         |       |
+|Created Time                |Wed Apr 29 13:48:40 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table customer has 5 partitions
+Cannot VACUUM customer
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|c_custkey                   |bigint                                                           |null   |
+|c_name                      |string                                                           |null   |
+|c_address                   |string                                                           |null   |
+|c_nationkey                 |bigint                                                           |null   |
+|c_phone                     |string                                                           |null   |
+|c_acctbal                   |decimal(12,2)                                                    |null   |
+|c_comment                   |string                                                           |null   |
+|c_mktsegment                |string                                                           |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|c_mktsegment                |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |customer                                                         |       |
+|Created Time                |Wed Apr 29 13:48:40 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/customer|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table orders has 2406 partitions
+Cannot VACUUM orders
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|o_orderkey                  |bigint                                                         |null   |
+|o_custkey                   |bigint                                                         |null   |
+|o_orderstatus               |string                                                         |null   |
+|o_totalprice                |decimal(12,2)                                                  |null   |
+|o_orderpriority             |string                                                         |null   |
+|o_clerk                     |string                                                         |null   |
+|o_shippriority              |int                                                            |null   |
+|o_comment                   |string                                                         |null   |
+|o_orderdate                 |date                                                           |null   |
+|# Partition Information     |                                                               |       |
+|# col_name                  |data_type                                                      |comment|
+|o_orderdate                 |date                                                           |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |orders                                                         |       |
+|Created Time                |Wed Apr 29 13:48:40 UTC 2020                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/orders|       |
+|Partition Provider          |Catalog                                                        |       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table lineitem has 2526 partitions
+Cannot VACUUM lineitem
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|l_orderkey                  |bigint                                                           |null   |
+|l_partkey                   |bigint                                                           |null   |
+|l_suppkey                   |bigint                                                           |null   |
+|l_linenumber                |int                                                              |null   |
+|l_quantity                  |decimal(12,2)                                                    |null   |
+|l_extendedprice             |decimal(12,2)                                                    |null   |
+|l_discount                  |decimal(12,2)                                                    |null   |
+|l_tax                       |decimal(12,2)                                                    |null   |
+|l_returnflag                |string                                                           |null   |
+|l_linestatus                |string                                                           |null   |
+|l_commitdate                |string                                                           |null   |
+|l_receiptdate               |string                                                           |null   |
+|l_shipinstruct              |string                                                           |null   |
+|l_shipmode                  |string                                                           |null   |
+|l_comment                   |string                                                           |null   |
+|l_shipdate                  |date                                                             |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|l_shipdate                  |date                                                             |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |lineitem                                                         |       |
+|Created Time                |Wed Apr 29 13:48:44 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table nation has no partitions
+Cannot VACUUM nation
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|n_nationkey                 |bigint                                                         |null   |
+|n_name                      |string                                                         |null   |
+|n_regionkey                 |bigint                                                         |null   |
+|n_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |nation                                                         |       |
+|Created Time                |Wed Apr 29 13:48:48 UTC 2020                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/nation|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table region has no partitions
+Cannot VACUUM region
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|r_regionkey                 |bigint                                                         |null   |
+|r_name                      |string                                                         |null   |
+|r_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |region                                                         |       |
+|Created Time                |Wed Apr 29 13:48:48 UTC 2020                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/region|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+
+q2=
+
+select
+  ps_supplycost
+from
+  part,
+  partsupp,
+  supplier,
+  nation,
+  region
+where
+  p_partkey = ps_partkey
+  and s_suppkey = ps_suppkey
+  and s_nationkey = n_nationkey
+  and n_regionkey = r_regionkey
+  and r_name = 'EUROPE'
+  and p_size = 15
+        
+Postgres$ result size=3162
+Elapsed time: 327ms
+
+q6=
+
+select
+  l_extendedprice,
+  l_discount
+from
+  lineitem
+        
+Postgres$ result size=6001215
+Elapsed time: 1492ms
+
+q22=
+
+select
+  c_phone, c_acctbal
+from
+  customer
+where not exists (
+  select *
+  from orders
+  where o_custkey = c_custkey
+)
+        
+Postgres$ result size=50004
+Elapsed time: 225ms
+
+q18=
+
+select
+  c_name, c_custkey, o_orderkey, o_orderdate, o_totalprice, l_quantity
+from
+  customer, orders, lineitem
+where
+  c_custkey = o_custkey and o_orderkey = l_orderkey
+        
+Postgres$ result size=6001215
+Elapsed time: 2477ms
+
+q19=
+
+select
+ l_extendedprice, l_discount
+from
+  lineitem, part
+where
+  p_partkey = l_partkey
+  and p_brand = 'Brand#12'
+  and p_container = 'SM CASE'
+  and l_shipmode = 'AIR'
+  and l_shipinstruct = 'DELIVER IN PERSON'
+        
+Postgres$ result size=205
+Elapsed time: 80ms
+
+q4=
+
+select
+  *
+from
+  lineitem, orders
+where
+  l_orderkey = o_orderkey
+        
+Postgres$ result size=6001215
+Elapsed time: 2381ms
+
+q1=
+
+select
+  l_returnflag,
+  l_linestatus
+from
+  lineitem
+        
+Postgres$ result size=6001215
+Elapsed time: 1409ms
+
+q9b=
+
+select
+  n_name as nation, o_orderdate, l_extendedprice, l_discount, ps_supplycost, l_quantity
+from
+  part, supplier, lineitem, partsupp, orders, nation
+where
+  s_suppkey = l_suppkey
+  and ps_suppkey = l_suppkey and ps_partkey = l_partkey
+  and p_partkey = l_partkey
+  and o_orderkey = l_orderkey
+  and s_nationkey = n_nationkey
+        
+Postgres$ result size=6001215
+Elapsed time: 20043ms
+
+q13=
+
+select
+  o_orderkey
+from
+  customer left outer join orders on c_custkey = o_custkey
+        
+Postgres$ result size=1550004
+Elapsed time: 591ms
+
+q21a=
+
+select
+  s_name
+from
+  supplier, lineitem l1, orders, nation
+where
+  s_suppkey = l1.l_suppkey
+  and o_orderkey = l1.l_orderkey
+  and o_orderstatus = 'F'
+  and exists (
+    select *
+    from
+      lineitem l2
+    where
+      l2.l_orderkey = l1.l_orderkey
+  )
+  and s_nationkey = n_nationkey
+  and n_name = 'SAUDI ARABIA'
+        
+Postgres$ result size=119924
+Elapsed time: 743ms
+
+q7=
+
+select
+  n1.n_name as supp_nation,
+  n2.n_name as cust_nation,
+  l_shipdate,
+  l_extendedprice,
+  l_discount
+from
+  supplier,
+  lineitem,
+  orders,
+  customer,
+  nation n1,
+  nation n2
+where
+  s_suppkey = l_suppkey
+  and o_orderkey = l_orderkey
+  and c_custkey = o_custkey
+  and s_nationkey = n1.n_nationkey
+  and c_nationkey = n2.n_nationkey
+  and (
+    n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY'
+  )
+        
+Postgres$ result size=9735
+Elapsed time: 324ms
+
+q8=
+
+select
+  o_orderdate as o_year, l_extendedprice, l_discount, n2.n_name as nation
+from
+  part, supplier, lineitem, orders, customer, nation n1, nation n2, region
+where
+  p_partkey = l_partkey
+  and s_suppkey = l_suppkey
+  and l_orderkey = o_orderkey
+  and o_custkey = c_custkey
+  and c_nationkey = n1.n_nationkey and n1.n_regionkey = r_regionkey and r_name = 'AMERICA'
+  and s_nationkey = n2.n_nationkey
+  and p_type = 'ECONOMY ANODIZED STEEL'
+        
+Postgres$ result size=8716
+Elapsed time: 1016ms
+
+q12=
+
+select
+  l_shipmode
+from
+  orders,
+  lineitem
+where
+  o_orderkey = l_orderkey
+  and l_shipmode = 'MAIL'
+        
+Postgres$ result size=857401
+Elapsed time: 756ms
+
+q11=
+
+select
+  ps_partkey, ps_supplycost, ps_availqty
+from
+  partsupp, supplier, nation
+where
+  ps_suppkey = s_suppkey
+  and s_nationkey = n_nationkey
+  and n_name = 'GERMANY'
+        
+Postgres$ result size=31680
+Elapsed time: 88ms
+
+q20=
+
+select
+  s_name, s_address
+from
+  supplier, nation
+where s_suppkey in (
+  select ps_suppkey
+  from partsupp
+  where ps_partkey in (
+    select p_partkey
+    from part
+    where p_size = 15
+  )
+) and s_nationkey = n_nationkey
+  and n_name = 'CANADA'
+        
+Postgres$ result size=324
+Elapsed time: 112ms
+
+q10=
+
+select
+  c_custkey, c_name, l_extendedprice, l_discount, c_acctbal, n_name, c_address, c_phone, c_comment
+from
+  customer, orders, lineitem, nation
+where
+  c_custkey = o_custkey
+  and l_orderkey = o_orderkey
+  and l_returnflag = 'R'
+  and c_nationkey = n_nationkey
+        
+Postgres$ result size=1478870
+Elapsed time: 1295ms
+
+q15=
+
+select
+  s_suppkey, s_name, s_address, s_phone
+from
+  supplier, lineitem
+where
+  s_suppkey = l_suppkey
+        
+Postgres$ result size=6001215
+Elapsed time: 1513ms
+
+q14=
+
+select
+  p_type, l_extendedprice, l_discount
+from
+  lineitem, part
+where
+  l_partkey = p_partkey
+        
+Postgres$ result size=6001215
+Elapsed time: 1785ms
+
+q3=
+
+select
+  l_orderkey,
+  l_extendedprice,
+  l_discount
+  o_orderdate,
+  o_shippriority
+from
+  customer,
+  orders,
+  lineitem
+where
+  c_mktsegment = 'BUILDING'
+  and c_custkey = o_custkey
+  and l_orderkey = o_orderkey
+        
+Postgres$ result size=1214743
+Elapsed time: 1169ms
+
+q16=
+
+select
+  p_brand, p_type, p_size, ps_suppkey
+from
+  partsupp, part
+where
+  p_partkey = ps_partkey
+  and p_size = 49
+        
+Postgres$ result size=15780
+Elapsed time: 117ms
+
+q5=
+
+select
+  n_name,
+  l_extendedprice,
+  l_discount
+from
+  customer, orders, lineitem, supplier, nation, region
+where
+  c_custkey = o_custkey
+  and l_orderkey = o_orderkey
+  and l_suppkey = s_suppkey
+  and c_nationkey = s_nationkey
+  and s_nationkey = n_nationkey
+  and n_regionkey = r_regionkey
+  and r_name = 'ASIA'
+        
+Postgres$ result size=48089
+Elapsed time: 1025ms
+
+q17=
+
+select
+  l_extendedprice
+from
+  lineitem, part
+where
+  p_partkey = l_partkey
+  and p_brand = 'Brand#23'
+  and p_container = 'MED BOX'
+        
+Postgres$ result size=6088
+Elapsed time: 77ms
+
+q9a=
+
+select
+  n_name as nation, o_orderdate, l_extendedprice, l_discount, ps_supplycost, l_quantity
+from
+  part, supplier, lineitem, partsupp, orders, nation
+where
+  s_suppkey = l_suppkey
+  and ps_suppkey = l_suppkey and ps_partkey = l_partkey
+  and p_partkey = l_partkey
+  and o_orderkey = l_orderkey
+  and s_nationkey = n_nationkey
+        
+Postgres$ result size=6001215
+Elapsed time: 18618ms
+query=q1, count=6001215, duration=1409
+query=q10, count=1478870, duration=1295
+query=q11, count=31680, duration=88
+query=q12, count=857401, duration=756
+query=q13, count=1550004, duration=591
+query=q14, count=6001215, duration=1785
+query=q15, count=6001215, duration=1513
+query=q16, count=15780, duration=117
+query=q17, count=6088, duration=77
+query=q18, count=6001215, duration=2477
+query=q19, count=205, duration=80
+query=q2, count=3162, duration=327
+query=q20, count=324, duration=112
+query=q21a, count=119924, duration=743
+query=q22, count=50004, duration=225
+query=q3, count=1214743, duration=1169
+query=q4, count=6001215, duration=2381
+query=q5, count=48089, duration=1025
+query=q6, count=6001215, duration=1492
+query=q7, count=9735, duration=324
+query=q8, count=8716, duration=1016
+query=q9a, count=6001215, duration=18618
+query=q9b, count=6001215, duration=20043
