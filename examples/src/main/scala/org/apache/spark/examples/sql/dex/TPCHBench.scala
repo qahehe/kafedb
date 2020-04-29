@@ -519,13 +519,21 @@ object TPCHBench extends DexTPCHBenchCommon {
           |  and s_nationkey = n_nationkey
           |  and n_name = 'SAUDI ARABIA'
         """.stripMargin,
-          lineitem.as("l2")
+          /*lineitem.as("l2")
             .join(orders.where("o_orderstatus = 'F'")
               .join(lineitem.as("l1")).where("o_orderkey = l1.l_orderkey")
               .join(supplier).where("l1.l_suppkey = s_suppkey")
               .join(nation).where("s_nationkey = n_nationkey and n_name = 'SAUDI ARABIA'"),
               expr("l2.l_orderkey") === col("o_orderkey"), "right_semi")
-            .select("s_name")
+            .select("s_name")*/
+        // lineitem.as("l2")
+        //  .join(
+          orders.where("o_orderstatus = 'F'")
+          .join(lineitem.as("l1")).where("o_orderkey = l1.l_orderkey")
+          .join(supplier).where("l1.l_suppkey = s_suppkey")
+          .join(nation).where("s_nationkey = n_nationkey and n_name = 'SAUDI ARABIA'")
+          .join(lineitem.as("l2"), col("o_orderkey") === expr("l2.l_orderkey"), "left_semi")
+          .select("s_name")
       ),
 
       //   L3 join-anti-left L1
