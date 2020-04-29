@@ -149,8 +149,8 @@ class DexPkfkTPCHSuite extends DexPkfkTPCHTest {
   }
 
   test("right anti join") {
-    val query = supplier.join(partsupp.where("ps_comment == 'psb'"), col("s_suppkey") === col("ps_suppkey"), "left_semi").select("s_name")
-    val queryRewrite = partsupp.where("ps_comment == 'psb'").join(supplier, col("ps_suppkey") === col("s_suppkey"), "right_semi").select("s_name")
+    val query = supplier.join(partsupp.where("ps_comment == 'psb'"), col("s_suppkey") === col("ps_suppkey"), "left_anti").select("s_name")
+    val queryRewrite = partsupp.where("ps_comment == 'psb'").join(supplier, col("ps_suppkey") === col("s_suppkey"), "right_anti").select("s_name")
     checkDexFor(query, queryRewrite.dexPkFk(pks, fks))
   }
 }

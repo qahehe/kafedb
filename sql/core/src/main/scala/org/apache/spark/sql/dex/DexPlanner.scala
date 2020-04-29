@@ -275,6 +275,16 @@ Project [cast(decrypt(metadata_dec_key, b_prf#13) as int) AS b#16]
                |  FROM $rightSubquery
                |)
              """.stripMargin
+          case x if x == RightAnti && j.condition.isDefined =>
+            val (leftRid, rightRid) = ridOrdersFromJoin(j)
+            s"""
+               |SELECT * FROM
+               |$rightSubquery
+               |WHERE ($rightRid) NOT IN (
+               |  SELECT $leftRid
+               |  FROM $leftSubquery
+               |)
+             """.stripMargin
           case x if x == RightOuter && isNaturalJoin(j) =>
             s"""
                |$leftSubquery
