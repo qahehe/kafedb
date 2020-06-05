@@ -1,0 +1,445 @@
+20/04/29 04:29:15 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+baseLocation=/data/encrypted-spark/bench/data
+baseDatagenFolder=/data/encrypted-spark/bench/datagen
+Creating external tables at /data/encrypted-spark/bench/data/tpch/sf1_parquet
+Creating external table part in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/part.
+Discovering partitions for table part.
+Creating external table supplier in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier.
+Creating external table partsupp in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp.
+Creating external table customer in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/customer.
+Discovering partitions for table customer.
+Creating external table orders in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/orders.
+Discovering partitions for table orders.
+Creating external table lineitem in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem.
+Discovering partitions for table lineitem.
+Creating external table nation in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/nation.
+Creating external table region in database tpch_sf1_parquet using data stored in /data/encrypted-spark/bench/data/tpch/sf1_parquet/region.
+The current database has been set to tpch_sf1_parquet.
+Elapsed time: 10853ms
+Table part has 25 partitions
+Cannot VACUUM part
++----------------------------+-------------------------------------------------------------+-------+
+|col_name                    |data_type                                                    |comment|
++----------------------------+-------------------------------------------------------------+-------+
+|p_partkey                   |bigint                                                       |null   |
+|p_name                      |string                                                       |null   |
+|p_mfgr                      |string                                                       |null   |
+|p_type                      |string                                                       |null   |
+|p_size                      |int                                                          |null   |
+|p_container                 |string                                                       |null   |
+|p_retailprice               |decimal(12,2)                                                |null   |
+|p_comment                   |string                                                       |null   |
+|p_brand                     |string                                                       |null   |
+|# Partition Information     |                                                             |       |
+|# col_name                  |data_type                                                    |comment|
+|p_brand                     |string                                                       |null   |
+|                            |                                                             |       |
+|# Detailed Table Information|                                                             |       |
+|Database                    |tpch_sf1_parquet                                             |       |
+|Table                       |part                                                         |       |
+|Created Time                |Wed Apr 29 04:29:18 UTC 2020                                 |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                 |       |
+|Created By                  |Spark 2.4.0                                                  |       |
+|Type                        |EXTERNAL                                                     |       |
+|Provider                    |parquet                                                      |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/part|       |
+|Partition Provider          |Catalog                                                      |       |
++----------------------------+-------------------------------------------------------------+-------+
+
+
+Table supplier has no partitions
+Cannot VACUUM supplier
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|s_suppkey                   |bigint                                                           |null   |
+|s_name                      |string                                                           |null   |
+|s_address                   |string                                                           |null   |
+|s_nationkey                 |bigint                                                           |null   |
+|s_phone                     |string                                                           |null   |
+|s_acctbal                   |decimal(12,2)                                                    |null   |
+|s_comment                   |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |supplier                                                         |       |
+|Created Time                |Wed Apr 29 04:29:19 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/supplier|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table partsupp has no partitions
+Cannot VACUUM partsupp
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|ps_partkey                  |bigint                                                           |null   |
+|ps_suppkey                  |bigint                                                           |null   |
+|ps_availqty                 |int                                                              |null   |
+|ps_supplycost               |decimal(12,2)                                                    |null   |
+|ps_comment                  |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |partsupp                                                         |       |
+|Created Time                |Wed Apr 29 04:29:20 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/partsupp|       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table customer has 5 partitions
+Cannot VACUUM customer
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|c_custkey                   |bigint                                                           |null   |
+|c_name                      |string                                                           |null   |
+|c_address                   |string                                                           |null   |
+|c_nationkey                 |bigint                                                           |null   |
+|c_phone                     |string                                                           |null   |
+|c_acctbal                   |decimal(12,2)                                                    |null   |
+|c_comment                   |string                                                           |null   |
+|c_mktsegment                |string                                                           |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|c_mktsegment                |string                                                           |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |customer                                                         |       |
+|Created Time                |Wed Apr 29 04:29:20 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/customer|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table orders has 2406 partitions
+Cannot VACUUM orders
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|o_orderkey                  |bigint                                                         |null   |
+|o_custkey                   |bigint                                                         |null   |
+|o_orderstatus               |string                                                         |null   |
+|o_totalprice                |decimal(12,2)                                                  |null   |
+|o_orderpriority             |string                                                         |null   |
+|o_clerk                     |string                                                         |null   |
+|o_shippriority              |int                                                            |null   |
+|o_comment                   |string                                                         |null   |
+|o_orderdate                 |date                                                           |null   |
+|# Partition Information     |                                                               |       |
+|# col_name                  |data_type                                                      |comment|
+|o_orderdate                 |date                                                           |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |orders                                                         |       |
+|Created Time                |Wed Apr 29 04:29:20 UTC 2020                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/orders|       |
+|Partition Provider          |Catalog                                                        |       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table lineitem has 2526 partitions
+Cannot VACUUM lineitem
++----------------------------+-----------------------------------------------------------------+-------+
+|col_name                    |data_type                                                        |comment|
++----------------------------+-----------------------------------------------------------------+-------+
+|l_orderkey                  |bigint                                                           |null   |
+|l_partkey                   |bigint                                                           |null   |
+|l_suppkey                   |bigint                                                           |null   |
+|l_linenumber                |int                                                              |null   |
+|l_quantity                  |decimal(12,2)                                                    |null   |
+|l_extendedprice             |decimal(12,2)                                                    |null   |
+|l_discount                  |decimal(12,2)                                                    |null   |
+|l_tax                       |decimal(12,2)                                                    |null   |
+|l_returnflag                |string                                                           |null   |
+|l_linestatus                |string                                                           |null   |
+|l_commitdate                |string                                                           |null   |
+|l_receiptdate               |string                                                           |null   |
+|l_shipinstruct              |string                                                           |null   |
+|l_shipmode                  |string                                                           |null   |
+|l_comment                   |string                                                           |null   |
+|l_shipdate                  |date                                                             |null   |
+|# Partition Information     |                                                                 |       |
+|# col_name                  |data_type                                                        |comment|
+|l_shipdate                  |date                                                             |null   |
+|                            |                                                                 |       |
+|# Detailed Table Information|                                                                 |       |
+|Database                    |tpch_sf1_parquet                                                 |       |
+|Table                       |lineitem                                                         |       |
+|Created Time                |Wed Apr 29 04:29:24 UTC 2020                                     |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                     |       |
+|Created By                  |Spark 2.4.0                                                      |       |
+|Type                        |EXTERNAL                                                         |       |
+|Provider                    |parquet                                                          |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/lineitem|       |
+|Partition Provider          |Catalog                                                          |       |
++----------------------------+-----------------------------------------------------------------+-------+
+
+
+Table nation has no partitions
+Cannot VACUUM nation
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|n_nationkey                 |bigint                                                         |null   |
+|n_name                      |string                                                         |null   |
+|n_regionkey                 |bigint                                                         |null   |
+|n_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |nation                                                         |       |
+|Created Time                |Wed Apr 29 04:29:27 UTC 2020                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/nation|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+Table region has no partitions
+Cannot VACUUM region
++----------------------------+---------------------------------------------------------------+-------+
+|col_name                    |data_type                                                      |comment|
++----------------------------+---------------------------------------------------------------+-------+
+|r_regionkey                 |bigint                                                         |null   |
+|r_name                      |string                                                         |null   |
+|r_comment                   |string                                                         |null   |
+|                            |                                                               |       |
+|# Detailed Table Information|                                                               |       |
+|Database                    |tpch_sf1_parquet                                               |       |
+|Table                       |region                                                         |       |
+|Created Time                |Wed Apr 29 04:29:27 UTC 2020                                   |       |
+|Last Access                 |Wed Dec 31 23:59:59 UTC 1969                                   |       |
+|Created By                  |Spark 2.4.0                                                    |       |
+|Type                        |EXTERNAL                                                       |       |
+|Provider                    |parquet                                                        |       |
+|Location                    |file:///data/encrypted-spark/bench/data/tpch/sf1_parquet/region|       |
++----------------------------+---------------------------------------------------------------+-------+
+
+
+
+q22=
+
+select
+  c_phone, c_acctbal
+from
+  customer
+where not exists (
+  select *
+  from orders
+  where o_custkey = c_custkey
+)
+        
+20/04/29 04:29:29 WARN DexPlanner: dexPlan=DexPkFkPlan
+20/04/29 04:29:29 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2079L]
++- DexPkFkPlan {l_orderkey_and_l_linenumber, ps_partkey_and_ps_suppkey, n_nationkey, r_regionkey, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkey, l_partkey_and_l_suppkey, ps_partkey, l_suppkey, l_orderkey, ps_suppkey}
+   +- Project
+      +- Join RightAnti, (o_custkey#343L = c_custkey#290L)
+         :- Project [o_custkey#343L]
+         :  +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         +- Project [c_custkey#290L]
+            +- Relation[c_custkey#290L,c_name#291,c_address#292,c_nationkey#293L,c_phone#294,c_acctbal#295,c_comment#296,c_mktsegment#297] parquet
+
+20/04/29 04:29:30 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2079L]
++- 'Project
+   +- 'DexPkFkPlan {l_orderkey_and_l_linenumber, ps_partkey_and_ps_suppkey, n_nationkey, r_regionkey, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkey, l_partkey_and_l_suppkey, ps_partkey, l_suppkey, l_orderkey, ps_suppkey}
+      +- 'Join RightAnti, (dexdecrypt(dexprf(0x85C8B00493467AF7DE7DDEA89F9A4F579FB51E0F45AA4482BF2A4716700325C4, dexencode('rid_0, BinaryType)), 'cfpk_orders_customer_0) = 'rid_1)
+         :- Project [rid#2081 AS rid_0#2105, cpfk_customer_orders#2082 AS cpfk_customer_orders_0#2106, cfpk_orders_customer#2083 AS cfpk_orders_customer_0#2107, cval_orders_o_orderstatus#2084 AS cval_orders_o_orderstatus_0#2108, cval_orders_o_totalprice#2085 AS cval_orders_o_totalprice_0#2109, cval_orders_o_orderpriority#2086 AS cval_orders_o_orderpriority_0#2110, cval_orders_o_clerk#2087 AS cval_orders_o_clerk_0#2111, cval_orders_o_shippriority#2088 AS cval_orders_o_shippriority_0#2112, cval_orders_o_comment#2089 AS cval_orders_o_comment_0#2113, cval_orders_o_orderdate#2090 AS cval_orders_o_orderdate_0#2114, cdepval_orders_o_orderstatus#2091 AS cdepval_orders_o_orderstatus_0#2115, cdepval_orders_o_totalprice#2092 AS cdepval_orders_o_totalprice_0#2116, cdepval_orders_o_orderpriority#2093 AS cdepval_orders_o_orderpriority_0#2117, cdepval_orders_o_clerk#2094 AS cdepval_orders_o_clerk_0#2118, cdepval_orders_o_shippriority#2095 AS cdepval_orders_o_shippriority_0#2119, cdepval_orders_o_comment#2096 AS cdepval_orders_o_comment_0#2120, cdepval_orders_o_orderdate#2097 AS cdepval_orders_o_orderdate_0#2121, co_orderstatus#2098 AS co_orderstatus_0#2122, co_totalprice#2099 AS co_totalprice_0#2123, co_orderpriority#2100 AS co_orderpriority_0#2124, co_clerk#2101 AS co_clerk_0#2125, co_shippriority#2102 AS co_shippriority_0#2126, co_comment#2103 AS co_comment_0#2127, co_orderdate#2104 AS co_orderdate_0#2128]
+         :  +- Relation[rid#2081,cpfk_customer_orders#2082,cfpk_orders_customer#2083,cval_orders_o_orderstatus#2084,cval_orders_o_totalprice#2085,cval_orders_o_orderpriority#2086,cval_orders_o_clerk#2087,cval_orders_o_shippriority#2088,cval_orders_o_comment#2089,cval_orders_o_orderdate#2090,cdepval_orders_o_orderstatus#2091,cdepval_orders_o_totalprice#2092,cdepval_orders_o_orderpriority#2093,cdepval_orders_o_clerk#2094,cdepval_orders_o_shippriority#2095,cdepval_orders_o_comment#2096,cdepval_orders_o_orderdate#2097,co_orderstatus#2098,co_totalprice#2099,co_orderpriority#2100,co_clerk#2101,co_shippriority#2102,co_comment#2103,co_orderdate#2104] JDBCRelation(torders) [numPartitions=1]
+         +- Project [rid#2129 AS rid_1#2150, cpfk_nation_customer#2130 AS cpfk_nation_customer_1#2151, cfpk_customer_nation#2131 AS cfpk_customer_nation_1#2152, cval_customer_c_name#2132 AS cval_customer_c_name_1#2153, cval_customer_c_address#2133 AS cval_customer_c_address_1#2154, cval_customer_c_phone#2134 AS cval_customer_c_phone_1#2155, cval_customer_c_acctbal#2135 AS cval_customer_c_acctbal_1#2156, cval_customer_c_comment#2136 AS cval_customer_c_comment_1#2157, cval_customer_c_mktsegment#2137 AS cval_customer_c_mktsegment_1#2158, cdepval_customer_c_name#2138 AS cdepval_customer_c_name_1#2159, cdepval_customer_c_address#2139 AS cdepval_customer_c_address_1#2160, cdepval_customer_c_phone#2140 AS cdepval_customer_c_phone_1#2161, cdepval_customer_c_acctbal#2141 AS cdepval_customer_c_acctbal_1#2162, cdepval_customer_c_comment#2142 AS cdepval_customer_c_comment_1#2163, cdepval_customer_c_mktsegment#2143 AS cdepval_customer_c_mktsegment_1#2164, cc_name#2144 AS cc_name_1#2165, cc_address#2145 AS cc_address_1#2166, cc_phone#2146 AS cc_phone_1#2167, cc_acctbal#2147 AS cc_acctbal_1#2168, cc_comment#2148 AS cc_comment_1#2169, cc_mktsegment#2149 AS cc_mktsegment_1#2170]
+            +- Relation[rid#2129,cpfk_nation_customer#2130,cfpk_customer_nation#2131,cval_customer_c_name#2132,cval_customer_c_address#2133,cval_customer_c_phone#2134,cval_customer_c_acctbal#2135,cval_customer_c_comment#2136,cval_customer_c_mktsegment#2137,cdepval_customer_c_name#2138,cdepval_customer_c_address#2139,cdepval_customer_c_phone#2140,cdepval_customer_c_acctbal#2141,cdepval_customer_c_comment#2142,cdepval_customer_c_mktsegment#2143,cc_name#2144,cc_address#2145,cc_phone#2146,cc_acctbal#2147,cc_comment#2148,cc_mktsegment#2149] JDBCRelation(tcustomer) [numPartitions=1]
+
+DexPkFk$ result size=50004
+Elapsed time: 2999ms
+
+q21a=
+
+select
+  s_name
+from
+  supplier, lineitem l1, orders, nation
+where
+  s_suppkey = l1.l_suppkey
+  and o_orderkey = l1.l_orderkey
+  and o_orderstatus = 'F'
+  and exists (
+    select *
+    from
+      lineitem l2
+    where
+      l2.l_orderkey = l1.l_orderkey
+  )
+  and s_nationkey = n_nationkey
+  and n_name = 'SAUDI ARABIA'
+        
+20/04/29 04:29:32 WARN DexPlanner: dexPlan=DexPkFkPlan
+20/04/29 04:29:32 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2196L]
++- DexPkFkPlan {l_orderkey_and_l_linenumber, ps_partkey_and_ps_suppkey, n_nationkey, r_regionkey, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkey, l_partkey_and_l_suppkey, ps_partkey, l_suppkey, l_orderkey, ps_suppkey}
+   +- Project
+      +- Join LeftSemi, (o_orderkey#342L = l_orderkey#1900L)
+         :- Project [o_orderkey#342L]
+         :  +- Join Inner, (s_nationkey#21L = n_nationkey#108L)
+         :     :- Project [o_orderkey#342L, s_nationkey#21L]
+         :     :  +- Join Inner, (l_suppkey#308L = s_suppkey#18L)
+         :     :     :- Project [o_orderkey#342L, l_suppkey#308L]
+         :     :     :  +- Join Inner, (o_orderkey#342L = l_orderkey#306L)
+         :     :     :     :- Project [o_orderkey#342L]
+         :     :     :     :  +- Filter (o_orderstatus#344 = F)
+         :     :     :     :     +- Relation[o_orderkey#342L,o_custkey#343L,o_orderstatus#344,o_totalprice#345,o_orderpriority#346,o_clerk#347,o_shippriority#348,o_comment#349,o_orderdate#350] parquet
+         :     :     :     +- Project [l_orderkey#306L, l_suppkey#308L]
+         :     :     :        +- Relation[l_orderkey#306L,l_partkey#307L,l_suppkey#308L,l_linenumber#309,l_quantity#310,l_extendedprice#311,l_discount#312,l_tax#313,l_returnflag#314,l_linestatus#315,l_commitdate#316,l_receiptdate#317,l_shipinstruct#318,l_shipmode#319,l_comment#320,l_shipdate#321] parquet
+         :     :     +- Project [s_suppkey#18L, s_nationkey#21L]
+         :     :        +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+         :     +- Project [n_nationkey#108L]
+         :        +- Filter (n_name#109 = SAUDI ARABIA)
+         :           +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+         +- Project [l_orderkey#1900L]
+            +- Relation[l_orderkey#1900L,l_partkey#1901L,l_suppkey#1902L,l_linenumber#1903,l_quantity#1904,l_extendedprice#1905,l_discount#1906,l_tax#1907,l_returnflag#1908,l_linestatus#1909,l_commitdate#1910,l_receiptdate#1911,l_shipinstruct#1912,l_shipmode#1913,l_comment#1914,l_shipdate#1915] parquet
+
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:29:32 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:29:32 WARN Utils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.debug.maxToStringFields' in SparkEnv.conf.
+20/04/29 04:29:32 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2196L]
++- 'Project
+   +- 'DexPkFkPlan {l_orderkey_and_l_linenumber, ps_partkey_and_ps_suppkey, n_nationkey, r_regionkey, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkey, l_partkey_and_l_suppkey, ps_partkey, l_suppkey, l_orderkey, ps_suppkey}
+      +- 'Join LeftSemi, ('rid_0 = dexdecrypt(dexprf(0x06EAD44A17B65F5357B33A6C379A162737709FAB1CE0BEAD23C574C7425C6438, dexencode('rid_4, BinaryType)), 'cfpk_lineitem_orders_4))
+         :- 'Join UsingJoin(Inner,List(rid_2))
+         :  :- 'Join Inner, (dexdecrypt(dexprf(0x3931CE1B33FE5F43A40C97988128FA62C782E4FDB0686B939E3CC5D2245043C8, dexencode('rid_1, BinaryType)), 'cfpk_lineitem_supplier_1) = 'rid_2)
+         :  :  :- 'Join UsingJoin(Inner,List(rid_1))
+         :  :  :  :- 'DexPkfkMaterializationAwareJoin orders~lineitem, 'cpfk_orders_lineitem_1, 'rid_0, NotMaterialized, NotMaterialized, [rid_0#2222, cpfk_customer_orders_0#2223, cfpk_orders_customer_0#2224, cval_orders_o_orderstatus_0#2225, cval_orders_o_totalprice_0#2226, cval_orders_o_orderpriority_0#2227, cval_orders_o_clerk_0#2228, cval_orders_o_shippriority_0#2229, cval_orders_o_comment_0#2230, cval_orders_o_orderdate_0#2231, cdepval_orders_o_orderstatus_0#2232, cdepval_orders_o_totalprice_0#2233, cdepval_orders_o_orderpriority_0#2234, cdepval_orders_o_clerk_0#2235, cdepval_orders_o_shippriority_0#2236, cdepval_orders_o_comment_0#2237, cdepval_orders_o_orderdate_0#2238, co_orderstatus_0#2239, co_totalprice_0#2240, co_orderpriority_0#2241, co_clerk_0#2242, co_shippriority_0#2243, co_comment_0#2244, co_orderdate_0#2245, 'rid_1]
+         :  :  :  :  :- 'DexPseudoPrimaryKeyFilter orders~o_orderstatus~F, cval_orders_o_orderstatus, 'cval_orders_o_orderstatus_0, torders
+         :  :  :  :  :  +- Project [rid#2198 AS rid_0#2222, cpfk_customer_orders#2199 AS cpfk_customer_orders_0#2223, cfpk_orders_customer#2200 AS cfpk_orders_customer_0#2224, cval_orders_o_orderstatus#2201 AS cval_orders_o_orderstatus_0#2225, cval_orders_o_totalprice#2202 AS cval_orders_o_totalprice_0#2226, cval_orders_o_orderpriority#2203 AS cval_orders_o_orderpriority_0#2227, cval_orders_o_clerk#2204 AS cval_orders_o_clerk_0#2228, cval_orders_o_shippriority#2205 AS cval_orders_o_shippriority_0#2229, cval_orders_o_comment#2206 AS cval_orders_o_comment_0#2230, cval_orders_o_orderdate#2207 AS cval_orders_o_orderdate_0#2231, cdepval_orders_o_orderstatus#2208 AS cdepval_orders_o_orderstatus_0#2232, cdepval_orders_o_totalprice#2209 AS cdepval_orders_o_totalprice_0#2233, cdepval_orders_o_orderpriority#2210 AS cdepval_orders_o_orderpriority_0#2234, cdepval_orders_o_clerk#2211 AS cdepval_orders_o_clerk_0#2235, cdepval_orders_o_shippriority#2212 AS cdepval_orders_o_shippriority_0#2236, cdepval_orders_o_comment#2213 AS cdepval_orders_o_comment_0#2237, cdepval_orders_o_orderdate#2214 AS cdepval_orders_o_orderdate_0#2238, co_orderstatus#2215 AS co_orderstatus_0#2239, co_totalprice#2216 AS co_totalprice_0#2240, co_orderpriority#2217 AS co_orderpriority_0#2241, co_clerk#2218 AS co_clerk_0#2242, co_shippriority#2219 AS co_shippriority_0#2243, co_comment#2220 AS co_comment_0#2244, co_orderdate#2221 AS co_orderdate_0#2245]
+         :  :  :  :  :     +- Relation[rid#2198,cpfk_customer_orders#2199,cfpk_orders_customer#2200,cval_orders_o_orderstatus#2201,cval_orders_o_totalprice#2202,cval_orders_o_orderpriority#2203,cval_orders_o_clerk#2204,cval_orders_o_shippriority#2205,cval_orders_o_comment#2206,cval_orders_o_orderdate#2207,cdepval_orders_o_orderstatus#2208,cdepval_orders_o_totalprice#2209,cdepval_orders_o_orderpriority#2210,cdepval_orders_o_clerk#2211,cdepval_orders_o_shippriority#2212,cdepval_orders_o_comment#2213,cdepval_orders_o_orderdate#2214,co_orderstatus#2215,co_totalprice#2216,co_orderpriority#2217,co_clerk#2218,co_shippriority#2219,co_comment#2220,co_orderdate#2221] JDBCRelation(torders) [numPartitions=1]
+         :  :  :  :  +- 'Project ['cpfk_orders_lineitem_1, 'rid_1]
+         :  :  :  :     +- Project [rid#2432 AS rid_1#2477, cpfk_orders_lineitem#2433 AS cpfk_orders_lineitem_1#2478, cpfk_supplier_lineitem#2434 AS cpfk_supplier_lineitem_1#2479, cfpk_lineitem_supplier#2435 AS cfpk_lineitem_supplier_1#2480, cfpk_lineitem_partsupp#2436 AS cfpk_lineitem_partsupp_1#2481, cpfk_part_lineitem#2437 AS cpfk_part_lineitem_1#2482, cfpk_lineitem_part#2438 AS cfpk_lineitem_part_1#2483, cpfk_partsupp_lineitem#2439 AS cpfk_partsupp_lineitem_1#2484, cfpk_lineitem_orders#2440 AS cfpk_lineitem_orders_1#2485, cval_lineitem_l_quantity#2441 AS cval_lineitem_l_quantity_1#2486, cval_lineitem_l_extendedprice#2442 AS cval_lineitem_l_extendedprice_1#2487, cval_lineitem_l_discount#2443 AS cval_lineitem_l_discount_1#2488, cval_lineitem_l_tax#2444 AS cval_lineitem_l_tax_1#2489, cval_lineitem_l_returnflag#2445 AS cval_lineitem_l_returnflag_1#2490, cval_lineitem_l_linestatus#2446 AS cval_lineitem_l_linestatus_1#2491, cval_lineitem_l_commitdate#2447 AS cval_lineitem_l_commitdate_1#2492, cval_lineitem_l_receiptdate#2448 AS cval_lineitem_l_receiptdate_1#2493, cval_lineitem_l_shipinstruct#2449 AS cval_lineitem_l_shipinstruct_1#2494, cval_lineitem_l_shipmode#2450 AS cval_lineitem_l_shipmode_1#2495, cval_lineitem_l_comment#2451 AS cval_lineitem_l_comment_1#2496, cval_lineitem_l_shipdate#2452 AS cval_lineitem_l_shipdate_1#2497, cdepval_lineitem_l_quantity#2453 AS cdepval_lineitem_l_quantity_1#2498, cdepval_lineitem_l_extendedprice#2454 AS cdepval_lineitem_l_extendedprice_1#2499, cdepval_lineitem_l_discount#2455 AS cdepval_lineitem_l_discount_1#2500, ... 21 more fields]
+         :  :  :  :        +- Relation[rid#2432,cpfk_orders_lineitem#2433,cpfk_supplier_lineitem#2434,cfpk_lineitem_supplier#2435,cfpk_lineitem_partsupp#2436,cpfk_part_lineitem#2437,cfpk_lineitem_part#2438,cpfk_partsupp_lineitem#2439,cfpk_lineitem_orders#2440,cval_lineitem_l_quantity#2441,cval_lineitem_l_extendedprice#2442,cval_lineitem_l_discount#2443,cval_lineitem_l_tax#2444,cval_lineitem_l_returnflag#2445,cval_lineitem_l_linestatus#2446,cval_lineitem_l_commitdate#2447,cval_lineitem_l_receiptdate#2448,cval_lineitem_l_shipinstruct#2449,cval_lineitem_l_shipmode#2450,cval_lineitem_l_comment#2451,cval_lineitem_l_shipdate#2452,cdepval_lineitem_l_quantity#2453,cdepval_lineitem_l_extendedprice#2454,cdepval_lineitem_l_discount#2455,... 21 more fields] JDBCRelation(tlineitem) [numPartitions=1]
+         :  :  :  +- Project [rid#2294 AS rid_1#2339, cpfk_orders_lineitem#2295 AS cpfk_orders_lineitem_1#2340, cpfk_supplier_lineitem#2296 AS cpfk_supplier_lineitem_1#2341, cfpk_lineitem_supplier#2297 AS cfpk_lineitem_supplier_1#2342, cfpk_lineitem_partsupp#2298 AS cfpk_lineitem_partsupp_1#2343, cpfk_part_lineitem#2299 AS cpfk_part_lineitem_1#2344, cfpk_lineitem_part#2300 AS cfpk_lineitem_part_1#2345, cpfk_partsupp_lineitem#2301 AS cpfk_partsupp_lineitem_1#2346, cfpk_lineitem_orders#2302 AS cfpk_lineitem_orders_1#2347, cval_lineitem_l_quantity#2303 AS cval_lineitem_l_quantity_1#2348, cval_lineitem_l_extendedprice#2304 AS cval_lineitem_l_extendedprice_1#2349, cval_lineitem_l_discount#2305 AS cval_lineitem_l_discount_1#2350, cval_lineitem_l_tax#2306 AS cval_lineitem_l_tax_1#2351, cval_lineitem_l_returnflag#2307 AS cval_lineitem_l_returnflag_1#2352, cval_lineitem_l_linestatus#2308 AS cval_lineitem_l_linestatus_1#2353, cval_lineitem_l_commitdate#2309 AS cval_lineitem_l_commitdate_1#2354, cval_lineitem_l_receiptdate#2310 AS cval_lineitem_l_receiptdate_1#2355, cval_lineitem_l_shipinstruct#2311 AS cval_lineitem_l_shipinstruct_1#2356, cval_lineitem_l_shipmode#2312 AS cval_lineitem_l_shipmode_1#2357, cval_lineitem_l_comment#2313 AS cval_lineitem_l_comment_1#2358, cval_lineitem_l_shipdate#2314 AS cval_lineitem_l_shipdate_1#2359, cdepval_lineitem_l_quantity#2315 AS cdepval_lineitem_l_quantity_1#2360, cdepval_lineitem_l_extendedprice#2316 AS cdepval_lineitem_l_extendedprice_1#2361, cdepval_lineitem_l_discount#2317 AS cdepval_lineitem_l_discount_1#2362, ... 21 more fields]
+         :  :  :     +- Relation[rid#2294,cpfk_orders_lineitem#2295,cpfk_supplier_lineitem#2296,cfpk_lineitem_supplier#2297,cfpk_lineitem_partsupp#2298,cpfk_part_lineitem#2299,cfpk_lineitem_part#2300,cpfk_partsupp_lineitem#2301,cfpk_lineitem_orders#2302,cval_lineitem_l_quantity#2303,cval_lineitem_l_extendedprice#2304,cval_lineitem_l_discount#2305,cval_lineitem_l_tax#2306,cval_lineitem_l_returnflag#2307,cval_lineitem_l_linestatus#2308,cval_lineitem_l_commitdate#2309,cval_lineitem_l_receiptdate#2310,cval_lineitem_l_shipinstruct#2311,cval_lineitem_l_shipmode#2312,cval_lineitem_l_comment#2313,cval_lineitem_l_shipdate#2314,cdepval_lineitem_l_quantity#2315,cdepval_lineitem_l_extendedprice#2316,cdepval_lineitem_l_discount#2317,... 21 more fields] JDBCRelation(tlineitem) [numPartitions=1]
+         :  :  +- Project [rid#2522 AS rid_2#2540, cpfk_nation_supplier#2523 AS cpfk_nation_supplier_2#2541, cfpk_supplier_nation#2524 AS cfpk_supplier_nation_2#2542, cval_supplier_s_name#2525 AS cval_supplier_s_name_2#2543, cval_supplier_s_address#2526 AS cval_supplier_s_address_2#2544, cval_supplier_s_phone#2527 AS cval_supplier_s_phone_2#2545, cval_supplier_s_acctbal#2528 AS cval_supplier_s_acctbal_2#2546, cval_supplier_s_comment#2529 AS cval_supplier_s_comment_2#2547, cdepval_supplier_s_name#2530 AS cdepval_supplier_s_name_2#2548, cdepval_supplier_s_address#2531 AS cdepval_supplier_s_address_2#2549, cdepval_supplier_s_phone#2532 AS cdepval_supplier_s_phone_2#2550, cdepval_supplier_s_acctbal#2533 AS cdepval_supplier_s_acctbal_2#2551, cdepval_supplier_s_comment#2534 AS cdepval_supplier_s_comment_2#2552, cs_name#2535 AS cs_name_2#2553, cs_address#2536 AS cs_address_2#2554, cs_phone#2537 AS cs_phone_2#2555, cs_acctbal#2538 AS cs_acctbal_2#2556, cs_comment#2539 AS cs_comment_2#2557]
+         :  :     +- Relation[rid#2522,cpfk_nation_supplier#2523,cfpk_supplier_nation#2524,cval_supplier_s_name#2525,cval_supplier_s_address#2526,cval_supplier_s_phone#2527,cval_supplier_s_acctbal#2528,cval_supplier_s_comment#2529,cdepval_supplier_s_name#2530,cdepval_supplier_s_address#2531,cdepval_supplier_s_phone#2532,cdepval_supplier_s_acctbal#2533,cdepval_supplier_s_comment#2534,cs_name#2535,cs_address#2536,cs_phone#2537,cs_acctbal#2538,cs_comment#2539] JDBCRelation(tsupplier) [numPartitions=1]
+         :  +- 'DexPkfkMaterializationAwareJoin nation~supplier, 'cpfk_nation_supplier_2, 'rid_3, NotMaterialized, NotMaterialized, [rid_3#2567, cpfk_region_nation_3#2568, cfpk_nation_region_3#2569, cval_nation_n_name_3#2570, cval_nation_n_comment_3#2571, cdepval_nation_n_name_3#2572, cdepval_nation_n_comment_3#2573, cn_name_3#2574, cn_comment_3#2575, 'rid_2]
+         :     :- 'DexPseudoPrimaryKeyFilter nation~n_name~SAUDI ARABIA, cval_nation_n_name, 'cval_nation_n_name_3, tnation
+         :     :  +- Project [rid#2558 AS rid_3#2567, cpfk_region_nation#2559 AS cpfk_region_nation_3#2568, cfpk_nation_region#2560 AS cfpk_nation_region_3#2569, cval_nation_n_name#2561 AS cval_nation_n_name_3#2570, cval_nation_n_comment#2562 AS cval_nation_n_comment_3#2571, cdepval_nation_n_name#2563 AS cdepval_nation_n_name_3#2572, cdepval_nation_n_comment#2564 AS cdepval_nation_n_comment_3#2573, cn_name#2565 AS cn_name_3#2574, cn_comment#2566 AS cn_comment_3#2575]
+         :     :     +- Relation[rid#2558,cpfk_region_nation#2559,cfpk_nation_region#2560,cval_nation_n_name#2561,cval_nation_n_comment#2562,cdepval_nation_n_name#2563,cdepval_nation_n_comment#2564,cn_name#2565,cn_comment#2566] JDBCRelation(tnation) [numPartitions=1]
+         :     +- 'Project ['cpfk_nation_supplier_2, 'rid_2]
+         :        +- Project [rid#2612 AS rid_2#2630, cpfk_nation_supplier#2613 AS cpfk_nation_supplier_2#2631, cfpk_supplier_nation#2614 AS cfpk_supplier_nation_2#2632, cval_supplier_s_name#2615 AS cval_supplier_s_name_2#2633, cval_supplier_s_address#2616 AS cval_supplier_s_address_2#2634, cval_supplier_s_phone#2617 AS cval_supplier_s_phone_2#2635, cval_supplier_s_acctbal#2618 AS cval_supplier_s_acctbal_2#2636, cval_supplier_s_comment#2619 AS cval_supplier_s_comment_2#2637, cdepval_supplier_s_name#2620 AS cdepval_supplier_s_name_2#2638, cdepval_supplier_s_address#2621 AS cdepval_supplier_s_address_2#2639, cdepval_supplier_s_phone#2622 AS cdepval_supplier_s_phone_2#2640, cdepval_supplier_s_acctbal#2623 AS cdepval_supplier_s_acctbal_2#2641, cdepval_supplier_s_comment#2624 AS cdepval_supplier_s_comment_2#2642, cs_name#2625 AS cs_name_2#2643, cs_address#2626 AS cs_address_2#2644, cs_phone#2627 AS cs_phone_2#2645, cs_acctbal#2628 AS cs_acctbal_2#2646, cs_comment#2629 AS cs_comment_2#2647]
+         :           +- Relation[rid#2612,cpfk_nation_supplier#2613,cfpk_supplier_nation#2614,cval_supplier_s_name#2615,cval_supplier_s_address#2616,cval_supplier_s_phone#2617,cval_supplier_s_acctbal#2618,cval_supplier_s_comment#2619,cdepval_supplier_s_name#2620,cdepval_supplier_s_address#2621,cdepval_supplier_s_phone#2622,cdepval_supplier_s_acctbal#2623,cdepval_supplier_s_comment#2624,cs_name#2625,cs_address#2626,cs_phone#2627,cs_acctbal#2628,cs_comment#2629] JDBCRelation(tsupplier) [numPartitions=1]
+         +- Project [rid#2648 AS rid_4#2693, cpfk_orders_lineitem#2649 AS cpfk_orders_lineitem_4#2694, cpfk_supplier_lineitem#2650 AS cpfk_supplier_lineitem_4#2695, cfpk_lineitem_supplier#2651 AS cfpk_lineitem_supplier_4#2696, cfpk_lineitem_partsupp#2652 AS cfpk_lineitem_partsupp_4#2697, cpfk_part_lineitem#2653 AS cpfk_part_lineitem_4#2698, cfpk_lineitem_part#2654 AS cfpk_lineitem_part_4#2699, cpfk_partsupp_lineitem#2655 AS cpfk_partsupp_lineitem_4#2700, cfpk_lineitem_orders#2656 AS cfpk_lineitem_orders_4#2701, cval_lineitem_l_quantity#2657 AS cval_lineitem_l_quantity_4#2702, cval_lineitem_l_extendedprice#2658 AS cval_lineitem_l_extendedprice_4#2703, cval_lineitem_l_discount#2659 AS cval_lineitem_l_discount_4#2704, cval_lineitem_l_tax#2660 AS cval_lineitem_l_tax_4#2705, cval_lineitem_l_returnflag#2661 AS cval_lineitem_l_returnflag_4#2706, cval_lineitem_l_linestatus#2662 AS cval_lineitem_l_linestatus_4#2707, cval_lineitem_l_commitdate#2663 AS cval_lineitem_l_commitdate_4#2708, cval_lineitem_l_receiptdate#2664 AS cval_lineitem_l_receiptdate_4#2709, cval_lineitem_l_shipinstruct#2665 AS cval_lineitem_l_shipinstruct_4#2710, cval_lineitem_l_shipmode#2666 AS cval_lineitem_l_shipmode_4#2711, cval_lineitem_l_comment#2667 AS cval_lineitem_l_comment_4#2712, cval_lineitem_l_shipdate#2668 AS cval_lineitem_l_shipdate_4#2713, cdepval_lineitem_l_quantity#2669 AS cdepval_lineitem_l_quantity_4#2714, cdepval_lineitem_l_extendedprice#2670 AS cdepval_lineitem_l_extendedprice_4#2715, cdepval_lineitem_l_discount#2671 AS cdepval_lineitem_l_discount_4#2716, ... 21 more fields]
+            +- Relation[rid#2648,cpfk_orders_lineitem#2649,cpfk_supplier_lineitem#2650,cfpk_lineitem_supplier#2651,cfpk_lineitem_partsupp#2652,cpfk_part_lineitem#2653,cfpk_lineitem_part#2654,cpfk_partsupp_lineitem#2655,cfpk_lineitem_orders#2656,cval_lineitem_l_quantity#2657,cval_lineitem_l_extendedprice#2658,cval_lineitem_l_discount#2659,cval_lineitem_l_tax#2660,cval_lineitem_l_returnflag#2661,cval_lineitem_l_linestatus#2662,cval_lineitem_l_commitdate#2663,cval_lineitem_l_receiptdate#2664,cval_lineitem_l_shipinstruct#2665,cval_lineitem_l_shipmode#2666,cval_lineitem_l_comment#2667,cval_lineitem_l_shipdate#2668,cdepval_lineitem_l_quantity#2669,cdepval_lineitem_l_extendedprice#2670,cdepval_lineitem_l_discount#2671,... 21 more fields] JDBCRelation(tlineitem) [numPartitions=1]
+
+DexPkFk$ result size=119924
+Elapsed time: 128705ms
+
+q20=
+
+select
+  s_name, s_address
+from
+  supplier, nation
+where s_suppkey in (
+  select ps_suppkey
+  from partsupp
+  where ps_partkey in (
+    select p_partkey
+    from part
+    where p_size = 15
+  )
+) and s_nationkey = n_nationkey
+  and n_name = 'CANADA'
+        
+20/04/29 04:31:41 WARN DexPlanner: dexPlan=DexPkFkPlan
+20/04/29 04:31:41 WARN DexPlanner$TranslateDexQuery: == To be translated == 
+Aggregate [count(1) AS count#2839L]
++- DexPkFkPlan {l_orderkey_and_l_linenumber, ps_partkey_and_ps_suppkey, n_nationkey, r_regionkey, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkey, l_partkey_and_l_suppkey, ps_partkey, l_suppkey, l_orderkey, ps_suppkey}
+   +- Project
+      +- Join RightSemi, (ps_suppkey#33L = s_suppkey#18L)
+         :- Project [ps_suppkey#33L]
+         :  +- Join RightSemi, (p_partkey#360L = ps_partkey#32L)
+         :     :- Project [p_partkey#360L]
+         :     :  +- Filter (p_size#364 = 15)
+         :     :     +- Relation[p_partkey#360L,p_name#361,p_mfgr#362,p_type#363,p_size#364,p_container#365,p_retailprice#366,p_comment#367,p_brand#368] parquet
+         :     +- Project [ps_partkey#32L, ps_suppkey#33L]
+         :        +- Relation[ps_partkey#32L,ps_suppkey#33L,ps_availqty#34,ps_supplycost#35,ps_comment#36] parquet
+         +- Project [s_suppkey#18L]
+            +- Join Inner, (n_nationkey#108L = s_nationkey#21L)
+               :- Project [n_nationkey#108L]
+               :  +- Filter (n_name#109 = CANADA)
+               :     +- Relation[n_nationkey#108L,n_name#109,n_regionkey#110L,n_comment#111] parquet
+               +- Project [s_suppkey#18L, s_nationkey#21L]
+                  +- Relation[s_suppkey#18L,s_name#19,s_address#20,s_nationkey#21L,s_phone#22,s_acctbal#23,s_comment#24] parquet
+
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=partsupp
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=partsupp
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=partsupp
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=nation
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=partsupp
+20/04/29 04:31:41 WARN DexPlanner: InMemoryFileIndex=supplier
+20/04/29 04:31:41 WARN DexPlanner$ConvertDexPlanToSQL: == To be converted to sql ==
+'Aggregate [count(1) AS count#2839L]
++- 'Project
+   +- 'DexPkFkPlan {l_orderkey_and_l_linenumber, ps_partkey_and_ps_suppkey, n_nationkey, r_regionkey, s_suppkey, p_partkey, c_custkey, o_orderkey}, {n_regionkey, o_custkey, s_nationkey, c_nationkey, l_partkey, l_partkey_and_l_suppkey, ps_partkey, l_suppkey, l_orderkey, ps_suppkey}
+      +- 'Join RightSemi, (dexdecrypt(dexprf(0xC7CEEE607DB1D4A64A19A9451D3E1FDF2E0E8A02C55F233C7B2F5A5B980AF2CC, dexencode('rid_1, BinaryType)), 'cfpk_partsupp_supplier_1) = 'rid_3)
+         :- 'Join UsingJoin(RightSemi,List(rid_1))
+         :  :- 'DexPkfkMaterializationAwareJoin part~partsupp, 'cpfk_part_partsupp_1, 'rid_0, NotMaterialized, NotMaterialized, [rid_0#2866, cval_part_p_name_0#2867, cval_part_p_mfgr_0#2868, cval_part_p_type_0#2869, cval_part_p_size_0#2870, cval_part_p_container_0#2871, cval_part_p_retailprice_0#2872, cval_part_p_comment_0#2873, cval_part_p_brand_0#2874, cdepval_part_p_name_0#2875, cdepval_part_p_mfgr_0#2876, cdepval_part_p_type_0#2877, cdepval_part_p_size_0#2878, cdepval_part_p_container_0#2879, cdepval_part_p_retailprice_0#2880, cdepval_part_p_comment_0#2881, cdepval_part_p_brand_0#2882, cp_name_0#2883, cp_mfgr_0#2884, cp_type_0#2885, cp_size_0#2886, cp_container_0#2887, cp_retailprice_0#2888, cp_comment_0#2889, ... 2 more fields]
+         :  :  :- 'DexPseudoPrimaryKeyFilter part~p_size~15, cval_part_p_size, 'cval_part_p_size_0, tpart
+         :  :  :  +- Project [rid#2841 AS rid_0#2866, cval_part_p_name#2842 AS cval_part_p_name_0#2867, cval_part_p_mfgr#2843 AS cval_part_p_mfgr_0#2868, cval_part_p_type#2844 AS cval_part_p_type_0#2869, cval_part_p_size#2845 AS cval_part_p_size_0#2870, cval_part_p_container#2846 AS cval_part_p_container_0#2871, cval_part_p_retailprice#2847 AS cval_part_p_retailprice_0#2872, cval_part_p_comment#2848 AS cval_part_p_comment_0#2873, cval_part_p_brand#2849 AS cval_part_p_brand_0#2874, cdepval_part_p_name#2850 AS cdepval_part_p_name_0#2875, cdepval_part_p_mfgr#2851 AS cdepval_part_p_mfgr_0#2876, cdepval_part_p_type#2852 AS cdepval_part_p_type_0#2877, cdepval_part_p_size#2853 AS cdepval_part_p_size_0#2878, cdepval_part_p_container#2854 AS cdepval_part_p_container_0#2879, cdepval_part_p_retailprice#2855 AS cdepval_part_p_retailprice_0#2880, cdepval_part_p_comment#2856 AS cdepval_part_p_comment_0#2881, cdepval_part_p_brand#2857 AS cdepval_part_p_brand_0#2882, cp_name#2858 AS cp_name_0#2883, cp_mfgr#2859 AS cp_mfgr_0#2884, cp_type#2860 AS cp_type_0#2885, cp_size#2861 AS cp_size_0#2886, cp_container#2862 AS cp_container_0#2887, cp_retailprice#2863 AS cp_retailprice_0#2888, cp_comment#2864 AS cp_comment_0#2889, cp_brand#2865 AS cp_brand_0#2890]
+         :  :  :     +- Relation[rid#2841,cval_part_p_name#2842,cval_part_p_mfgr#2843,cval_part_p_type#2844,cval_part_p_size#2845,cval_part_p_container#2846,cval_part_p_retailprice#2847,cval_part_p_comment#2848,cval_part_p_brand#2849,cdepval_part_p_name#2850,cdepval_part_p_mfgr#2851,cdepval_part_p_type#2852,cdepval_part_p_size#2853,cdepval_part_p_container#2854,cdepval_part_p_retailprice#2855,cdepval_part_p_comment#2856,cdepval_part_p_brand#2857,cp_name#2858,cp_mfgr#2859,cp_type#2860,cp_size#2861,cp_container#2862,cp_retailprice#2863,cp_comment#2864,cp_brand#2865] JDBCRelation(tpart) [numPartitions=1]
+         :  :  +- 'Project ['cpfk_part_partsupp_1, 'rid_1]
+         :  :     +- Project [rid#3019 AS rid_1#3033, cpfk_part_partsupp#3020 AS cpfk_part_partsupp_1#3034, cfpk_partsupp_part#3021 AS cfpk_partsupp_part_1#3035, cpfk_supplier_partsupp#3022 AS cpfk_supplier_partsupp_1#3036, cfpk_partsupp_supplier#3023 AS cfpk_partsupp_supplier_1#3037, cval_partsupp_ps_availqty#3024 AS cval_partsupp_ps_availqty_1#3038, cval_partsupp_ps_supplycost#3025 AS cval_partsupp_ps_supplycost_1#3039, cval_partsupp_ps_comment#3026 AS cval_partsupp_ps_comment_1#3040, cdepval_partsupp_ps_availqty#3027 AS cdepval_partsupp_ps_availqty_1#3041, cdepval_partsupp_ps_supplycost#3028 AS cdepval_partsupp_ps_supplycost_1#3042, cdepval_partsupp_ps_comment#3029 AS cdepval_partsupp_ps_comment_1#3043, cps_availqty#3030 AS cps_availqty_1#3044, cps_supplycost#3031 AS cps_supplycost_1#3045, cps_comment#3032 AS cps_comment_1#3046]
+         :  :        +- Relation[rid#3019,cpfk_part_partsupp#3020,cfpk_partsupp_part#3021,cpfk_supplier_partsupp#3022,cfpk_partsupp_supplier#3023,cval_partsupp_ps_availqty#3024,cval_partsupp_ps_supplycost#3025,cval_partsupp_ps_comment#3026,cdepval_partsupp_ps_availqty#3027,cdepval_partsupp_ps_supplycost#3028,cdepval_partsupp_ps_comment#3029,cps_availqty#3030,cps_supplycost#3031,cps_comment#3032] JDBCRelation(tpartsupp) [numPartitions=1]
+         :  +- Project [rid#2941 AS rid_1#2955, cpfk_part_partsupp#2942 AS cpfk_part_partsupp_1#2956, cfpk_partsupp_part#2943 AS cfpk_partsupp_part_1#2957, cpfk_supplier_partsupp#2944 AS cpfk_supplier_partsupp_1#2958, cfpk_partsupp_supplier#2945 AS cfpk_partsupp_supplier_1#2959, cval_partsupp_ps_availqty#2946 AS cval_partsupp_ps_availqty_1#2960, cval_partsupp_ps_supplycost#2947 AS cval_partsupp_ps_supplycost_1#2961, cval_partsupp_ps_comment#2948 AS cval_partsupp_ps_comment_1#2962, cdepval_partsupp_ps_availqty#2949 AS cdepval_partsupp_ps_availqty_1#2963, cdepval_partsupp_ps_supplycost#2950 AS cdepval_partsupp_ps_supplycost_1#2964, cdepval_partsupp_ps_comment#2951 AS cdepval_partsupp_ps_comment_1#2965, cps_availqty#2952 AS cps_availqty_1#2966, cps_supplycost#2953 AS cps_supplycost_1#2967, cps_comment#2954 AS cps_comment_1#2968]
+         :     +- Relation[rid#2941,cpfk_part_partsupp#2942,cfpk_partsupp_part#2943,cpfk_supplier_partsupp#2944,cfpk_partsupp_supplier#2945,cval_partsupp_ps_availqty#2946,cval_partsupp_ps_supplycost#2947,cval_partsupp_ps_comment#2948,cdepval_partsupp_ps_availqty#2949,cdepval_partsupp_ps_supplycost#2950,cdepval_partsupp_ps_comment#2951,cps_availqty#2952,cps_supplycost#2953,cps_comment#2954] JDBCRelation(tpartsupp) [numPartitions=1]
+         +- 'Join UsingJoin(Inner,List(rid_3))
+            :- 'DexPkfkMaterializationAwareJoin nation~supplier, 'cpfk_nation_supplier_3, 'rid_2, NotMaterialized, NotMaterialized, [rid_2#3056, cpfk_region_nation_2#3057, cfpk_nation_region_2#3058, cval_nation_n_name_2#3059, cval_nation_n_comment_2#3060, cdepval_nation_n_name_2#3061, cdepval_nation_n_comment_2#3062, cn_name_2#3063, cn_comment_2#3064, 'rid_3]
+            :  :- 'DexPseudoPrimaryKeyFilter nation~n_name~CANADA, cval_nation_n_name, 'cval_nation_n_name_2, tnation
+            :  :  +- Project [rid#3047 AS rid_2#3056, cpfk_region_nation#3048 AS cpfk_region_nation_2#3057, cfpk_nation_region#3049 AS cfpk_nation_region_2#3058, cval_nation_n_name#3050 AS cval_nation_n_name_2#3059, cval_nation_n_comment#3051 AS cval_nation_n_comment_2#3060, cdepval_nation_n_name#3052 AS cdepval_nation_n_name_2#3061, cdepval_nation_n_comment#3053 AS cdepval_nation_n_comment_2#3062, cn_name#3054 AS cn_name_2#3063, cn_comment#3055 AS cn_comment_2#3064]
+            :  :     +- Relation[rid#3047,cpfk_region_nation#3048,cfpk_nation_region#3049,cval_nation_n_name#3050,cval_nation_n_comment#3051,cdepval_nation_n_name#3052,cdepval_nation_n_comment#3053,cn_name#3054,cn_comment#3055] JDBCRelation(tnation) [numPartitions=1]
+            :  +- 'Project ['cpfk_nation_supplier_3, 'rid_3]
+            :     +- Project [rid#3137 AS rid_3#3155, cpfk_nation_supplier#3138 AS cpfk_nation_supplier_3#3156, cfpk_supplier_nation#3139 AS cfpk_supplier_nation_3#3157, cval_supplier_s_name#3140 AS cval_supplier_s_name_3#3158, cval_supplier_s_address#3141 AS cval_supplier_s_address_3#3159, cval_supplier_s_phone#3142 AS cval_supplier_s_phone_3#3160, cval_supplier_s_acctbal#3143 AS cval_supplier_s_acctbal_3#3161, cval_supplier_s_comment#3144 AS cval_supplier_s_comment_3#3162, cdepval_supplier_s_name#3145 AS cdepval_supplier_s_name_3#3163, cdepval_supplier_s_address#3146 AS cdepval_supplier_s_address_3#3164, cdepval_supplier_s_phone#3147 AS cdepval_supplier_s_phone_3#3165, cdepval_supplier_s_acctbal#3148 AS cdepval_supplier_s_acctbal_3#3166, cdepval_supplier_s_comment#3149 AS cdepval_supplier_s_comment_3#3167, cs_name#3150 AS cs_name_3#3168, cs_address#3151 AS cs_address_3#3169, cs_phone#3152 AS cs_phone_3#3170, cs_acctbal#3153 AS cs_acctbal_3#3171, cs_comment#3154 AS cs_comment_3#3172]
+            :        +- Relation[rid#3137,cpfk_nation_supplier#3138,cfpk_supplier_nation#3139,cval_supplier_s_name#3140,cval_supplier_s_address#3141,cval_supplier_s_phone#3142,cval_supplier_s_acctbal#3143,cval_supplier_s_comment#3144,cdepval_supplier_s_name#3145,cdepval_supplier_s_address#3146,cdepval_supplier_s_phone#3147,cdepval_supplier_s_acctbal#3148,cdepval_supplier_s_comment#3149,cs_name#3150,cs_address#3151,cs_phone#3152,cs_acctbal#3153,cs_comment#3154] JDBCRelation(tsupplier) [numPartitions=1]
+            +- Project [rid#3083 AS rid_3#3101, cpfk_nation_supplier#3084 AS cpfk_nation_supplier_3#3102, cfpk_supplier_nation#3085 AS cfpk_supplier_nation_3#3103, cval_supplier_s_name#3086 AS cval_supplier_s_name_3#3104, cval_supplier_s_address#3087 AS cval_supplier_s_address_3#3105, cval_supplier_s_phone#3088 AS cval_supplier_s_phone_3#3106, cval_supplier_s_acctbal#3089 AS cval_supplier_s_acctbal_3#3107, cval_supplier_s_comment#3090 AS cval_supplier_s_comment_3#3108, cdepval_supplier_s_name#3091 AS cdepval_supplier_s_name_3#3109, cdepval_supplier_s_address#3092 AS cdepval_supplier_s_address_3#3110, cdepval_supplier_s_phone#3093 AS cdepval_supplier_s_phone_3#3111, cdepval_supplier_s_acctbal#3094 AS cdepval_supplier_s_acctbal_3#3112, cdepval_supplier_s_comment#3095 AS cdepval_supplier_s_comment_3#3113, cs_name#3096 AS cs_name_3#3114, cs_address#3097 AS cs_address_3#3115, cs_phone#3098 AS cs_phone_3#3116, cs_acctbal#3099 AS cs_acctbal_3#3117, cs_comment#3100 AS cs_comment_3#3118]
+               +- Relation[rid#3083,cpfk_nation_supplier#3084,cfpk_supplier_nation#3085,cval_supplier_s_name#3086,cval_supplier_s_address#3087,cval_supplier_s_phone#3088,cval_supplier_s_acctbal#3089,cval_supplier_s_comment#3090,cdepval_supplier_s_name#3091,cdepval_supplier_s_address#3092,cdepval_supplier_s_phone#3093,cdepval_supplier_s_acctbal#3094,cdepval_supplier_s_comment#3095,cs_name#3096,cs_address#3097,cs_phone#3098,cs_acctbal#3099,cs_comment#3100] JDBCRelation(tsupplier) [numPartitions=1]
+
+DexPkFk$ result size=324
+Elapsed time: 742ms
+query=q20, count=324, duration=742
+query=q21a, count=119924, duration=128705
+query=q22, count=50004, duration=2999
