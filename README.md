@@ -1,4 +1,4 @@
-# KafeDB: End-to-End Structually-Encrypted Database System
+# KafeDB: End-to-End Structually-Encrypted Relational Database System
 
 This software contains implementation and improvement over the cryptographic construction cited here:
 * [An Optimal Relational Database Encryption Scheme](https://eprint.iacr.org/2020/274)
