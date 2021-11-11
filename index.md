@@ -1,37 +1,13 @@
-## Welcome to GitHub Pages
+# KafeDB: End-to-End Structually-Encrypted Relational Database System
 
-You can use the [editor on GitHub](https://github.com/zheguang/kafedb/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+This software contains implementation and improvement over the cryptographic construction cited here:
+* [An Optimal Relational Database Encryption Scheme](https://eprint.iacr.org/2020/274)
+* [Encrypted Databases: From Theory to Systems](http://cidrdb.org/cidr2021/papers/cidr2021_paper23.pdf)
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+Authors: Zheguang Zhao, Seny Kamara, Tarik Moataz and Stan Zdonik, at Brown University.
 
-### Markdown
+Contact: zheguang.zhao@gmail.com
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/zheguang/kafedb/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+# Copyright
+* Apache Spark portion: see LICENSE-spark, LICENSE-spark-binary, NOTICE-spark, and NOTICE-spark-binary, and license under /licenses.
+* Brown University portion: see LICENSE.
